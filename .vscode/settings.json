@@ -1,0 +1,9 @@
+{
+  "cmake.sourceDirectory": "C:/Users/crepe/MidShake/bindings",
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/cpp",
+    "${workspaceFolder}/bindings",
+    "${workspaceFolder}/python",
+    "C:/msys64/mingw64/include"
+  ]
+}

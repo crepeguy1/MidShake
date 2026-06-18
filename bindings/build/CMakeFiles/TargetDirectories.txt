@@ -1,0 +1,3 @@
+C:/users/crepe/midshake/bindings/build/CMakeFiles/midshake_cpp.dir
+C:/users/crepe/midshake/bindings/build/CMakeFiles/edit_cache.dir
+C:/users/crepe/midshake/bindings/build/CMakeFiles/rebuild_cache.dir
