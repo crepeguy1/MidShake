@@ -1,0 +1,38 @@
+
+---
+
+ 
+
+
+```gitignore
+# Build artifacts
+build/
+*/build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Python extension modules
+*.pyd
+*.so
+*.dll
+
+# Virtual environments
+venv/
+.env/
+
+# Editor junk
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
+Thumbs.db
