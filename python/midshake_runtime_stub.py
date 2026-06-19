@@ -1,15 +1,16 @@
 # midshake_runtime.py
 
-from typing import Dict
+from typing import Dict, Any
 from midshake_ast import (
     Program, Section, Statement,
-    Let, Set, Proclaim, If, While, Terminate
+    Let, Set, Proclaim, If, While, Terminate,
+    Number, String, Variable, Binary
 )
 
 
 class Runtime:
     def __init__(self) -> None:
-        self.vars: Dict[str, int] = {}
+        self.vars: Dict[str, Any] = {}
         self.terminated: bool = False
 
     def exec_program(self, program: Program) -> None:
@@ -31,27 +32,53 @@ class Runtime:
                 f"  The variable '{name}' was never declared with LET."
             )
 
+    def eval_expr(self, expr):
+        if isinstance(expr, Number):
+            return expr.value
+        if isinstance(expr, String):
+            return expr.value
+        if isinstance(expr, Variable):
+            self.require_declared(expr.name)
+            return self.vars[expr.name]
+        if isinstance(expr, Binary):
+            left = self.eval_expr(expr.left)
+            right = self.eval_expr(expr.right)
+            if expr.op == "+":
+                return left + right
+            if expr.op == "-":
+                return left - right
+            if expr.op == "*":
+                return left * right
+            if expr.op == "/":
+                return left / right
+        raise ValueError(f"MidShake Runtime Error:\n  Unknown expression: {expr}")
+
     def exec_stmt(self, stmt: Statement) -> None:
         if isinstance(stmt, Let):
-            self.vars[stmt.name] = stmt.value
+            self.vars[stmt.name] = self.eval_expr(stmt.value)
 
         elif isinstance(stmt, Set):
             self.require_declared(stmt.name)
-            self.vars[stmt.name] = stmt.value
+            self.vars[stmt.name] = self.eval_expr(stmt.value)
 
         elif isinstance(stmt, Proclaim):
-            self.require_declared(stmt.name)
-            print(self.vars.get(stmt.name, 0))
+            value = self.eval_expr(stmt.value)
+            print(value)
 
         elif isinstance(stmt, If):
             self.require_declared(stmt.name)
-            if self.vars.get(stmt.name, 0) == stmt.value:
+            left = self.vars[stmt.name]
+            right = self.eval_expr(stmt.value)
+            if left == right:
                 for s in stmt.body:
+                    self.exec_stmt(s)
+            elif stmt.else_body is not None:
+                for s in stmt.else_body:
                     self.exec_stmt(s)
 
         elif isinstance(stmt, While):
             self.require_declared(stmt.name)
-            while self.vars.get(stmt.name, 0) == stmt.value and not self.terminated:
+            while self.vars[stmt.name] == self.eval_expr(stmt.value) and not self.terminated:
                 for s in stmt.body:
                     self.exec_stmt(s)
 

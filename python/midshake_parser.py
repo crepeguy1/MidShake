@@ -63,21 +63,31 @@ class Parser:
 
     def parse_if(self, name, value, line_no):
         body = []
+        else_body = None
         self.advance()
 
-        while self.current() and self.current().type != "END_IF":
+        while self.current() and self.current().type not in ("END_IF", "ELSE"):
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
             self.advance()
 
+        if self.current() and self.current().type == "ELSE":
+            else_body = []
+            self.advance()
+            while self.current() and self.current().type != "END_IF":
+                stmt = self.parse_statement()
+                if stmt:
+                    else_body.append(stmt)
+                self.advance()
+
         if not self.current() or self.current().type != "END_IF":
             raise ValueError(
                 f"MidShake Syntax Error (around line {line_no}):\n"
-                f"  IF block was never closed with 'END IF;'."
+                f"  IF block was never closed with 'END IF'."
             )
 
-        return If(name, value, body)
+        return If(name, value, body, else_body)
 
     def parse_while(self, name, value, line_no):
         body = []
@@ -92,7 +102,7 @@ class Parser:
         if not self.current() or self.current().type != "END_WHILST":
             raise ValueError(
                 f"MidShake Syntax Error (around line {line_no}):\n"
-                f"  WHILST block was never closed with 'END WHILST;'."
+                f"  WHILST block was never closed with 'END WHILST'."
             )
 
         return While(name, value, body)

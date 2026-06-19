@@ -15,3 +15,7 @@ WHILST the value of villain IS the number 2 DO
 END WHILST;
 
 TERMINATE the program;
+
+DECLARE a function named greet that TAKES a parameter named name;
+    PROCLAIM "Hello, " + name + "!";
+END FUNCTION;

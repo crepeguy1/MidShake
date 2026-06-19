@@ -1,6 +1,33 @@
 # midshake_ast.py
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
+
+
+@dataclass
+class Expression:
+    pass
+
+
+@dataclass
+class Number(Expression):
+    value: int
+
+
+@dataclass
+class String(Expression):
+    value: str
+
+
+@dataclass
+class Variable(Expression):
+    name: str
+
+
+@dataclass
+class Binary(Expression):
+    op: str
+    left: Expression
+    right: Expression
 
 
 @dataclass
@@ -11,31 +38,32 @@ class Statement:
 @dataclass
 class Let(Statement):
     name: str
-    value: int
+    value: Expression
 
 
 @dataclass
 class Set(Statement):
     name: str
-    value: int
+    value: Expression
 
 
 @dataclass
 class Proclaim(Statement):
-    name: str
+    value: Expression
 
 
 @dataclass
 class If(Statement):
     name: str
-    value: int
+    value: Expression
     body: List[Statement]
+    else_body: Optional[List[Statement]] = None
 
 
 @dataclass
 class While(Statement):
     name: str
-    value: int
+    value: Expression
     body: List[Statement]
 
 
