@@ -104,9 +104,9 @@ class Tokenizer:
         # Termination
         if "TERMINATE the program" in line:
             return Token("TERMINATE", None, line_no)
-
-        raise ValueError(
-            f"MidShake Syntax Error (line {line_no}):\n"
-            f"  I do not understand this line.\n"
-            f"  Offending line:\n    {line}"
-        )
+        
+        #raise ValueError(
+           # f"MidShake Syntax Error (line {line_no}):\n"
+           # f"  I do not understand this line.\n"
+           # f"  Offending line:\n    {line}"
+       # )

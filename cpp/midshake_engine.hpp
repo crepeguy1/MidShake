@@ -3,173 +3,175 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
+#include <variant>
+#include <optional>
 
-// ---------------------------
-// Tokens
-// ---------------------------
+// ===== Tokens =====
 
 enum class TokenType {
+    EndOfFile,
     Identifier,
     Number,
     String,
-    Keyword,
-    Symbol,
-    EndOfFile
+    Let,
+    Be,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    LeftParen,
+    RightParen,
+    Newline,
 };
 
 struct Token {
     TokenType type;
-    std::string value;
-    int line;
-    int column;
+    std::string text;
 };
 
-std::vector<Token> tokenize(const std::string& source);
+// ===== Lexer =====
 
-// ---------------------------
-// AST Forward Declarations
-// ---------------------------
+class Lexer {
+public:
+    explicit Lexer(const std::string &source);
 
-struct Expression;
-struct Statement;
+    std::vector<Token> tokenize();
 
-using ExprPtr = std::shared_ptr<Expression>;
-using StmtPtr = std::shared_ptr<Statement>;
+private:
+    std::string source;
+    std::size_t pos = 0;
 
-// ---------------------------
-// Expressions
-// ---------------------------
+    char peek() const;
+    char advance();
+    bool isAtEnd() const;
+
+    void skipWhitespace();
+    Token stringLiteral();
+    Token identifier();
+    Token number();
+};
+
+// ===== AST: Expressions =====
 
 enum class ExprType {
     Number,
-    String,
-    Variable,
     Binary,
-    Unary
+    Variable,
+    String
 };
 
 struct Expression {
     ExprType type;
-    Expression(ExprType t) : type(t) {}
+    explicit Expression(ExprType t) : type(t) {}
     virtual ~Expression() = default;
 };
 
 struct NumberExpr : public Expression {
     double value;
-    NumberExpr(double v) : Expression(ExprType::Number), value(v) {}
+    explicit NumberExpr(double v) : Expression(ExprType::Number), value(v) {}
 };
 
 struct StringExpr : public Expression {
     std::string value;
-    StringExpr(const std::string& v) : Expression(ExprType::String), value(v) {}
+    explicit StringExpr(const std::string &v)
+        : Expression(ExprType::String), value(v) {}
+};
+
+enum class BinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+};
+
+struct BinaryExpr : public Expression {
+    BinaryOp op;
+    std::shared_ptr<Expression> left;
+    std::shared_ptr<Expression> right;
+
+    BinaryExpr(BinaryOp o,
+               std::shared_ptr<Expression> l,
+               std::shared_ptr<Expression> r)
+        : Expression(ExprType::Binary), op(o), left(std::move(l)), right(std::move(r)) {}
 };
 
 struct VariableExpr : public Expression {
     std::string name;
-    VariableExpr(const std::string& n) : Expression(ExprType::Variable), name(n) {}
+    explicit VariableExpr(const std::string &n)
+        : Expression(ExprType::Variable), name(n) {}
 };
 
-struct UnaryExpr : public Expression {
-    std::string op;
-    ExprPtr right;
-    UnaryExpr(const std::string& o, ExprPtr r)
-        : Expression(ExprType::Unary), op(o), right(r) {}
-};
+// ===== AST: Statements =====
 
-struct BinaryExpr : public Expression {
-    ExprPtr left;
-    std::string op;
-    ExprPtr right;
-    BinaryExpr(ExprPtr l, const std::string& o, ExprPtr r)
-        : Expression(ExprType::Binary), left(l), op(o), right(r) {}
-};
-
-// ---------------------------
-// Statements
-// ---------------------------
-
-enum class StmtType {
-    Print,
-    VarAssign,
-    Block,
-    If,
-    While
-};
-
-struct Statement {
-    StmtType type;
-    Statement(StmtType t) : type(t) {}
-    virtual ~Statement() = default;
-};
-
-struct PrintStmt : public Statement {
-    ExprPtr value;
-    PrintStmt(ExprPtr v) : Statement(StmtType::Print), value(v) {}
-};
-
-struct VarAssignStmt : public Statement {
+struct VariableDeclaration {
     std::string name;
-    ExprPtr value;
-    VarAssignStmt(const std::string& n, ExprPtr v)
-        : Statement(StmtType::VarAssign), name(n), value(v) {}
+    std::shared_ptr<Expression> value;
 };
 
-struct BlockStmt : public Statement {
-    std::vector<StmtPtr> statements;
-    BlockStmt() : Statement(StmtType::Block) {}
+struct ExpressionStatement {
+    std::shared_ptr<Expression> expr;
 };
 
-struct IfStmt : public Statement {
-    ExprPtr condition;
-    StmtPtr thenBranch;
-    StmtPtr elseBranch;
-    IfStmt(ExprPtr cond, StmtPtr thenB, StmtPtr elseB)
-        : Statement(StmtType::If), condition(cond), thenBranch(thenB), elseBranch(elseB) {}
-};
+using Statement = std::variant<VariableDeclaration, ExpressionStatement>;
 
-struct WhileStmt : public Statement {
-    ExprPtr condition;
-    StmtPtr body;
-    WhileStmt(ExprPtr cond, StmtPtr b)
-        : Statement(StmtType::While), condition(cond), body(b) {}
-};
+// ===== Parser =====
 
-// ---------------------------
-// Parser
-// ---------------------------
+class Parser {
+public:
+    explicit Parser(const std::vector<Token> &tokens);
 
-struct Parser {
-    Parser(const std::vector<Token>& tokens);
-
-    std::vector<StmtPtr> parse();
+    std::vector<Statement> parse();
 
 private:
-    const std::vector<Token>& tokens;
-    size_t current;
+    const std::vector<Token> &tokens;
+    std::size_t current = 0;
 
-    const Token& peek() const;
-    const Token& previous() const;
     bool isAtEnd() const;
+    const Token &peek() const;
+    const Token &previous() const;
+    const Token &advance();
     bool check(TokenType type) const;
     bool match(TokenType type);
-    bool matchKeyword(const std::string& kw);
-    const Token& consume(TokenType type, const std::string& message);
-    void error(const std::string& message) const;
+    const Token &consume(TokenType type, const std::string &message);
 
-    StmtPtr declaration();
-    StmtPtr statement();
-    StmtPtr printStatement();
-    StmtPtr varAssignStatement();
-    StmtPtr ifStatement();
-    StmtPtr whileStatement();
-    StmtPtr blockStatement();
+    // Statements
+    Statement parseStatement();
+    VariableDeclaration parseVariableDeclaration();
+    ExpressionStatement parseExpressionStatement();
 
-    ExprPtr expression();
-    ExprPtr equality();
-    ExprPtr comparison();
-    ExprPtr term();
-    ExprPtr factor();
-    ExprPtr unary();
-    ExprPtr primary();
+    // Expressions
+    std::shared_ptr<Expression> parseExpression();
+    std::shared_ptr<Expression> parseTerm();
+    std::shared_ptr<Expression> parseFactor();
+    std::shared_ptr<Expression> parsePrimary();
 };
+
+// ===== Runtime / Interpreter =====
+
+using Value = std::variant<double, std::string>;
+
+class Interpreter {
+public:
+    Interpreter() = default;
+
+    Value evaluate(const std::vector<Statement> &program);
+
+private:
+    std::unordered_map<std::string, Value> variables;
+
+    Value evalExpression(const std::shared_ptr<Expression> &expr);
+    void execStatement(const Statement &stmt);
+    void execVariableDeclaration(const VariableDeclaration &decl);
+    void execExpressionStatement(const ExpressionStatement &stmt);
+};
+
+// ===== Public API =====
+
+// Tokenize + parse + evaluate a MidShake program string.
+// Returns the last expression value (or 0 if none).
+Value run_midshake(const std::string &source);
+
+// Tokenize only (for Python bindings / debugging).
+std::vector<Token> tokenize_midshake(const std::string &source);
 

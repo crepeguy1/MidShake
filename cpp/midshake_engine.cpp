@@ -2,171 +2,132 @@
 
 #include <cctype>
 #include <stdexcept>
+#include <sstream>
 
-// ---------------------------
-// Tokenizer helpers
-// ---------------------------
+// ===== Lexer implementation =====
 
-static bool isIdentifierStart(char c) {
-    return std::isalpha(static_cast<unsigned char>(c)) || c == '_';
+Lexer::Lexer(const std::string &source) : source(source) {}
+
+char Lexer::peek() const {
+    if (isAtEnd()) return '\0';
+    return source[pos];
 }
 
-static bool isIdentifierPart(char c) {
-    return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+char Lexer::advance() {
+    if (isAtEnd()) return '\0';
+    return source[pos++];
 }
 
-static bool isDigit(char c) {
-    return std::isdigit(static_cast<unsigned char>(c));
+bool Lexer::isAtEnd() const {
+    return pos >= source.size();
 }
 
-static bool isWhitespace(char c) {
-    return c == ' ' || c == '\t' || c == '\r';
-}
-
-static bool isKeyword(const std::string& s) {
-    static const std::vector<std::string> keywords = {
-        "LET", "BE", "PROCLAIM", "ASK", "IF", "ELSE", "WHILST", "END"
-    };
-    for (const auto& k : keywords) {
-        if (s == k) return true;
+void Lexer::skipWhitespace() {
+    while (!isAtEnd()) {
+        char c = peek();
+        if (c == ' ' || c == '\t' || c == '\r') {
+            advance();
+        } else {
+            break;
+        }
     }
-    return false;
 }
 
-// ---------------------------
-// Tokenize
-// ---------------------------
+Token Lexer::identifier() {
+    std::size_t start = pos - 1;
+    while (!isAtEnd() && (std::isalnum(peek()) || peek() == '_')) {
+        advance();
+    }
+    std::string text = source.substr(start, pos - start);
 
-std::vector<Token> tokenize(const std::string& source) {
+    if (text == "LET") {
+        return {TokenType::Let, text};
+    } else if (text == "BE") {
+        return {TokenType::Be, text};
+    }
+
+    return {TokenType::Identifier, text};
+}
+
+Token Lexer::number() {
+    std::size_t start = pos - 1;
+    while (!isAtEnd() && std::isdigit(peek())) {
+        advance();
+    }
+    if (!isAtEnd() && peek() == '.') {
+        advance();
+        while (!isAtEnd() && std::isdigit(peek())) {
+            advance();
+        }
+    }
+    std::string text = source.substr(start, pos - start);
+    return {TokenType::Number, text};
+}
+
+Token Lexer::stringLiteral() {
+    std::string result;
+    while (!isAtEnd() && peek() != '"') {
+        result += advance();
+    }
+    advance(); // closing quote
+    return {TokenType::String, result};
+}
+
+std::vector<Token> Lexer::tokenize() {
     std::vector<Token> tokens;
-    int line = 1;
-    int col = 1;
 
-    for (size_t i = 0; i < source.size(); ) {
-        char c = source[i];
+    while (!isAtEnd()) {
+        skipWhitespace();
+        if (isAtEnd()) break;
 
-        // Newline
-        if (c == '\n') {
-            line++;
-            col = 1;
-            i++;
+        char c = advance();
+
+        if (std::isalpha(c) || c == '_') {
+            tokens.push_back(identifier());
+        } else if (std::isdigit(c)) {
+            tokens.push_back(number());
+        } else if (c == '"') {
+            tokens.push_back(stringLiteral());
             continue;
-        }
-
-        // Whitespace
-        if (isWhitespace(c)) {
-            col++;
-            i++;
-            continue;
-        }
-
-        // Comment: # ...
-        if (c == '#') {
-            while (i < source.size() && source[i] != '\n') {
-                i++;
-                col++;
+        } else {
+            switch (c) {
+            case '+': tokens.push_back({TokenType::Plus, "+"}); break;
+            case '-': tokens.push_back({TokenType::Minus, "-"}); break;
+            case '*': tokens.push_back({TokenType::Star, "*"}); break;
+            case '/': tokens.push_back({TokenType::Slash, "/"}); break;
+            case '(': tokens.push_back({TokenType::LeftParen, "("}); break;
+            case ')': tokens.push_back({TokenType::RightParen, ")"}); break;
+            case '\n': tokens.push_back({TokenType::Newline, "\\n"}); break;
+            default:
+                // ignore unknown for now or throw
+                break;
             }
-            continue;
-        }
-
-        // String literal
-        if (c == '"') {
-            int startCol = col;
-            i++;
-            col++;
-            std::string value;
-
-            while (i < source.size() && source[i] != '"') {
-                value.push_back(source[i]);
-                i++;
-                col++;
-            }
-
-            if (i >= source.size()) {
-                throw std::runtime_error("Unterminated string literal");
-            }
-
-            i++;
-            col++; // closing quote
-
-            tokens.push_back({TokenType::String, value, line, startCol});
-            continue;
-        }
-
-        // Number literal
-        if (isDigit(c)) {
-            int startCol = col;
-            std::string value;
-
-            while (i < source.size() && isDigit(source[i])) {
-                value.push_back(source[i]);
-                i++;
-                col++;
-            }
-
-            tokens.push_back({TokenType::Number, value, line, startCol});
-            continue;
-        }
-
-        // Identifier or keyword
-        if (isIdentifierStart(c)) {
-            int startCol = col;
-            std::string value;
-
-            while (i < source.size() && isIdentifierPart(source[i])) {
-                value.push_back(source[i]);
-                i++;
-                col++;
-            }
-
-            if (isKeyword(value)) {
-                tokens.push_back({TokenType::Keyword, value, line, startCol});
-            } else {
-                tokens.push_back({TokenType::Identifier, value, line, startCol});
-            }
-            continue;
-        }
-
-        // Symbol (single char)
-        {
-            int startCol = col;
-            std::string value(1, c);
-            tokens.push_back({TokenType::Symbol, value, line, startCol});
-            i++;
-            col++;
-            continue;
         }
     }
 
-    tokens.push_back({TokenType::EndOfFile, "", line, col});
+    tokens.push_back({TokenType::EndOfFile, ""});
     return tokens;
 }
 
-// ---------------------------
-// Parser implementation
-// ---------------------------
+// ===== Parser implementation =====
 
-Parser::Parser(const std::vector<Token>& tokens)
-    : tokens(tokens), current(0) {}
-
-std::vector<StmtPtr> Parser::parse() {
-    std::vector<StmtPtr> statements;
-    while (!isAtEnd()) {
-        statements.push_back(declaration());
-    }
-    return statements;
-}
-
-const Token& Parser::peek() const {
-    return tokens[current];
-}
-
-const Token& Parser::previous() const {
-    return tokens[current - 1];
-}
+Parser::Parser(const std::vector<Token> &tokens) : tokens(tokens) {}
 
 bool Parser::isAtEnd() const {
     return peek().type == TokenType::EndOfFile;
+}
+
+const Token &Parser::peek() const {
+    return tokens[current];
+}
+
+const Token &Parser::previous() const {
+    return tokens[current - 1];
+}
+
+const Token &Parser::advance() {
+    if (!isAtEnd()) current++;
+    return previous();
 }
 
 bool Parser::check(TokenType type) const {
@@ -176,214 +137,234 @@ bool Parser::check(TokenType type) const {
 
 bool Parser::match(TokenType type) {
     if (check(type)) {
-        current++;
+        advance();
         return true;
     }
     return false;
 }
 
-bool Parser::matchKeyword(const std::string& kw) {
-    if (isAtEnd()) return false;
-    const Token& t = peek();
-    if (t.type == TokenType::Keyword && t.value == kw) {
-        current++;
-        return true;
+const Token &Parser::consume(TokenType type, const std::string &message) {
+    if (check(type)) return advance();
+    throw std::runtime_error("Parse error: " + message);
+}
+
+std::vector<Statement> Parser::parse() {
+    std::vector<Statement> stmts;
+    while (!isAtEnd()) {
+        // skip stray newlines
+        while (match(TokenType::Newline)) {}
+        if (isAtEnd()) break;
+        stmts.push_back(parseStatement());
     }
-    return false;
+    return stmts;
 }
 
-const Token& Parser::consume(TokenType type, const std::string& message) {
-    if (check(type)) {
-        current++;
-        return previous();
+Statement Parser::parseStatement() {
+    if (match(TokenType::Let)) {
+        // we already consumed LET, so back up one step in parseVariableDeclaration
+        current--; // undo match
+        return parseVariableDeclaration();
     }
-    error(message);
-    throw std::runtime_error("Parse error");
+    return parseExpressionStatement();
 }
 
-void Parser::error(const std::string& message) const {
-    const Token& t = peek();
-    throw std::runtime_error(
-        "Parse error at line " + std::to_string(t.line) +
-        ", col " + std::to_string(t.column) + ": " + message
-    );
+VariableDeclaration Parser::parseVariableDeclaration() {
+    consume(TokenType::Let, "Expected 'LET' at start of variable declaration.");
+    std::string name = consume(TokenType::Identifier, "Expected variable name.").text;
+    consume(TokenType::Be, "Expected 'BE' after variable name.");
+    auto expr = parseExpression();
+
+    // optional newline
+    match(TokenType::Newline);
+
+    return VariableDeclaration{name, expr};
 }
 
-// ---------------------------
-// Declarations & statements
-// ---------------------------
-
-StmtPtr Parser::declaration() {
-    // later: function declarations, etc.
-    return statement();
+ExpressionStatement Parser::parseExpressionStatement() {
+    auto expr = parseExpression();
+    // optional newline
+    match(TokenType::Newline);
+    return ExpressionStatement{expr};
 }
 
-StmtPtr Parser::statement() {
-    if (matchKeyword("PROCLAIM")) return printStatement();
-    if (matchKeyword("LET"))      return varAssignStatement();
-    if (matchKeyword("IF"))       return ifStatement();
-    if (matchKeyword("WHILST"))   return whileStatement();
-    // fallback: treat as expression statement inside a block
-    return blockStatement();
+std::shared_ptr<Expression> Parser::parseExpression() {
+    return parseTerm();
 }
 
-StmtPtr Parser::printStatement() {
-    ExprPtr value = expression();
-    return std::make_shared<PrintStmt>(value);
-}
+std::shared_ptr<Expression> Parser::parseTerm() {
+    auto expr = parseFactor();
 
-StmtPtr Parser::varAssignStatement() {
-    // LET <identifier> BE <expr>
-    const Token& nameTok = consume(TokenType::Identifier, "Expected variable name after LET.");
-    if (!matchKeyword("BE")) {
-        error("Expected BE after variable name.");
-    }
-    ExprPtr value = expression();
-    return std::make_shared<VarAssignStmt>(nameTok.value, value);
-}
-
-StmtPtr Parser::ifStatement() {
-    // IF <expr> <then-block> (ELSE <else-block>)? END
-    ExprPtr condition = expression();
-
-    StmtPtr thenBranch = blockStatement();
-    StmtPtr elseBranch = nullptr;
-
-    if (matchKeyword("ELSE")) {
-        elseBranch = blockStatement();
-    }
-
-    if (!matchKeyword("END")) {
-        error("Expected END after IF statement.");
-    }
-
-    return std::make_shared<IfStmt>(condition, thenBranch, elseBranch);
-}
-
-StmtPtr Parser::whileStatement() {
-    // WHILST <expr> <body-block> END
-    ExprPtr condition = expression();
-    StmtPtr body = blockStatement();
-
-    if (!matchKeyword("END")) {
-        error("Expected END after WHILST block.");
-    }
-
-    return std::make_shared<WhileStmt>(condition, body);
-}
-
-StmtPtr Parser::blockStatement() {
-    // Minimal version: treat a single statement as a block.
-    auto block = std::make_shared<BlockStmt>();
-    // For now, just parse a single print of an expression as the block content.
-    // You’ll likely want to change this to a loop over multiple statements
-    // once you define explicit block delimiters in the language.
-    block->statements.push_back(
-        std::make_shared<PrintStmt>(expression())
-    );
-    return block;
-}
-
-// ---------------------------
-// Expressions
-// ---------------------------
-
-ExprPtr Parser::expression() {
-    return equality();
-}
-
-ExprPtr Parser::equality() {
-    ExprPtr expr = comparison();
-
-    while (!isAtEnd() && peek().type == TokenType::Symbol &&
-           (peek().value == "==" || peek().value == "!=")) {
-        std::string op = peek().value;
-        current++;
-        ExprPtr right = comparison();
-        expr = std::make_shared<BinaryExpr>(expr, op, right);
+    while (true) {
+        if (match(TokenType::Plus)) {
+            auto right = parseFactor();
+            expr = std::make_shared<BinaryExpr>(BinaryOp::Add, expr, right);
+        } else if (match(TokenType::Minus)) {
+            auto right = parseFactor();
+            expr = std::make_shared<BinaryExpr>(BinaryOp::Sub, expr, right);
+        } else {
+            break;
+        }
     }
 
     return expr;
 }
 
-ExprPtr Parser::comparison() {
-    ExprPtr expr = term();
+std::shared_ptr<Expression> Parser::parseFactor() {
+    auto expr = parsePrimary();
 
-    while (!isAtEnd() && peek().type == TokenType::Symbol &&
-           (peek().value == ">" || peek().value == ">=" ||
-            peek().value == "<" || peek().value == "<=")) {
-        std::string op = peek().value;
-        current++;
-        ExprPtr right = term();
-        expr = std::make_shared<BinaryExpr>(expr, op, right);
+    while (true) {
+        if (match(TokenType::Star)) {
+            auto right = parsePrimary();
+            expr = std::make_shared<BinaryExpr>(BinaryOp::Mul, expr, right);
+        } else if (match(TokenType::Slash)) {
+            auto right = parsePrimary();
+            expr = std::make_shared<BinaryExpr>(BinaryOp::Div, expr, right);
+        } else {
+            break;
+        }
     }
 
     return expr;
 }
 
-ExprPtr Parser::term() {
-    ExprPtr expr = factor();
-
-    while (!isAtEnd() && peek().type == TokenType::Symbol &&
-           (peek().value == "+" || peek().value == "-")) {
-        std::string op = peek().value;
-        current++;
-        ExprPtr right = factor();
-        expr = std::make_shared<BinaryExpr>(expr, op, right);
-    }
-
-    return expr;
-}
-
-ExprPtr Parser::factor() {
-    ExprPtr expr = unary();
-
-    while (!isAtEnd() && peek().type == TokenType::Symbol &&
-           (peek().value == "*" || peek().value == "/")) {
-        std::string op = peek().value;
-        current++;
-        ExprPtr right = unary();
-        expr = std::make_shared<BinaryExpr>(expr, op, right);
-    }
-
-    return expr;
-}
-
-ExprPtr Parser::unary() {
-    if (!isAtEnd() && peek().type == TokenType::Symbol &&
-        (peek().value == "-")) {
-        std::string op = peek().value;
-        current++;
-        ExprPtr right = unary();
-        return std::make_shared<UnaryExpr>(op, right);
-    }
-    return primary();
-}
-
-ExprPtr Parser::primary() {
+std::shared_ptr<Expression> Parser::parsePrimary() {
     if (match(TokenType::Number)) {
-        double value = std::stod(previous().value);
-        return std::make_shared<NumberExpr>(value);
-    }
-
-    if (match(TokenType::String)) {
-        return std::make_shared<StringExpr>(previous().value);
+        double v = std::stod(previous().text);
+        return std::make_shared<NumberExpr>(v);
     }
 
     if (match(TokenType::Identifier)) {
-        return std::make_shared<VariableExpr>(previous().value);
+        std::string name = previous().text;
+        return std::make_shared<VariableExpr>(name);
     }
 
-    if (!isAtEnd() && peek().type == TokenType::Symbol && peek().value == "(") {
-        current++; // consume '('
-        ExprPtr expr = expression();
-        if (!(peek().type == TokenType::Symbol && peek().value == ")")) {
-            error("Expected ')' after expression.");
-        }
-        current++; // consume ')'
+    if (match(TokenType::String)) {
+        return std::make_shared<StringExpr>(previous().text);
+    }
+
+    if (match(TokenType::LeftParen)) {
+        auto expr = parseExpression();
+        consume(TokenType::RightParen, "Expected ')' after expression.");
         return expr;
     }
 
-    error("Expected expression.");
-    throw std::runtime_error("Parse error");
+    throw std::runtime_error("Parse error: expected expression.");
+}
+
+// ===== Interpreter implementation =====
+
+Value Interpreter::evaluate(const std::vector<Statement> &program) {
+    Value last = 0.0;
+    for (const auto &stmt : program) {
+        execStatement(stmt);
+        if (std::holds_alternative<ExpressionStatement>(stmt)) {
+            const auto &es = std::get<ExpressionStatement>(stmt);
+            last = evalExpression(es.expr);
+        }
+    }
+    return last;
+}
+
+void Interpreter::execStatement(const Statement &stmt) {
+    if (std::holds_alternative<VariableDeclaration>(stmt)) {
+        execVariableDeclaration(std::get<VariableDeclaration>(stmt));
+    } else if (std::holds_alternative<ExpressionStatement>(stmt)) {
+        execExpressionStatement(std::get<ExpressionStatement>(stmt));
+    }
+}
+
+void Interpreter::execVariableDeclaration(const VariableDeclaration &decl) {
+    Value v = evalExpression(decl.value);
+    variables[decl.name] = v;
+}
+
+void Interpreter::execExpressionStatement(const ExpressionStatement &stmt) {
+    (void)evalExpression(stmt.expr); // ignore result here
+}
+
+static bool isString(const Value &value) {
+    return std::holds_alternative<std::string>(value);
+}
+
+static std::string toString(const Value &value) {
+    if (std::holds_alternative<std::string>(value)) {
+        return std::get<std::string>(value);
+    }
+    std::ostringstream oss;
+    oss << std::get<double>(value);
+    return oss.str();
+}
+
+static double getNumber(const Value &value) {
+    if (!std::holds_alternative<double>(value)) {
+        throw std::runtime_error("Runtime error: expected numeric value");
+    }
+    return std::get<double>(value);
+}
+
+Value Interpreter::evalExpression(const std::shared_ptr<Expression> &expr) {
+    switch (expr->type) {
+    case ExprType::Number: {
+        auto *n = static_cast<NumberExpr *>(expr.get());
+        return n->value;
+    }
+    case ExprType::String: {
+        auto *s = static_cast<StringExpr *>(expr.get());
+        return s->value;
+    }
+    case ExprType::Binary: {
+        auto *b = static_cast<BinaryExpr *>(expr.get());
+        Value left = evalExpression(b->left);
+        Value right = evalExpression(b->right);
+        switch (b->op) {
+        case BinaryOp::Add: {
+            if (isString(left) || isString(right)) {
+                return toString(left) + toString(right);
+            }
+            return getNumber(left) + getNumber(right);
+        }
+        case BinaryOp::Sub: {
+            return getNumber(left) - getNumber(right);
+        }
+        case BinaryOp::Mul: {
+            return getNumber(left) * getNumber(right);
+        }
+        case BinaryOp::Div: {
+            double rhs = getNumber(right);
+            return rhs != 0 ? getNumber(left) / rhs : 0;
+        }
+        }
+        break;
+    }
+    case ExprType::Variable: {
+        auto *v = static_cast<VariableExpr *>(expr.get());
+        auto it = variables.find(v->name);
+        if (it == variables.end()) {
+            std::ostringstream oss;
+            oss << "Runtime error: undefined variable '" << v->name << "'";
+            throw std::runtime_error(oss.str());
+        }
+        return it->second;
+    }
+    }
+
+    throw std::runtime_error("Runtime error: unknown expression type.");
+}
+
+// ===== Public API =====
+
+Value run_midshake(const std::string &source) {
+    Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+
+    Parser parser(tokens);
+    auto program = parser.parse();
+
+    Interpreter interp;
+    return interp.evaluate(program);
+}
+
+std::vector<Token> tokenize_midshake(const std::string &source) {
+    Lexer lexer(source);
+    return lexer.tokenize();
 }
