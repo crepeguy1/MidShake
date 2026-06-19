@@ -1,3 +1,4 @@
+^declare a variable named hero;
 LET the variable hero BE the number 1;
 LET the variable villain BE the number 2;
 
