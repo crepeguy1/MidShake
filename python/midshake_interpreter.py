@@ -18,6 +18,7 @@ def run(text: str):
 
     runtime = Runtime()
     runtime.exec_program(program)
+    variables = {}
 
 
 # ------------------------------------------------------------

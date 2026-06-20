@@ -134,14 +134,14 @@ class Tokenizer:
 
         # LET
         if line.startswith("LET the variable"):
-            name = self.extract_between(line, "variable", "BE", line_no)
+            name = self.extract_between(line, "variable", "BE", line_no).strip()
             value_text = self.extract_after(line, "BE", line_no)
             expr = self.parse_expression(value_text, line_no)
             return Token("LET", (name, expr), line_no)
 
         # SET
         if line.startswith("SET the variable"):
-            name = self.extract_between(line, "variable", "TO", line_no)
+            name = self.extract_between(line, "variable", "TO", line_no).strip()
             value_text = self.extract_after(line, "TO", line_no)
             expr = self.parse_expression(value_text, line_no)
             return Token("SET", (name, expr), line_no)
@@ -154,8 +154,8 @@ class Tokenizer:
 
         # IF
         if line.startswith("IF the value of"):
-            name = self.extract_between(line, "of", "IS", line_no)
-            value_text = self.extract_between(line, "IS", "THEN", line_no)
+            name = self.extract_between(line, "of", "IS", line_no).strip()
+            value_text = self.extract_between(line, "IS", "THEN", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("IF", (name, expr), line_no)
 
@@ -355,7 +355,7 @@ class ExpressionParser:
 
         # Handle identifiers (variable names)
         if token.replace(" ", "").isalpha():
-            return token
+            return Variable(token)
 
         raise SyntaxError(
             f"MidShake Syntax Error (line {self.line_no}): Unexpected token '{token}'"
