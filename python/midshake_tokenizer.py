@@ -30,7 +30,8 @@ class Tokenizer:
                 continue
 
             token = self.tokenize_line(normalized, line_no)
-            tokens.append(token)
+            if token is not None:
+                tokens.append(token)
 
         return tokens
 
@@ -45,18 +46,23 @@ class Tokenizer:
         in_string = False
         i = 0
 
+        standalone = {
+            "ELSE",
+            "END IF",
+            "END WHILST",
+            "TERMINATE the program",
+        }
+
         while i < len(self.text):
             c = self.text[i]
             nxt = self.text[i + 1] if i + 1 < len(self.text) else ""
 
-            # toggle string mode
             if c == '"':
                 in_string = not in_string
                 current.append(c)
                 i += 1
                 continue
 
-            # comments: // or #
             if not in_string and c == '/' and nxt == '/':
                 while i < len(self.text) and self.text[i] != '\n':
                     i += 1
@@ -67,7 +73,6 @@ class Tokenizer:
                     i += 1
                 continue
 
-            # semicolon ends a statement
             if not in_string and c == ';':
                 statement = ''.join(current).strip()
                 if statement:
@@ -77,18 +82,22 @@ class Tokenizer:
                 i += 1
                 continue
 
-            # newline
             if c == '\n':
                 line_no += 1
                 if not in_string:
-                    current.append(' ')
+                    possible = ''.join(current).strip()
+                    if possible in standalone:
+                        statements.append((possible, start_line))
+                        current = []
+                        start_line = line_no
+                    else:
+                        current.append(' ')
                 i += 1
                 continue
 
             current.append(c)
             i += 1
 
-        # final statement
         final_statement = ''.join(current).strip()
         if final_statement:
             statements.append((final_statement, start_line))
@@ -130,34 +139,29 @@ class Tokenizer:
     # ------------------------------------------------------------
     def tokenize_line(self, line: str, line_no: int):
         if line.strip().startswith("^"):
-            return []  # Treat as comment, no tokens
+            return None  # Treat as comment, no tokens
 
-        # LET
         if line.startswith("LET the variable"):
             name = self.extract_between(line, "variable", "BE", line_no).strip()
-            value_text = self.extract_after(line, "BE", line_no)
+            value_text = self.extract_after(line, "BE", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("LET", (name, expr), line_no)
 
-        # SET
         if line.startswith("SET the variable"):
             name = self.extract_between(line, "variable", "TO", line_no).strip()
-            value_text = self.extract_after(line, "TO", line_no)
+            value_text = self.extract_after(line, "TO", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("SET", (name, expr), line_no)
 
-        # PROCLAIM
         if line.startswith("PROCLAIM"):
-            value_text = self.extract_after(line, "PROCLAIM", line_no)
+            value_text = self.extract_after(line, "PROCLAIM", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("PROCLAIM", expr, line_no)
 
-        # IF
         if line.startswith("IF the value of"):
-            name = self.extract_between(line, "of", "IS", line_no).strip()
-            value_text = self.extract_between(line, "IS", "THEN", line_no).strip()
-            expr = self.parse_expression(value_text, line_no)
-            return Token("IF", (name, expr), line_no)
+            condition_text = line[len("IF "):line.index("THEN")].strip()
+            expr = self.parse_expression(condition_text, line_no)
+            return Token("IF", expr, line_no)
 
         if line == "ELSE":
             return Token("ELSE", None, line_no)
@@ -165,18 +169,15 @@ class Tokenizer:
         if line.startswith("END IF"):
             return Token("END_IF", None, line_no)
 
-        # WHILST
         if line.startswith("WHILST the value of"):
-            name = self.extract_between(line, "of", "IS", line_no)
-            value_text = self.extract_between(line, "IS", "DO", line_no)
-            expr = self.parse_expression(value_text, line_no)
-            return Token("WHILST", (name, expr), line_no)
+            condition_text = line[len("WHILST "):line.index("DO")].strip()
+            expr = self.parse_expression(condition_text, line_no)
+            return Token("WHILST", expr, line_no)
 
         if line.startswith("END WHILST"):
             return Token("END_WHILST", None, line_no)
 
-        # TERMINATE
-        if "TERMINATE the program" in line:
+        if line.strip() == "TERMINATE" or line.startswith("TERMINATE the program"):
             return Token("TERMINATE", None, line_no)
 
         raise ValueError(
@@ -212,13 +213,50 @@ class ExpressionParser:
     # MAIN ENTRY
     # -----------------------------
     def parse(self):
-        expr = self.parse_term()
+        expr = self.parse_comparison()
         self.skip_whitespace()
         if not self.is_at_end():
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
                 f"  Unexpected text in expression: '{self.text[self.pos:]}'"
             )
+        return expr
+
+    def parse_comparison(self):
+        expr = self.parse_term()
+        self.skip_whitespace()
+
+        if self.text[self.pos:].startswith("IS"):
+            self.pos += len("IS")
+            self.skip_whitespace()
+
+            comparators = [
+                ("greater than or equal to", ">="),
+                ("less than or equal to", "<="),
+                ("greater than", ">"),
+                ("less than", "<"),
+                ("not equal to", "!="),
+                ("not equal", "!="),
+                ("equal to", "=="),
+                ("equal", "=="),
+            ]
+
+            for phrase, op in comparators:
+                if self.text[self.pos:].startswith(phrase):
+                    self.pos += len(phrase)
+                    self.skip_whitespace()
+                    right = self.parse_term()
+                    return Binary(op, expr, right)
+
+            if self.text[self.pos:].startswith("the number") or self.text[self.pos:].startswith("the string") or self.text[self.pos:].startswith("the value of") or self.current_char().isdigit() or self.current_char() == '"':
+                right = self.parse_term()
+                return Binary("==", expr, right)
+
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected comparison after 'IS'."
+            )
+
         return expr
 
     # -----------------------------
@@ -303,7 +341,6 @@ class ExpressionParser:
                 f"  Expected an expression but found nothing."
             )
 
-        # parenthesized
         if self.current_char() == '(':
             self.pos += 1
             expr = self.parse_term()
@@ -316,22 +353,18 @@ class ExpressionParser:
             self.pos += 1
             return expr
 
-        # unary +
         if self.current_char() == '+':
             self.pos += 1
             return self.parse_primary()
 
         token = self.current_token
 
-        # Handle numbers
         if token.isdigit() or (token.startswith('-') and token[1:].isdigit()):
             return self.parse_number_literal()
 
-        # Handle quoted strings
         if token.startswith('"') and token.endswith('"'):
             return self.parse_string_literal()
 
-        # Preserve phrase-based parsing for grammar constructs
         if token.startswith("the number"):
             return self.parse_number_phrase()
 
@@ -339,21 +372,15 @@ class ExpressionParser:
             return self.parse_variable_phrase()
 
         if token.startswith("the string"):
-            # Skip the phrase
             self.pos += len("the string")
             self.skip_whitespace()
-
-            # Now the next token MUST be a quoted string
             token = self.current_token
             if token.startswith('"') and token.endswith('"'):
                 return self.parse_string_literal()
-
             raise SyntaxError(
                 f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string after 'the string'"
-            )   
+            )
 
-
-        # Handle identifiers (variable names)
         if token.replace(" ", "").isalpha():
             return Variable(token)
 
@@ -374,10 +401,14 @@ class ExpressionParser:
             self.pos += len("the value of")
         self.skip_whitespace()
         start = self.pos
+        stop_phrases = [
+            " plus", " minus", " times", " multiplied", " divided",
+            " IS", " IS ", "IS ", "IS"
+        ]
         while not self.is_at_end():
             if self.current_char() in "+-*/()":
                 break
-            if any(self.text[self.pos:].startswith(w) for w in [" plus", " minus", " times", " multiplied", " divided"]):
+            if any(self.text[self.pos:].startswith(w) for w in stop_phrases):
                 break
             self.pos += 1
         name = self.text[start:self.pos].strip()

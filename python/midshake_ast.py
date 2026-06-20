@@ -61,16 +61,14 @@ class Proclaim(Statement):
 
 @dataclass
 class If(Statement):
-    name: str
-    value: Expression
+    expr: Expression
     body: List[Statement]
     else_body: Optional[List[Statement]] = None
 
 
 @dataclass
 class While(Statement):
-    name: str
-    value: Expression
+    expr: Expression
     body: List[Statement]
 
 

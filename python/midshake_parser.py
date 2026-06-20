@@ -1,6 +1,6 @@
 from midshake_ast import (
     Program, Section,
-    Let, Set, Proclaim, If, While, Terminate
+    Let, Set, Proclaim, If, While, Terminate, Variable, Binary
 )
 
 
@@ -60,13 +60,13 @@ class Parser:
 
         # IF
         if tok.type == "IF":
-            name, expr = tok.value
-            return self.parse_if(name, expr, tok.line_no)
+            expr = tok.value
+            return self.parse_if(expr, tok.line_no)
 
         # WHILST
         if tok.type == "WHILST":
-            name, expr = tok.value
-            return self.parse_while(name, expr, tok.line_no)
+            expr = tok.value
+            return self.parse_while(expr, tok.line_no)
 
         # TERMINATE
         if tok.type == "TERMINATE":
@@ -81,7 +81,7 @@ class Parser:
     # -----------------------------
     # IF / ELSE / END IF
     # -----------------------------
-    def parse_if(self, name, expr, line_no):
+    def parse_if(self, expr, line_no):
         body = []
         else_body = None
 
@@ -112,12 +112,12 @@ class Parser:
                 f"  IF block was never closed with 'END IF'."
             )
 
-        return If(name, expr, body, else_body)
+        return If(expr, body, else_body)
 
     # -----------------------------
     # WHILST / END WHILST
     # -----------------------------
-    def parse_while(self, name, expr, line_no):
+    def parse_while(self, expr, line_no):
         body = []
 
         # move past WHILST token
@@ -136,4 +136,4 @@ class Parser:
                 f"  WHILST block was never closed with 'END WHILST'."
             )
 
-        return While(name, expr, body)
+        return While(expr, body)

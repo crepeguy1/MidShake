@@ -64,6 +64,18 @@ class Runtime:
                 return left * right
             if expr.op == "/":
                 return left / right
+            if expr.op == ">":
+                return left > right
+            if expr.op == "<":
+                return left < right
+            if expr.op == ">=":
+                return left >= right
+            if expr.op == "<=":
+                return left <= right
+            if expr.op == "==":
+                return left == right
+            if expr.op == "!=":
+                return left != right
 
         raise ValueError(
             f"MidShake Runtime Error:\n"
@@ -90,11 +102,7 @@ class Runtime:
 
         # IF
         elif isinstance(stmt, If):
-            self.require_declared(stmt.name)
-            left = self.vars[stmt.name]
-            right = self.eval_expr(stmt.value)
-
-            if left == right:
+            if self.eval_expr(stmt.expr):
                 for s in stmt.body:
                     self.exec_stmt(s)
             elif stmt.else_body is not None:
@@ -103,8 +111,7 @@ class Runtime:
 
         # WHILST
         elif isinstance(stmt, While):
-            self.require_declared(stmt.name)
-            while self.vars[stmt.name] == self.eval_expr(stmt.value) and not self.terminated:
+            while self.eval_expr(stmt.expr) and not self.terminated:
                 for s in stmt.body:
                     self.exec_stmt(s)
 
