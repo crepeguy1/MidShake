@@ -3,7 +3,7 @@
 
 # Relative path conversion top directories.
 set(CMAKE_RELATIVE_PATH_TOP_SOURCE "C:/Users/crepe/MidShake/bindings")
-set(CMAKE_RELATIVE_PATH_TOP_BINARY "C:/users/crepe/midshake/bindings/build")
+set(CMAKE_RELATIVE_PATH_TOP_BINARY "C:/Users/crepe/MidShake/build")
 
 # Force unix paths in dependencies.
 set(CMAKE_FORCE_UNIX_PATHS 1)

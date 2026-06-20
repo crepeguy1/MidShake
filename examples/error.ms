@@ -1,1 +1,1 @@
-LET the variable hero the number 5;
+^LET the variable hero the number 5;

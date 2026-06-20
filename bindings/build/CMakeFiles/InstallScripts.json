@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"C:/users/crepe/midshake/bindings/build/cmake_install.cmake"
+		"C:/Users/crepe/MidShake/build/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

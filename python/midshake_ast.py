@@ -1,7 +1,10 @@
-# midshake_ast.py
 from dataclasses import dataclass
 from typing import List, Optional
 
+
+# -----------------------------
+# EXPRESSIONS
+# -----------------------------
 
 @dataclass
 class Expression:
@@ -29,6 +32,10 @@ class Binary(Expression):
     left: Expression
     right: Expression
 
+
+# -----------------------------
+# STATEMENTS
+# -----------------------------
 
 @dataclass
 class Statement:
@@ -71,6 +78,10 @@ class While(Statement):
 class Terminate(Statement):
     pass
 
+
+# -----------------------------
+# PROGRAM STRUCTURE
+# -----------------------------
 
 @dataclass
 class Section:

@@ -55,7 +55,7 @@ EQUALS = =
 CMAKE_SOURCE_DIR = C:\Users\crepe\MidShake\bindings
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = C:\users\crepe\midshake\bindings\build
+CMAKE_BINARY_DIR = C:\Users\crepe\MidShake\build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/midshake_cpp.dir/depend.make
@@ -75,31 +75,31 @@ CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj: CMakeFiles/midshake_cpp.d
 CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj: CMakeFiles/midshake_cpp.dir/includes_CXX.rsp
 CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj: C:/Users/crepe/MidShake/bindings/midshake_bindings.cpp
 CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj: CMakeFiles/midshake_cpp.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\users\crepe\midshake\bindings\build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj -MF CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.obj.d -o CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.obj -c C:\Users\crepe\MidShake\bindings\midshake_bindings.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\Users\crepe\MidShake\build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj"
+	C:\msys64\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.obj -MF CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.obj.d -o CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.obj -c C:\Users\crepe\MidShake\bindings\midshake_bindings.cpp
 
 CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.i"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\Users\crepe\MidShake\bindings\midshake_bindings.cpp > CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.i
+	C:\msys64\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\Users\crepe\MidShake\bindings\midshake_bindings.cpp > CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.i
 
 CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/midshake_cpp.dir/midshake_bindings.cpp.s"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\Users\crepe\MidShake\bindings\midshake_bindings.cpp -o CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.s
+	C:\msys64\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\Users\crepe\MidShake\bindings\midshake_bindings.cpp -o CMakeFiles\midshake_cpp.dir\midshake_bindings.cpp.s
 
 CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj: CMakeFiles/midshake_cpp.dir/flags.make
 CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj: CMakeFiles/midshake_cpp.dir/includes_CXX.rsp
 CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj: C:/Users/crepe/MidShake/cpp/midshake_engine.cpp
 CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj: CMakeFiles/midshake_cpp.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\users\crepe\midshake\bindings\build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj -MF CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.obj.d -o CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.obj -c C:\Users\crepe\MidShake\cpp\midshake_engine.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=C:\Users\crepe\MidShake\build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj"
+	C:\msys64\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.obj -MF CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.obj.d -o CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.obj -c C:\Users\crepe\MidShake\cpp\midshake_engine.cpp
 
 CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.i"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\Users\crepe\MidShake\cpp\midshake_engine.cpp > CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.i
+	C:\msys64\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E C:\Users\crepe\MidShake\cpp\midshake_engine.cpp > CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.i
 
 CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/midshake_cpp.dir/C_/Users/crepe/MidShake/cpp/midshake_engine.cpp.s"
-	C:\msys64\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\Users\crepe\MidShake\cpp\midshake_engine.cpp -o CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.s
+	C:\msys64\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S C:\Users\crepe\MidShake\cpp\midshake_engine.cpp -o CMakeFiles\midshake_cpp.dir\C_\Users\crepe\MidShake\cpp\midshake_engine.cpp.s
 
 # Object files for target midshake_cpp
 midshake_cpp_OBJECTS = \
@@ -117,9 +117,8 @@ midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd: C:/msys64/mingw64/lib/libpython3
 midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd: CMakeFiles/midshake_cpp.dir/linkLibs.rsp
 midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd: CMakeFiles/midshake_cpp.dir/objects1.rsp
 midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd: CMakeFiles/midshake_cpp.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:\users\crepe\midshake\bindings\build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX shared module midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=C:\Users\crepe\MidShake\build\CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX shared module midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles\midshake_cpp.dir\link.txt --verbose=$(VERBOSE)
-	C:\msys64\mingw64\bin\strip.exe C:/users/crepe/midshake/bindings/build/midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd
 
 # Rule to build all files generated by this target.
 CMakeFiles/midshake_cpp.dir/build: midshake_cpp.cp314-mingw_x86_64_msvcrt_gnu.pyd
@@ -130,6 +129,6 @@ CMakeFiles/midshake_cpp.dir/clean:
 .PHONY : CMakeFiles/midshake_cpp.dir/clean
 
 CMakeFiles/midshake_cpp.dir/depend:
-	$(CMAKE_COMMAND) -E cmake_depends "MinGW Makefiles" C:\Users\crepe\MidShake\bindings C:\Users\crepe\MidShake\bindings C:\users\crepe\midshake\bindings\build C:\users\crepe\midshake\bindings\build C:\users\crepe\midshake\bindings\build\CMakeFiles\midshake_cpp.dir\DependInfo.cmake "--color=$(COLOR)" midshake_cpp
+	$(CMAKE_COMMAND) -E cmake_depends "MinGW Makefiles" C:\Users\crepe\MidShake\bindings C:\Users\crepe\MidShake\bindings C:\Users\crepe\MidShake\build C:\Users\crepe\MidShake\build C:\Users\crepe\MidShake\build\CMakeFiles\midshake_cpp.dir\DependInfo.cmake "--color=$(COLOR)" midshake_cpp
 .PHONY : CMakeFiles/midshake_cpp.dir/depend
 

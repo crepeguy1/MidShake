@@ -59,7 +59,7 @@ EQUALS = =
 CMAKE_SOURCE_DIR = C:\Users\crepe\MidShake\bindings
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = C:\users\crepe\midshake\bindings\build
+CMAKE_BINARY_DIR = C:\Users\crepe\MidShake\build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -86,9 +86,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\users\crepe\midshake\bindings\build\CMakeFiles C:\users\crepe\midshake\bindings\build\\CMakeFiles\progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\crepe\MidShake\build\CMakeFiles C:\Users\crepe\MidShake\build\\CMakeFiles\progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start C:\users\crepe\midshake\bindings\build\CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\crepe\MidShake\build\CMakeFiles 0
 .PHONY : all
 
 # The main clean target
