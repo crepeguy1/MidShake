@@ -1,3 +1,0 @@
-C:/Users/crepe/MidShake/build/CMakeFiles/midshake_cpp.dir
-C:/Users/crepe/MidShake/build/CMakeFiles/edit_cache.dir
-C:/Users/crepe/MidShake/build/CMakeFiles/rebuild_cache.dir
