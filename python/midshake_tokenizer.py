@@ -129,6 +129,9 @@ class Tokenizer:
     # STATEMENT TOKENIZATION
     # ------------------------------------------------------------
     def tokenize_line(self, line: str, line_no: int):
+        if line.strip().startswith("^"):
+            return []  # Treat as comment, no tokens
+
         # LET
         if line.startswith("LET the variable"):
             name = self.extract_between(line, "variable", "BE", line_no)
@@ -231,6 +234,24 @@ class ExpressionParser:
         while not self.is_at_end() and self.current_char().isspace():
             self.pos += 1
 
+    @property
+    def current_token(self):
+        self.skip_whitespace()
+        if self.is_at_end():
+            return ""
+
+        if self.current_char() == '"':
+            end = self.text.find('"', self.pos + 1)
+            if end == -1:
+                return self.text[self.pos:]
+            return self.text[self.pos:end + 1]
+
+        start = self.pos
+        idx = self.pos
+        while idx < len(self.text) and self.text[idx] not in "+-*/()":
+            idx += 1
+        return self.text[start:idx].strip()
+
     # -----------------------------
     # GRAMMAR
     # -----------------------------
@@ -282,10 +303,6 @@ class ExpressionParser:
                 f"  Expected an expression but found nothing."
             )
 
-        # string literal
-        if self.current_char() == '"':
-            return self.parse_string_literal()
-
         # parenthesized
         if self.current_char() == '(':
             self.pos += 1
@@ -304,25 +321,45 @@ class ExpressionParser:
             self.pos += 1
             return self.parse_primary()
 
-        # "the number X"
-        if self.text[self.pos:].startswith("the number"):
-            return self.parse_number_phrase()
+        token = self.current_token
 
-        # "the value of X"
-        if self.text[self.pos:].startswith("the value of"):
-            return self.parse_variable_phrase()
-
-        # "the string"
-        if self.text[self.pos:].startswith("the string"):
-            self.pos += len("the string")
-            return self.parse_string_literal()
-
-        # raw number
-        if self.current_char().isdigit() or self.current_char() == '-':
+        # Handle numbers
+        if token.isdigit() or (token.startswith('-') and token[1:].isdigit()):
             return self.parse_number_literal()
 
-        # fallback: variable
-        return self.parse_variable_phrase()
+        # Handle quoted strings
+        if token.startswith('"') and token.endswith('"'):
+            return self.parse_string_literal()
+
+        # Preserve phrase-based parsing for grammar constructs
+        if token.startswith("the number"):
+            return self.parse_number_phrase()
+
+        if token.startswith("the value of"):
+            return self.parse_variable_phrase()
+
+        if token.startswith("the string"):
+            # Skip the phrase
+            self.pos += len("the string")
+            self.skip_whitespace()
+
+            # Now the next token MUST be a quoted string
+            token = self.current_token
+            if token.startswith('"') and token.endswith('"'):
+                return self.parse_string_literal()
+
+            raise SyntaxError(
+                f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string after 'the string'"
+            )   
+
+
+        # Handle identifiers (variable names)
+        if token.replace(" ", "").isalpha():
+            return token
+
+        raise SyntaxError(
+            f"MidShake Syntax Error (line {self.line_no}): Unexpected token '{token}'"
+        )
 
     # -----------------------------
     # NUMBER / VARIABLE / STRING
@@ -361,11 +398,12 @@ class ExpressionParser:
         return Number(int(text))
 
     def parse_string_literal(self):
-        if self.current_char() != '"':
-            raise ValueError(
-                f"MidShake Syntax Error (line {self.line_no}):\n"
-                f"  Expected a quoted string."
+        token = self.text[self.pos:]
+        if not (token.startswith('"') and '"' in token[1:]):
+            raise SyntaxError(
+                f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string."
             )
+
         self.pos += 1
         start = self.pos
         while not self.is_at_end() and self.current_char() != '"':
