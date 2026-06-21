@@ -2,7 +2,7 @@
 ### Warning: README may not be up to date with actual project
 A small, experimental programming language with a C++ backend and Python bindings.
 
-MidShake is designed to be **simple**, **readable**, and **fun to extend**—a perfect playground for learning how programming languages work under the hood.
+MidShake is designed to be **simple**, **readable**, and **fun to extend**
 
 ---
 
