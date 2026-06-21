@@ -25,7 +25,6 @@ The architecture is intentionally small but clean enough to grow into a real lan
 - ✅ Full-stack implementation (tokenizer → parser → interpreter)
 - ✅ C++ core for performance
 - ✅ Python bindings for ease of use
-- ✅ Well-documented codebase for learning
 
 ---
 
