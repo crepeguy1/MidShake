@@ -1,181 +1,176 @@
-﻿# 🎨 MidShake Language
-### warning: README may not be up to date with actual project
-A small, experimental programming language with a C++ backend and Python bindings.
+# MidShake Language
 
-MidShake is designed to be **simple**, **readable**, and **fun to extend**—a perfect playground for learning how programming languages work under the hood.
+A small, experimental programming language with a C++ backend and Python bindings. MidShake demonstrates a full language pipeline (tokenization → parsing → interpretation) and provides a C++ core for performance with optional Python bindings.
 
 ---
 
-## 🌟 Overview
+## Overview
 
-MidShake demonstrates the complete lifecycle of a programming language:
+MidShake implements the main stages of a language implementation:
 
-- **Tokenization** – Breaking source code into meaningful tokens
-- **Parsing** – Building an Abstract Syntax Tree (AST)
-- **Interpretation** – Executing the AST with a runtime
-- **Bindings** – Seamlessly calling C++ from Python
+- Tokenization — lexical analysis of source code
+- Parsing — building an Abstract Syntax Tree (AST)
+- Interpretation — executing the AST in a runtime
+- Bindings — calling the C++ engine from Python
 
-The architecture is intentionally small but clean enough to grow into a real language.
-
----
-
-## ✨ Features
-
-- ✅ Clean, readable syntax inspired by natural language
-- ✅ Full-stack implementation (tokenizer → parser → interpreter)
-- ✅ C++ core for performance
-- ✅ Python bindings for ease of use
-- ✅ Well-documented codebase for learning
+The project is intentionally compact and designed to be easy to read and extend.
 
 ---
 
-## 📋 Requirements
+## Features
 
-### On Windows
-
-- **MSYS2 MinGW64** (not PowerShell or CMD)
-  - Download: https://www.msys2.org/
-- **GCC 11+** or compatible C++ compiler
-- **CMake 3.15+**
-- **Python 3.7+** for the MinGW64 environment
-
-### On macOS/Linux
-
-- **GCC** or **Clang**
-- **CMake 3.15+**
-- **Python 3.7+**
+- Clean, readable syntax inspired by natural language
+- Full-stack implementation (tokenizer → parser → interpreter)
+- C++ core for performance
+- Python bindings for integration and scripting
 
 ---
 
-## 🔧 Installation
+## Requirements
 
-### 1. Set Up MSYS2 (Windows Only)
+### Windows (MSYS2 MinGW64)
+- MSYS2 MinGW64 environment: https://www.msys2.org/
+- GCC 11+ (MinGW-w64)
+- CMake 3.15+
+- Python 3.7+ (for building/running bindings inside MinGW64)
 
-Open **MSYS2 MinGW64** terminal and install dependencies:
+### macOS / Linux
+- GCC or Clang
+- CMake 3.15+
+- Python 3.7+
 
-```bash
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake python
-```
+---
 
-### 2. Build the C++ Engine
+## Installation / Build
 
-Navigate to the bindings directory:
+Notes:
+- On Windows, use the MSYS2 MinGW64 terminal for building the native bindings.
+- On macOS/Linux, use your normal shell (bash/zsh).
 
-```bash
-cd bindings/build
-cmake -G "MinGW Makefiles" ..
-cmake --build .
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/crepeguy1/MidShake.git
+   cd MidShake
+   ```
 
-This generates `midshake_cpp.pyd` (or `.so` on Linux/macOS).
+2. Build the C++ engine and Python bindings:
+   ```bash
+   cd bindings/build
+   cmake ..
+   cmake --build .
+   ```
+   On Windows with MSYS2 MinGW64, you can generate MinGW Makefiles:
+   ```bash
+   cmake -G "MinGW Makefiles" ..
+   cmake --build .
+   ```
 
-### 3. Verify Installation
+The build produces a Python extension module (e.g., midshake_cpp.pyd on Windows or midshake_cpp.so on macOS/Linux) in bindings/build or the configured output directory.
 
-Test the C++ bindings from Python:
+---
 
+## Verify Installation
+
+From the repository root or a Python environment that can import the built extension:
 ```bash
 python -c "import midshake_cpp; print(midshake_cpp.tokenize('LET x BE 5'))"
 ```
-
-If you see tokens printed, the C++ engine is working! ✅
+If tokens are printed, the C++ engine and its Python binding are available.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 MidShake/
 ├── cpp/                       # C++ language engine
-│   ├── midshake_engine.hpp    # Core engine definitions
-│   └── midshake_engine.cpp    # Engine implementation
+│   ├── midshake_engine.hpp
+│   └── midshake_engine.cpp
 │
-├── bindings/                  # Python C++ bindings
-│   ├── CMakeLists.txt         # Build configuration
-│   ├── midshake_bindings.cpp  # Binding interface
+├── bindings/                  # Python C++ bindings (CMake project)
+│   ├── CMakeLists.txt
+│   ├── midshake_bindings.cpp
 │   └── build/                 # Build artifacts
 │
-├── python/                    # Pure Python components
-│   ├── midshake_tokenizer.py  # Lexical analysis
-│   ├── midshake_parser.py     # Syntax analysis
-│   ├── midshake_ast.py        # AST definitions
-│   ├── midshake_interpreter.py # AST interpreter
-│   └── midshake_runtime_stub.py# Runtime utilities
+├── python/                    # Pure Python components and experiments
+│   ├── midshake_tokenizer.py
+│   ├── midshake_parser.py
+│   ├── midshake_ast.py
+│   ├── midshake_interpreter.py
+│   └── midshake_runtime_stub.py
 │
 ├── examples/                  # Example programs
-│   ├── hello.ms              # Hello world
-│   └── error.ms              # Error handling demo
+│   ├── hello.ms
+│   └── error.ms
 │
-└── README.md                  # This file
+└── README.md
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### Write a MidShake Program
-
-Create `example.ms`:
-
+Write a short MidShake program (example.ms):
 ```
 LET x BE 5
 LET y BE 10
-PRINT x + y
+PROCLAIM x + y
 ```
 
-### Run It
-
+Run with the Python interpreter (uses the Python-side interpreter):
 ```bash
-python -c "from midshake_interpreter import run; run(open('example.ms').read())"
+python -c "from python.midshake_interpreter import run; run(open('example.ms').read())"
+```
+
+Or use the C++ tokenizer via Python bindings:
+```bash
+python -c "import midshake_cpp; print(midshake_cpp.tokenize('LET x BE 5'))"
 ```
 
 ---
 
-## 📚 Learning Resources
+## Examples & Reference
 
-- **[examples/hello.ms](examples/hello.ms)** – Basic syntax
-- **[examples/error.ms](examples/error.ms)** – Error handling
-- **[python/midshake_tokenizer.py](python/midshake_tokenizer.py)** – Lexical analysis
-- **[python/midshake_parser.py](python/midshake_parser.py)** – Parsing logic
-- **[python/midshake_ast.py](python/midshake_ast.py)** – AST structure
+- examples/hello.ms — Basic syntax examples
+- examples/error.ms — Error handling examples
+- python/midshake_tokenizer.py — Lexical analysis implementation
+- python/midshake_parser.py — Parsing logic
+- python/midshake_ast.py — AST node definitions
+- python/midshake_interpreter.py — Interpreter implementation
+
+Refer to these files for implementation details and as starting points for changes.
 
 ---
 
-## 🛠️ Development
+## Development
 
-### Rebuilding After Changes
-
+Rebuild after code changes:
 ```bash
 cd bindings/build
 cmake --build . --target clean
 cmake --build .
 ```
 
-### Testing
-
-Run the verification command:
-
+Run the verification command to confirm the bindings:
 ```bash
 python -c "import midshake_cpp; print(midshake_cpp.tokenize('LET x BE 5'))"
 ```
 
 ---
 
-## 📝 License
+## Contributing
 
-MidShake is open source. Check individual files for licensing details.
+To extend the language:
+1. Add or modify tokens in python/midshake_tokenizer.py
+2. Update grammar/parsing in python/midshake_parser.py
+3. Extend AST nodes in python/midshake_ast.py
+4. Add evaluation logic in python/midshake_interpreter.py
+5. If adding features to the C++ core, mirror or expose them via bindings in bindings/
 
----
-
-## 💡 Contributing
-
-Want to extend MidShake? Start with:
-
-1. **Add tokens** in [python/midshake_tokenizer.py](python/midshake_tokenizer.py)
-2. **Update the parser** in [python/midshake_parser.py](python/midshake_parser.py)
-3. **Extend the interpreter** in [python/midshake_interpreter.py](python/midshake_interpreter.py)
-
-The architecture is designed for easy extension!
+Please open issues or pull requests with a description of the change and any tests or examples.
 
 ---
 
-Made with ❤️ for language nerds and curious developers.
+## License
+
+MidShake is open source. Check individual files for specific licensing details.
