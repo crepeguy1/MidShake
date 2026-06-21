@@ -36,3 +36,6 @@ venv/
 # OS junk
 .DS_Store
 Thumbs.db
+
+#other 
+midshake_tokenize_old.py
