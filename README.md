@@ -76,7 +76,7 @@ Test the C++ bindings from Python:
 python -c "import midshake_cpp; print(midshake_cpp.tokenize('LET x BE 5'))"
 ```
 
-If you see tokens printed, the C++ engine is working! ✅
+If you see tokens printed, the C++ engine is working! 
 
 ---
 
@@ -129,7 +129,7 @@ python -c "from midshake_interpreter import run; run(open('example.ms').read())"
 
 ---
 
-## 📚 Learning Resources
+## Learning Resources
 
 - **[examples/hello.ms](examples/hello.ms)** – Basic syntax
 - **[examples/error.ms](examples/error.ms)** – Error handling
