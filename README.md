@@ -1,4 +1,4 @@
-﻿# 🎨 MidShake Language
+﻿# MidShake Language
 ### Warning: README may not be up to date with actual project
 A small, experimental programming language with a C++ backend and Python bindings.
 
@@ -6,7 +6,7 @@ MidShake is designed to be **simple**, **readable**, and **fun to extend**—a p
 
 ---
 
-## 🌟 Overview
+## Overview
 
 MidShake demonstrates the complete lifecycle of a programming language:
 
@@ -19,7 +19,7 @@ The architecture is intentionally small but clean enough to grow into a real lan
 
 ---
 
-## ✨ Features
+## Features
 
 - ✅ Clean, readable syntax inspired by natural language
 - ✅ Full-stack implementation (tokenizer → parser → interpreter)
@@ -29,7 +29,7 @@ The architecture is intentionally small but clean enough to grow into a real lan
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 ### On Windows
 
@@ -47,7 +47,7 @@ The architecture is intentionally small but clean enough to grow into a real lan
 
 ---
 
-## 🔧 Installation
+## Installation
 
 ### 1. Set Up MSYS2 (Windows Only)
 
@@ -81,7 +81,7 @@ If you see tokens printed, the C++ engine is working! ✅
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 MidShake/
@@ -110,7 +110,7 @@ MidShake/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Write a MidShake Program
 
@@ -140,7 +140,7 @@ python -c "from midshake_interpreter import run; run(open('example.ms').read())"
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Rebuilding After Changes
 
@@ -160,13 +160,13 @@ python -c "import midshake_cpp; print(midshake_cpp.tokenize('LET x BE 5'))"
 
 ---
 
-## 📝 License
+## License
 
 MidShake is open source. Check individual files for licensing details.
 
 ---
 
-## 💡 Contributing
+## Contributing
 
 Want to extend MidShake? Start with:
 
@@ -178,4 +178,4 @@ The architecture is designed for easy extension!
 
 ---
 
-Made with ❤️ for language nerds and curious developers.
+Made with for language nerds and curious developers.
