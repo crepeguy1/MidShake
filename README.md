@@ -114,7 +114,7 @@ Write a short MidShake program (example.ms):
 ```
 LET x BE 5
 LET y BE 10
-PRINT x + y
+PROCLAIM x + y
 ```
 
 Run with the Python interpreter (uses the Python-side interpreter):
