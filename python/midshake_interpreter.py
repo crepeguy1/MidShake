@@ -51,10 +51,17 @@ def check_errors(code):
 # ------------------------------------------------------------
 # RUN A MIDSHAKE FILE
 # ------------------------------------------------------------
-def run_midshake_file(path: str):
-    with open(path, "r", encoding="utf-8") as f:
+def run_midshake_file(path):
+    with open(path, "r") as f:
         text = f.read()
-    run(text)
+
+    try:
+        run(text)
+    except Exception as e:
+        print("\n--- MidShake Error ---")
+        print(str(e))
+        print("----------------------\n")
+
 
 
 # ------------------------------------------------------------

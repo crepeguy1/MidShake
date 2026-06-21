@@ -4,7 +4,8 @@ from typing import Dict, Any
 from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
-    Number, String, Variable, Binary
+    Number, String, Variable, Binary, Inquire,
+    Response
 )
 
 
@@ -51,11 +52,15 @@ class Runtime:
         if isinstance(expr, Variable):
             self.require_declared(expr.name)
             return self.vars[expr.name]
-
+        
+        if isinstance(expr, Response):
+            return self.vars.get("RESPONSE")
+        
         if isinstance(expr, Binary):
             left = self.eval_expr(expr.left)
             right = self.eval_expr(expr.right)
-
+       
+            
             if expr.op == "+":
                 return left + right
             if expr.op == "-":
@@ -76,6 +81,7 @@ class Runtime:
                 return left == right
             if expr.op == "!=":
                 return left != right
+        
 
         raise ValueError(
             f"MidShake Runtime Error:\n"
@@ -114,6 +120,19 @@ class Runtime:
             while self.eval_expr(stmt.expr) and not self.terminated:
                 for s in stmt.body:
                     self.exec_stmt(s)
+
+        # Inquire
+        elif isinstance(stmt, Inquire):
+            print(stmt.question)
+            raw = input("> ")
+
+            if stmt.expected_type == "number":
+                try:
+                    self.vars["RESPONSE"] = int(raw)
+                except:
+                    raise ValueError("Expected a number from user input.")
+            else:
+                self.vars["RESPONSE"] = raw
 
         # TERMINATE
         elif isinstance(stmt, Terminate):

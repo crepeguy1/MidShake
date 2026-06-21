@@ -1,8 +1,8 @@
 from midshake_ast import (
     Program, Section,
-    Let, Set, Proclaim, If, While, Terminate, Variable, Binary
+    Let, Set, Proclaim, If, While, Terminate,
+    Variable, Binary, Inquire, Response
 )
-
 
 class Parser:
     def __init__(self, tokens):
@@ -54,9 +54,7 @@ class Parser:
 
         # PROCLAIM
         if tok.type == "PROCLAIM":
-            # tokenizer already parsed the expression
-            expr = tok.value
-            return Proclaim(expr)
+            return Proclaim(tok.value)
 
         # IF
         if tok.type == "IF":
@@ -67,6 +65,11 @@ class Parser:
         if tok.type == "WHILST":
             expr = tok.value
             return self.parse_while(expr, tok.line_no)
+
+        # INQUIRE
+        if tok.type == "INQUIRE":
+            expected_type, question = tok.value
+            return Inquire(expected_type, question)
 
         # TERMINATE
         if tok.type == "TERMINATE":

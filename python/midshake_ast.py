@@ -47,8 +47,14 @@ class Let(Statement):
     name: str
     value: Expression
 
+class Inquire:
+    def __init__(self, expected_type, question):
+        self.expected_type = expected_type  # "number" or "string"
+        self.question = question
 
-@dataclass
+class Response:
+    pass
+    
 class Set(Statement):
     name: str
     value: Expression

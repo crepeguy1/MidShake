@@ -2,7 +2,7 @@
 
 import re
 
-from midshake_ast import Number, String, Variable, Binary
+from midshake_ast import Number, String, Variable, Binary, Response
 
 
 class Token:
@@ -140,6 +140,13 @@ class Tokenizer:
     def tokenize_line(self, line: str, line_no: int):
         if line.strip().startswith("^"):
             return None  # Treat as comment, no tokens
+        if line.startswith("INQUIRE user"):
+            # Extract type
+            after_for = line[len("INQUIRE user"):].strip()
+            type_part, question_part = after_for.split('"', 1)
+            expected_type = type_part.strip()  # number / string
+            question = question_part.rstrip('"')
+            return Token("INQUIRE", (expected_type, question), line_no)
 
         if line.startswith("LET the variable"):
             name = self.extract_between(line, "variable", "BE", line_no).strip()
@@ -176,6 +183,9 @@ class Tokenizer:
 
         if line.startswith("END WHILST"):
             return Token("END_WHILST", None, line_no)
+
+        if line.strip() == "RESPONSE":
+            return Token("RESPONSE", None, line_no)
 
         if line.strip() == "TERMINATE" or line.startswith("TERMINATE the program"):
             return Token("TERMINATE", None, line_no)
@@ -380,6 +390,17 @@ class ExpressionParser:
             raise SyntaxError(
                 f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string after 'the string'"
             )
+            
+        # the RESPONSE
+        if token == "RESPONSE":
+            self.pos += len("RESPONSE")
+            return Response()
+
+        if token.startswith("the RESPONSE"):
+            self.pos += len("the RESPONSE")
+            return Response()
+
+
 
         if token.replace(" ", "").isalpha():
             return Variable(token)
