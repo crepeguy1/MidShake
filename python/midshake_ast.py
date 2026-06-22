@@ -1,5 +1,3 @@
-# midshake_ast.py
-
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -35,6 +33,11 @@ class Binary(Expression):
     right: Expression
 
 
+@dataclass
+class Response(Expression):
+    pass
+
+
 # -----------------------------
 # STATEMENTS
 # -----------------------------
@@ -49,34 +52,22 @@ class Let(Statement):
     name: str
     value: Expression
 
-class Inquire:
-    def __init__(self, expected_type, question):
-        self.expected_type = expected_type  # "number" or "string"
-        self.question = question
 
-class Response:
-    pass
-    
+@dataclass
 class Set(Statement):
     name: str
     value: Expression
-
-class FunctionDef:
-    def __init__(self, name, param_names, body):
-        self.name = name              # str
-        self.param_names = param_names  # list[str]
-        self.body = body              # list of statements
-
-
-class Call:
-    def __init__(self, name, args):
-        self.name = name      # str
-        self.args = args      # list of expressions
 
 
 @dataclass
 class Proclaim(Statement):
     value: Expression
+
+
+@dataclass
+class Inquire(Statement):
+    expected_type: str
+    question: str
 
 
 @dataclass
@@ -95,6 +86,28 @@ class While(Statement):
 @dataclass
 class Terminate(Statement):
     pass
+
+
+# -----------------------------
+# FUNCTIONS
+# -----------------------------
+
+@dataclass
+class FunctionDef(Statement):
+    name: str
+    param_names: List[str]
+    body: List[Statement]
+
+
+@dataclass
+class Call(Statement):
+    name: str
+    args: List[Expression]
+
+
+@dataclass
+class Return(Statement):
+    expr: Expression
 
 
 # -----------------------------

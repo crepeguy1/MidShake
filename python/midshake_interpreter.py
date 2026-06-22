@@ -52,15 +52,27 @@ def check_errors(code):
 # RUN A MIDSHAKE FILE
 # ------------------------------------------------------------
 def run_midshake_file(path):
+    import os
+
+    stdlib_path = os.path.join(os.path.dirname(path), "stdlib.ms")
+    full_source = ""
+
+    # load stdlib if present
+    if os.path.exists(stdlib_path):
+        with open(stdlib_path, "r") as f:
+            full_source += f.read() + "\n"
+
+    # load user file
     with open(path, "r") as f:
-        text = f.read()
+        full_source += f.read()
 
     try:
-        run(text)
+        run(full_source)
     except Exception as e:
         print("\n--- MidShake Error ---")
         print(str(e))
         print("----------------------\n")
+
 
 
 # ------------------------------------------------------------

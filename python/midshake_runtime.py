@@ -146,49 +146,7 @@ class Runtime:
 
             func = self.functions[stmt.name]
 
-            # simple single-parameter support
-            if func.param_name is None and len(stmt.args) != 0:
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Function '{func.name}' takes no arguments."
-                )
-            if func.param_name is not None and len(stmt.args) != 1:
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Function '{func.name}' expects 1 argument."
-                )
-
-            # save current variable environment
-            saved_vars = self.vars.copy()
-
-            # bind parameter if present
-            if func.param_name is not None:
-                arg_value = self.eval_expr(stmt.args[0])
-                self.vars[func.param_name] = arg_value
-
-            # execute function body
-            for s in func.body:
-                self.exec_stmt(s)
-                if self.terminated:
-                    break
-
-            # restore variable environment
-            self.vars = saved_vars
-            
-        # FUNCTION DEF
-        elif isinstance(stmt, FunctionDef):
-            self.functions[stmt.name] = stmt
-
-        # CALL
-        elif isinstance(stmt, Call):
-            if stmt.name not in self.functions:
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  The function '{stmt.name}' is not defined."
-                )
-
-            func = self.functions[stmt.name]
-
+            # argument count check
             if len(stmt.args) != len(func.param_names):
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
@@ -203,7 +161,7 @@ class Runtime:
             for param_name, arg_expr in zip(func.param_names, stmt.args):
                 self.vars[param_name] = self.eval_expr(arg_expr)
 
-            # execute body
+            # execute function body
             for s in func.body:
                 self.exec_stmt(s)
                 if self.terminated:
@@ -211,6 +169,45 @@ class Runtime:
 
             # restore environment
             self.vars = saved_vars
+
+            
+        # FUNCTION DEF
+        elif isinstance(stmt, FunctionDef):
+            self.functions[stmt.name] = stmt
+
+        elif isinstance(stmt, Call):
+            if stmt.name not in self.functions:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  The function '{stmt.name}' is not defined."
+                )
+
+            func = self.functions[stmt.name]
+
+            # argument count check
+            if len(stmt.args) != len(func.param_names):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Function '{func.name}' expects {len(func.param_names)} argument(s) "
+                    f"but got {len(stmt.args)}."
+                )
+
+            # save current environment
+            saved_vars = self.vars.copy()
+
+            # bind parameters
+            for param_names, arg_expr in zip(func.param_names, stmt.args):
+                self.vars[param_names] = self.eval_expr(arg_expr)
+
+            # execute function body
+            for s in func.body:
+                self.exec_stmt(s)
+                if self.terminated:
+                    break
+
+            # restore environment
+            self.vars = saved_vars
+
 
 
         # TERMINATE
