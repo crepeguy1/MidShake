@@ -52,15 +52,14 @@ class Runtime:
         if isinstance(expr, Variable):
             self.require_declared(expr.name)
             return self.vars[expr.name]
-        
+
         if isinstance(expr, Response):
             return self.vars.get("RESPONSE")
-        
+
         if isinstance(expr, Binary):
             left = self.eval_expr(expr.left)
             right = self.eval_expr(expr.right)
-       
-            
+
             if expr.op == "+":
                 return left + right
             if expr.op == "-":
@@ -81,7 +80,6 @@ class Runtime:
                 return left == right
             if expr.op == "!=":
                 return left != right
-        
 
         raise ValueError(
             f"MidShake Runtime Error:\n"
@@ -92,6 +90,7 @@ class Runtime:
     # STATEMENT EXECUTION
     # ------------------------------------------------------------
     def exec_stmt(self, stmt):
+
         # LET
         if isinstance(stmt, Let):
             self.vars[stmt.name] = self.eval_expr(stmt.value)
@@ -121,18 +120,48 @@ class Runtime:
                 for s in stmt.body:
                     self.exec_stmt(s)
 
-        # Inquire
+        # INQUIRE
         elif isinstance(stmt, Inquire):
             print(stmt.question)
             raw = input("> ")
 
-            if stmt.expected_type == "number":
-                try:
-                    self.vars["RESPONSE"] = int(raw)
-                except:
-                    raise ValueError("Expected a number from user input.")
+            expected = stmt.expected_type.lower()
+
+            # BOOLEAN
+            if expected == "boolean":
+                raw_lower = raw.lower()
+                if raw_lower in ("true", "yes", "1"):
+                    converted = True
+                elif raw_lower in ("false", "no", "0"):
+                    converted = False
+                else:
+                    raise ValueError(
+                        "MidShake Runtime Error:\n"
+                        "  Expected a boolean (true/false) from user input."
+                    )
+
+            # NUMBER (integer)
+            elif expected == "number":
+                if raw.strip().lstrip("-").isdigit():
+                    converted = int(raw)
+                else:
+                    raise ValueError(
+                        "MidShake Runtime Error:\n"
+                        "  Expected a number from user input."
+                    )
+
+            # STRING
+            elif expected == "string":
+                converted = raw
+
             else:
-                self.vars["RESPONSE"] = raw
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Unknown INQUIRE type '{stmt.expected_type}'."
+                )
+
+            # Store the result
+            self.vars["RESPONSE"] = converted
 
         # TERMINATE
         elif isinstance(stmt, Terminate):

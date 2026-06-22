@@ -57,22 +57,26 @@ class Tokenizer:
             c = self.text[i]
             nxt = self.text[i + 1] if i + 1 < len(self.text) else ""
 
+            # toggle string mode
             if c == '"':
                 in_string = not in_string
                 current.append(c)
                 i += 1
                 continue
 
+            # // comments
             if not in_string and c == '/' and nxt == '/':
                 while i < len(self.text) and self.text[i] != '\n':
                     i += 1
                 continue
 
+            # # comments
             if not in_string and c == '#':
                 while i < len(self.text) and self.text[i] != '\n':
                     i += 1
                 continue
 
+            # semicolon ends a statement
             if not in_string and c == ';':
                 statement = ''.join(current).strip()
                 if statement:
@@ -82,6 +86,7 @@ class Tokenizer:
                 i += 1
                 continue
 
+            # newline
             if c == '\n':
                 line_no += 1
                 if not in_string:
@@ -138,57 +143,72 @@ class Tokenizer:
     # STATEMENT TOKENIZATION
     # ------------------------------------------------------------
     def tokenize_line(self, line: str, line_no: int):
+        # caret comments
         if line.strip().startswith("^"):
-            return None  # Treat as comment, no tokens
-        if line.startswith("INQUIRE user"):
-            # Extract type
-            after_for = line[len("INQUIRE user"):].strip()
-            type_part, question_part = after_for.split('"', 1)
-            expected_type = type_part.strip()  # number / string
-            question = question_part.rstrip('"')
-            return Token("INQUIRE", (expected_type, question), line_no)
+            return None
 
+        # LET
         if line.startswith("LET the variable"):
             name = self.extract_between(line, "variable", "BE", line_no).strip()
             value_text = self.extract_after(line, "BE", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("LET", (name, expr), line_no)
 
+        # SET
         if line.startswith("SET the variable"):
             name = self.extract_between(line, "variable", "TO", line_no).strip()
             value_text = self.extract_after(line, "TO", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("SET", (name, expr), line_no)
 
+        # PROCLAIM
         if line.startswith("PROCLAIM"):
             value_text = self.extract_after(line, "PROCLAIM", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("PROCLAIM", expr, line_no)
 
+        # IF
         if line.startswith("IF the value of"):
             condition_text = line[len("IF "):line.index("THEN")].strip()
             expr = self.parse_expression(condition_text, line_no)
             return Token("IF", expr, line_no)
 
+        # ELSE
         if line == "ELSE":
             return Token("ELSE", None, line_no)
 
+        # END IF
         if line.startswith("END IF"):
             return Token("END_IF", None, line_no)
 
+        # WHILST
         if line.startswith("WHILST the value of"):
             condition_text = line[len("WHILST "):line.index("DO")].strip()
             expr = self.parse_expression(condition_text, line_no)
             return Token("WHILST", expr, line_no)
 
+        # END WHILST
         if line.startswith("END WHILST"):
             return Token("END_WHILST", None, line_no)
 
-        if line.strip() == "RESPONSE":
-            return Token("RESPONSE", None, line_no)
-
+        # TERMINATE
         if line.strip() == "TERMINATE" or line.startswith("TERMINATE the program"):
             return Token("TERMINATE", None, line_no)
+
+        # INQUIRE user for <type> "Question"
+        if line.startswith("INQUIRE user for"):
+            rest = line[len("INQUIRE user for"):].strip()
+            # rest like: number "Question"  OR  string "Question"
+            if '"' not in rest:
+                raise ValueError(
+                    f"MidShake Syntax Error (line {line_no}):\n"
+                    f"  Expected a quoted question in INQUIRE.\n"
+                    f"  Offending line:\n    {line}"
+                )
+            type_part, question_part = rest.split('"', 1)
+            expected_type = type_part.strip()  # number / string / boolean
+            question = question_part.rstrip('"')
+            return Token("INQUIRE", (expected_type, question), line_no)
 
         raise ValueError(
             f"MidShake Syntax Error (line {line_no}):\n"
@@ -258,7 +278,14 @@ class ExpressionParser:
                     right = self.parse_term()
                     return Binary(op, expr, right)
 
-            if self.text[self.pos:].startswith("the number") or self.text[self.pos:].startswith("the string") or self.text[self.pos:].startswith("the value of") or self.current_char().isdigit() or self.current_char() == '"':
+            # default to equality if a value follows
+            if (
+                self.text[self.pos:].startswith("the number")
+                or self.text[self.pos:].startswith("the string")
+                or self.text[self.pos:].startswith("the value of")
+                or self.current_char().isdigit()
+                or self.current_char() == '"'
+            ):
                 right = self.parse_term()
                 return Binary("==", expr, right)
 
@@ -369,18 +396,36 @@ class ExpressionParser:
 
         token = self.current_token
 
+        # RESPONSE forms
+        if token == "RESPONSE":
+            self.pos += len("RESPONSE")
+            return Response()
+
+        if token.startswith("the RESPONSE"):
+            self.pos += len("the RESPONSE")
+            return Response()
+
+        if token.startswith("the answer"):
+            self.pos += len("the answer")
+            return Response()
+
+        # number literal
         if token.isdigit() or (token.startswith('-') and token[1:].isdigit()):
             return self.parse_number_literal()
 
+        # string literal
         if token.startswith('"') and token.endswith('"'):
             return self.parse_string_literal()
 
+        # the number ...
         if token.startswith("the number"):
             return self.parse_number_phrase()
 
+        # the value of ...
         if token.startswith("the value of"):
             return self.parse_variable_phrase()
 
+        # the string "..."
         if token.startswith("the string"):
             self.pos += len("the string")
             self.skip_whitespace()
@@ -390,18 +435,8 @@ class ExpressionParser:
             raise SyntaxError(
                 f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string after 'the string'"
             )
-            
-        # the RESPONSE
-        if token == "RESPONSE":
-            self.pos += len("RESPONSE")
-            return Response()
 
-        if token.startswith("the RESPONSE"):
-            self.pos += len("the RESPONSE")
-            return Response()
-
-
-
+        # bare identifier -> variable
         if token.replace(" ", "").isalpha():
             return Variable(token)
 
