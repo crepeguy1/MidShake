@@ -61,6 +61,18 @@ class Set(Statement):
     name: str
     value: Expression
 
+class FunctionDef:
+    def __init__(self, name, param_names, body):
+        self.name = name              # str
+        self.param_names = param_names  # list[str]
+        self.body = body              # list of statements
+
+
+class Call:
+    def __init__(self, name, args):
+        self.name = name      # str
+        self.args = args      # list of expressions
+
 
 @dataclass
 class Proclaim(Statement):

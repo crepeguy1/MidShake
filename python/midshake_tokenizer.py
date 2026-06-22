@@ -194,6 +194,52 @@ class Tokenizer:
         # TERMINATE
         if line.strip() == "TERMINATE" or line.startswith("TERMINATE the program"):
             return Token("TERMINATE", None, line_no)
+        
+        # DEFINE function <name> [WITH the variable(s) ...]
+        if line.startswith("DEFINE function"):
+            rest = line[len("DEFINE function"):].strip()
+            param_names = []
+
+            if "WITH" in rest:
+                name_part, params_part = rest.split("WITH", 1)
+                func_name = name_part.strip().rstrip(";")
+
+                params_text = params_part.strip().rstrip(";")
+                # remove leading 'the variable' / 'the variables'
+                params_text = params_text.replace("the variables", "").replace("the variable", "").strip()
+                # split by comma
+                if params_text:
+                    param_names = [p.strip() for p in params_text.split(",") if p.strip()]
+            else:
+                func_name = rest.strip().rstrip(";")
+
+            return Token("FUNC_DEF", (func_name, param_names), line_no)
+
+        if line.strip() == "END FUNCTION":
+            return Token("END_FUNC", None, line_no)
+
+
+        # CALL <name> [WITH <arg1>, <arg2>, ...]
+        if line.startswith("CALL"):
+            rest = line[len("CALL"):].strip()
+            func_name = rest
+            args = []
+
+            if "WITH" in rest:
+                name_part, args_part = rest.split("WITH", 1)
+                func_name = name_part.strip().rstrip(";")
+                args_text = args_part.strip().rstrip(";")
+
+                # split by commas into individual argument expressions
+                for piece in args_text.split(","):
+                    piece = piece.strip()
+                    if piece:
+                        arg_expr = self.parse_expression(piece, line_no)
+                        args.append(arg_expr)
+            else:
+                func_name = rest.strip().rstrip(";")
+
+            return Token("CALL", (func_name, args), line_no)
 
         # INQUIRE user for <type> "Question"
         if line.startswith("INQUIRE user for"):

@@ -5,14 +5,20 @@ from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,
-    Response
+    Response, FunctionDef, Call
 )
 
 
 class Runtime:
+
     def __init__(self) -> None:
         self.vars: Dict[str, Any] = {}
+        self.functions: Dict[str, FunctionDef] = {}
         self.terminated: bool = False
+
+
+
+
 
     # ------------------------------------------------------------
     # PROGRAM EXECUTION
@@ -122,47 +128,92 @@ class Runtime:
 
         # INQUIRE
         elif isinstance(stmt, Inquire):
-            print(stmt.question)
-            raw = input("> ")
+            # (your existing INQUIRE logic here)
+            ...
 
-            expected = stmt.expected_type.lower()
+        # FUNCTION DEF
+        elif isinstance(stmt, FunctionDef):
+            # store function, do not execute body now
+            self.functions[stmt.name] = stmt
 
-            # BOOLEAN
-            if expected == "boolean":
-                raw_lower = raw.lower()
-                if raw_lower in ("true", "yes", "1"):
-                    converted = True
-                elif raw_lower in ("false", "no", "0"):
-                    converted = False
-                else:
-                    raise ValueError(
-                        "MidShake Runtime Error:\n"
-                        "  Expected a boolean (true/false) from user input."
-                    )
-
-            # NUMBER (integer)
-            elif expected == "number":
-                if raw.strip().lstrip("-").isdigit():
-                    converted = int(raw)
-                else:
-                    raise ValueError(
-                        "MidShake Runtime Error:\n"
-                        "  Expected a number from user input."
-                    )
-
-            # STRING
-            elif expected == "string":
-                converted = raw
-
-            else:
+        # CALL
+        elif isinstance(stmt, Call):
+            if stmt.name not in self.functions:
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
-                    f"  Unknown INQUIRE type '{stmt.expected_type}'."
+                    f"  The function '{stmt.name}' is not defined."
                 )
 
-            # Store the result
-            self.vars["RESPONSE"] = converted
+            func = self.functions[stmt.name]
+
+            # simple single-parameter support
+            if func.param_name is None and len(stmt.args) != 0:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Function '{func.name}' takes no arguments."
+                )
+            if func.param_name is not None and len(stmt.args) != 1:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Function '{func.name}' expects 1 argument."
+                )
+
+            # save current variable environment
+            saved_vars = self.vars.copy()
+
+            # bind parameter if present
+            if func.param_name is not None:
+                arg_value = self.eval_expr(stmt.args[0])
+                self.vars[func.param_name] = arg_value
+
+            # execute function body
+            for s in func.body:
+                self.exec_stmt(s)
+                if self.terminated:
+                    break
+
+            # restore variable environment
+            self.vars = saved_vars
+            
+        # FUNCTION DEF
+        elif isinstance(stmt, FunctionDef):
+            self.functions[stmt.name] = stmt
+
+        # CALL
+        elif isinstance(stmt, Call):
+            if stmt.name not in self.functions:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  The function '{stmt.name}' is not defined."
+                )
+
+            func = self.functions[stmt.name]
+
+            if len(stmt.args) != len(func.param_names):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Function '{func.name}' expects {len(func.param_names)} argument(s) "
+                    f"but got {len(stmt.args)}."
+                )
+
+            # save current environment
+            saved_vars = self.vars.copy()
+
+            # bind parameters
+            for param_name, arg_expr in zip(func.param_names, stmt.args):
+                self.vars[param_name] = self.eval_expr(arg_expr)
+
+            # execute body
+            for s in func.body:
+                self.exec_stmt(s)
+                if self.terminated:
+                    break
+
+            # restore environment
+            self.vars = saved_vars
+
 
         # TERMINATE
         elif isinstance(stmt, Terminate):
             self.terminated = True
+

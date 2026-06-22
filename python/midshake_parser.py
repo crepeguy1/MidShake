@@ -1,7 +1,8 @@
 from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
-    Variable, Binary, Inquire, Response
+    Variable, Binary, Inquire, Response,
+    Call, FunctionDef
 )
 
 
@@ -37,7 +38,30 @@ class Parser:
 
     # -----------------------------
     # STATEMENTS
-    # -----------------------------
+    # ----------------------------
+    
+    def parse_function(self, name, param_names, line_no):
+        body = []
+
+        # move past FUNC_DEF token
+        self.advance()
+
+        # read until END_FUNC
+        while self.current() and self.current().type != "END_FUNC":
+            stmt = self.parse_statement()
+            if stmt:
+                body.append(stmt)
+            self.advance()
+
+        if not self.current() or self.current().type != "END_FUNC":
+            raise ValueError(
+                f"MidShake Syntax Error (around line {line_no}):\n"
+                f"  FUNCTION '{name}' was never closed with 'END FUNCTION'."
+            )
+
+        return FunctionDef(name, param_names, body)
+
+
     def parse_statement(self):
         tok = self.current()
         if tok is None:
@@ -72,15 +96,26 @@ class Parser:
             expected_type, question = tok.value
             return Inquire(expected_type, question)
 
+        # FUNCTION DEF
+        if tok.type == "FUNC_DEF":
+            func_name, param_names = tok.value
+            return self.parse_function(func_name, param_names, tok.line_no)
+
+        # CALL
+        if tok.type == "CALL":
+            func_name, args = tok.value
+            return Call(func_name, args)
+
+
         # TERMINATE
         if tok.type == "TERMINATE":
             return Terminate()
 
-        # Unknown
         raise ValueError(
             f"MidShake Syntax Error (line {tok.line_no}):\n"
             f"  Unexpected token '{tok.type}'."
         )
+
 
     # -----------------------------
     # IF / ELSE / END IF
