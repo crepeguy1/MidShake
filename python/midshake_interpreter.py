@@ -19,6 +19,9 @@ def run(text: str):
     runtime = Runtime()
     runtime.exec_program(program)
     variables = {}
+    
+    for t in tokens:
+        print(t)
 
 
 # ------------------------------------------------------------
@@ -53,25 +56,34 @@ def check_errors(code):
 # ------------------------------------------------------------
 def run_midshake_file(path):
     import os
+    print("READING:", path)
+
 
     stdlib_path = os.path.join(os.path.dirname(path), "stdlib.ms")
     full_source = ""
 
     # load stdlib if present
     if os.path.exists(stdlib_path):
+        
         with open(stdlib_path, "r") as f:
             full_source += f.read() + "\n"
 
     # load user file
     with open(path, "r") as f:
         full_source += f.read()
-
+        
+        #next part is only needed for debugging
+        #with open("debug.txt", "a", encoding="utf-8") as d:
+            # Write only the first 200 characters for preview
+            #d.write("FILE CONTENT:\n")
+            #d.write(full_source[:200] + "\n")
     try:
         run(full_source)
     except Exception as e:
         print("\n--- MidShake Error ---")
         print(str(e))
         print("----------------------\n")
+
 
 
 

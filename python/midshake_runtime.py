@@ -5,7 +5,7 @@ from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,
-    Response, FunctionDef, Call
+    Response, FunctionDef, Call, Return, 
 )
 
 
@@ -15,6 +15,9 @@ class Runtime:
         self.vars: Dict[str, Any] = {}
         self.functions: Dict[str, FunctionDef] = {}
         self.terminated: bool = False
+        self.return_value = None
+        self.in_function = False
+
 
 
 
@@ -58,6 +61,9 @@ class Runtime:
         if isinstance(expr, Variable):
             self.require_declared(expr.name)
             return self.vars[expr.name]
+
+        if isinstance(expr, Call):
+            return self.exec_stmt(expr)
 
         if isinstance(expr, Response):
             return self.vars.get("RESPONSE")
@@ -128,8 +134,23 @@ class Runtime:
 
         # INQUIRE
         elif isinstance(stmt, Inquire):
-            # (your existing INQUIRE logic here)
-            ...
+            raw = input(stmt.question + " ")
+
+            # Convert based on expected type
+            if stmt.expected_type == "number":
+                try:
+                    value = int(raw)
+                except ValueError:
+                    try:
+                        value = float(raw)
+                    except ValueError:
+                        raise ValueError(f"Expected a number but got: {raw}")
+            else:
+                value = raw
+
+            # Store in RESPONSE for LET ... BE the RESPONSE
+            self.vars["RESPONSE"] = value
+            return value
 
         # FUNCTION DEF
         elif isinstance(stmt, FunctionDef):
@@ -146,7 +167,6 @@ class Runtime:
 
             func = self.functions[stmt.name]
 
-            # argument count check
             if len(stmt.args) != len(func.param_names):
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
@@ -154,21 +174,40 @@ class Runtime:
                     f"but got {len(stmt.args)}."
                 )
 
-            # save current environment
+            # save environment
             saved_vars = self.vars.copy()
+            saved_return = self.return_value
+            saved_flag = self.in_function
 
             # bind parameters
             for param_name, arg_expr in zip(func.param_names, stmt.args):
                 self.vars[param_name] = self.eval_expr(arg_expr)
 
-            # execute function body
+            # run function body
+            self.return_value = None
+            self.in_function = False
+
             for s in func.body:
                 self.exec_stmt(s)
-                if self.terminated:
+                if self.in_function:  # RETURN was hit
                     break
+
+            # capture return value
+            result = self.return_value
 
             # restore environment
             self.vars = saved_vars
+            self.return_value = saved_return
+            self.in_function = saved_flag
+
+            # return the function result to the caller
+            return result
+
+        #RETURN
+        elif isinstance(stmt, Return):
+            self.return_value = self.eval_expr(stmt.expr)
+            # signal to stop executing the function body
+            self.in_function = True
 
             
         # FUNCTION DEF

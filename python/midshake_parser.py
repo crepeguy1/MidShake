@@ -2,7 +2,7 @@ from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
-    Call, FunctionDef
+    Call, FunctionDef, Return
 )
 
 
@@ -31,37 +31,36 @@ class Parser:
             stmt = self.parse_statement()
             if stmt:
                 current_section.body.append(stmt)
-            self.advance()
+            # DO NOT auto-advance here — parse_statement handles it
 
         sections.append(current_section)
         return Program(sections)
 
     # -----------------------------
-    # STATEMENTS
-    # ----------------------------
-    
-    def parse_function(self, name, param_names, line_no):
+    # FUNCTION PARSER
+    # -----------------------------
+    def parse_function(self, func_name, param_names, line_no):
         body = []
+        self.advance()  # move past FUNC_DEF
 
-        # move past FUNC_DEF token
-        self.advance()
-
-        # read until END_FUNC
         while self.current() and self.current().type != "END_FUNC":
             stmt = self.parse_statement()
-            if stmt:
+            if stmt is not None:
                 body.append(stmt)
-            self.advance()
+            # self.advance() might be the cause of the problem
 
-        if not self.current() or self.current().type != "END_FUNC":
+        if not self.current():
             raise ValueError(
-                f"MidShake Syntax Error (around line {line_no}):\n"
-                f"  FUNCTION '{name}' was never closed with 'END FUNCTION'."
+                f"MidShake Syntax Error (line {line_no}):\n"
+                f"  Missing 'END FUNCTION' for function '{func_name}'."
             )
 
-        return FunctionDef(name, param_names, body)
+        self.advance()  # consume END_FUNC
+        return FunctionDef(func_name, param_names, body)
 
-
+    # -----------------------------
+    # STATEMENTS
+    # -----------------------------
     def parse_statement(self):
         tok = self.current()
         if tok is None:
@@ -70,15 +69,18 @@ class Parser:
         # LET
         if tok.type == "LET":
             name, expr = tok.value
+            self.advance()
             return Let(name, expr)
 
         # SET
         if tok.type == "SET":
             name, expr = tok.value
+            self.advance()
             return Set(name, expr)
 
         # PROCLAIM
         if tok.type == "PROCLAIM":
+            self.advance()
             return Proclaim(tok.value)
 
         # IF
@@ -94,6 +96,7 @@ class Parser:
         # INQUIRE
         if tok.type == "INQUIRE":
             expected_type, question = tok.value
+            self.advance()
             return Inquire(expected_type, question)
 
         # FUNCTION DEF
@@ -104,18 +107,24 @@ class Parser:
         # CALL
         if tok.type == "CALL":
             func_name, args = tok.value
+            self.advance()
             return Call(func_name, args)
 
+        # RETURN
+        if tok.type == "RETURN":
+            expr = tok.value
+            self.advance()
+            return Return(expr)
 
         # TERMINATE
         if tok.type == "TERMINATE":
+            self.advance()
             return Terminate()
 
         raise ValueError(
             f"MidShake Syntax Error (line {tok.line_no}):\n"
             f"  Unexpected token '{tok.type}'."
         )
-
 
     # -----------------------------
     # IF / ELSE / END IF
@@ -124,17 +133,13 @@ class Parser:
         body = []
         else_body = None
 
-        # move past IF token
-        self.advance()
+        self.advance()  # move past IF
 
-        # read body until ELSE or END_IF
         while self.current() and self.current().type not in ("END_IF", "ELSE"):
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
-            self.advance()
 
-        # ELSE block
         if self.current() and self.current().type == "ELSE":
             else_body = []
             self.advance()
@@ -142,15 +147,14 @@ class Parser:
                 stmt = self.parse_statement()
                 if stmt:
                     else_body.append(stmt)
-                self.advance()
 
-        # must end with END_IF
         if not self.current() or self.current().type != "END_IF":
             raise ValueError(
                 f"MidShake Syntax Error (around line {line_no}):\n"
                 f"  IF block was never closed with 'END IF'."
             )
 
+        self.advance()  # consume END_IF
         return If(expr, body, else_body)
 
     # -----------------------------
@@ -159,15 +163,12 @@ class Parser:
     def parse_while(self, expr, line_no):
         body = []
 
-        # move past WHILST token
-        self.advance()
+        self.advance()  # move past WHILST
 
-        # read until END_WHILST
         while self.current() and self.current().type != "END_WHILST":
             stmt = self.parse_statement()
             if stmt:
                 body.append(stmt)
-            self.advance()
 
         if not self.current() or self.current().type != "END_WHILST":
             raise ValueError(
@@ -175,4 +176,5 @@ class Parser:
                 f"  WHILST block was never closed with 'END WHILST'."
             )
 
+        self.advance()  # consume END_WHILST
         return While(expr, body)

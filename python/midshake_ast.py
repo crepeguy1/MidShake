@@ -106,8 +106,11 @@ class Call(Statement):
 
 
 @dataclass
-class Return(Statement):
-    expr: Expression
+class Return:
+    def __init__(self, expr):
+        self.expr = expr
+
+
 
 
 # -----------------------------

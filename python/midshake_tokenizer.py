@@ -50,6 +50,7 @@ class Tokenizer:
             "ELSE",
             "END IF",
             "END WHILST",
+            "END FUNCTION",
             "TERMINATE the program",
         }
 
@@ -91,6 +92,25 @@ class Tokenizer:
                 line_no += 1
                 if not in_string:
                     possible = ''.join(current).strip()
+
+                    # treat caret comment lines as standalone so they don't
+                    # get joined with following lines (which can hide
+                    # standalone DEFINE function statements)
+                    if possible.startswith("^"):
+                        statements.append((possible, start_line))
+                        current = []
+                        start_line = line_no
+                        i += 1
+                        continue
+
+                    # treat DEFINE function as standalone
+                    if possible.startswith("DEFINE function"):
+                        statements.append((possible, start_line))
+                        current = []
+                        start_line = line_no
+                        i += 1
+                        continue
+
                     if possible in standalone:
                         statements.append((possible, start_line))
                         current = []
@@ -191,11 +211,19 @@ class Tokenizer:
         if line.startswith("END WHILST"):
             return Token("END_WHILST", None, line_no)
 
+        # RETURN
+        if line.startswith("RETURN"):
+            value_text = self.extract_after(line, "RETURN", line_no).strip()
+            expr = self.parse_expression(value_text, line_no)
+            return Token("RETURN", expr, line_no)
+
         # TERMINATE
         if line.strip() == "TERMINATE" or line.startswith("TERMINATE the program"):
             return Token("TERMINATE", None, line_no)
-        
-        # DEFINE function <name> [WITH the variable(s) ...]
+
+        # ------------------------------------------------------------
+        # FUNCTION DEFINITIONS
+        # ------------------------------------------------------------
         if line.startswith("DEFINE function"):
             rest = line[len("DEFINE function"):].strip()
             param_names = []
@@ -205,11 +233,24 @@ class Tokenizer:
                 func_name = name_part.strip().rstrip(";")
 
                 params_text = params_part.strip().rstrip(";")
-                # remove leading 'the variable' / 'the variables'
-                params_text = params_text.replace("the variables", "").replace("the variable", "").strip()
-                # split by comma
+                params_text = (
+                    params_text.replace("the variables", "")
+                               .replace("the variable", "")
+                               .replace("and", ",")
+                               .replace("AND", ",")
+                               .strip()
+                )
+
                 if params_text:
-                    param_names = [p.strip() for p in params_text.split(",") if p.strip()]
+                    raw_params = [p.strip() for p in params_text.split(",") if p.strip()]
+                    for p in raw_params:
+                        if isinstance(p, list):
+                            raise ValueError(
+                                f"MidShake Syntax Error (line {line_no}):\n"
+                                f"  Parameter name cannot be a list.\n"
+                                f"  Offending line:\n    {line}"
+                            )
+                    param_names = raw_params
             else:
                 func_name = rest.strip().rstrip(";")
 
@@ -218,11 +259,11 @@ class Tokenizer:
         if line.strip() == "END FUNCTION":
             return Token("END_FUNC", None, line_no)
 
-
-        # CALL <name> [WITH <arg1>, <arg2>, ...]
+        # ------------------------------------------------------------
+        # FUNCTION CALLS
+        # ------------------------------------------------------------
         if line.startswith("CALL"):
             rest = line[len("CALL"):].strip()
-            func_name = rest
             args = []
 
             if "WITH" in rest:
@@ -230,7 +271,6 @@ class Tokenizer:
                 func_name = name_part.strip().rstrip(";")
                 args_text = args_part.strip().rstrip(";")
 
-                # split by commas into individual argument expressions
                 for piece in args_text.split(","):
                     piece = piece.strip()
                     if piece:
@@ -241,10 +281,9 @@ class Tokenizer:
 
             return Token("CALL", (func_name, args), line_no)
 
-        # INQUIRE user for <type> "Question"
+        # INQUIRE
         if line.startswith("INQUIRE user for"):
             rest = line[len("INQUIRE user for"):].strip()
-            # rest like: number "Question"  OR  string "Question"
             if '"' not in rest:
                 raise ValueError(
                     f"MidShake Syntax Error (line {line_no}):\n"
@@ -252,7 +291,7 @@ class Tokenizer:
                     f"  Offending line:\n    {line}"
                 )
             type_part, question_part = rest.split('"', 1)
-            expected_type = type_part.strip()  # number / string / boolean
+            expected_type = type_part.strip()
             question = question_part.rstrip('"')
             return Token("INQUIRE", (expected_type, question), line_no)
 
@@ -324,7 +363,6 @@ class ExpressionParser:
                     right = self.parse_term()
                     return Binary(op, expr, right)
 
-            # default to equality if a value follows
             if (
                 self.text[self.pos:].startswith("the number")
                 or self.text[self.pos:].startswith("the string")
@@ -442,7 +480,6 @@ class ExpressionParser:
 
         token = self.current_token
 
-        # RESPONSE forms
         if token == "RESPONSE":
             self.pos += len("RESPONSE")
             return Response()
@@ -455,23 +492,18 @@ class ExpressionParser:
             self.pos += len("the answer")
             return Response()
 
-        # number literal
         if token.isdigit() or (token.startswith('-') and token[1:].isdigit()):
             return self.parse_number_literal()
 
-        # string literal
         if token.startswith('"') and token.endswith('"'):
             return self.parse_string_literal()
 
-        # the number ...
         if token.startswith("the number"):
             return self.parse_number_phrase()
 
-        # the value of ...
         if token.startswith("the value of"):
             return self.parse_variable_phrase()
 
-        # the string "..."
         if token.startswith("the string"):
             self.pos += len("the string")
             self.skip_whitespace()
@@ -482,7 +514,6 @@ class ExpressionParser:
                 f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string after 'the string'"
             )
 
-        # bare identifier -> variable
         if token.replace(" ", "").isalpha():
             return Variable(token)
 
@@ -549,3 +580,4 @@ class ExpressionParser:
         value = self.text[start:self.pos]
         self.pos += 1
         return String(value)
+
