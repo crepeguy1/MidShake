@@ -20,8 +20,8 @@ def run(text: str):
     runtime.exec_program(program)
     variables = {}
     
-    for t in tokens:
-        print(t)
+    #for t in tokens:
+    #    print(t)
 
 
 # ------------------------------------------------------------
