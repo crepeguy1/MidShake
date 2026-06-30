@@ -1,20 +1,61 @@
 # MidShake Standard Library Reference
 
-The current MidShake implementation does not provide a full built-in standard library yet. The examples and parser focus on core language features such as variables, conditionals, loops, functions, and input.
+MidShake currently ships with a small, growing standard library. The library is intentionally lightweight while the core language is still being shaped.
 
-## Built-in language features
-- `PROCLAIM` for output
-- `LET` and `SET` for variables
-- `IF ... ELSE ... END IF` for conditionals
-- `WHILST ... END WHILST` for loops
-- `DEFINE function ... END FUNCTION` for functions
-- `INQUIRE user for ...` for input
+## What is available now
 
-## Example
+The standard library is defined in `stdlib/stdlib.ms` and provides a few helper functions that are easy to reuse in programs.
+
+### `println`
+
+Prints a value to the console.
+
 ```midshake
-DEFINE function add_and_print WITH the variables a, b;
-    PROCLAIM the value of a plus the value of b;
-END FUNCTION;
+CALL println WITH the string "Hello from MidShake";
+```
 
+### `greet`
+
+Prints a simple greeting for a provided name.
+
+```midshake
+CALL greet WITH the string "Ada";
+```
+
+### `add_and_print`
+
+Prints the result of a simple arithmetic expression.
+
+```midshake
 CALL add_and_print WITH the number 2, the number 3;
 ```
+
+### `repeat`
+
+Prints a message a given number of times.
+
+```midshake
+CALL repeat WITH the number 3, the string "Hi";
+```
+
+## Current library philosophy
+
+The standard library emphasizes:
+
+- small, readable helper functions
+- simple syntax over advanced abstractions
+- a foundation for future growth
+
+## Planned additions
+
+The roadmap for the library includes:
+
+- string utilities such as trimming, joining, and splitting
+- math helpers such as rounding, minimum, and maximum
+- collection helpers for lists and mappings
+- file and console input helpers
+- additional convenience functions for common scripting tasks
+
+## Notes
+
+The language itself provides the core features needed to build programs, while the library fills in common everyday helpers. As the language matures, the library is expected to expand significantly.
