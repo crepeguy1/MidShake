@@ -1,19 +1,13 @@
-# Normalize line endings
 * text=auto
 
-# Force LF for code files
 *.py text eol=lf
 *.json text eol=lf
-*.tmLanguage.json text eol=lf
 *.md text eol=lf
 *.js text eol=lf
+*.tmLanguage.json text eol=lf
 
-# Treat MidShake files as text
 *.ms text
 
-# Binary files
 *.png binary
 *.ico binary
-
-# VS Code extension packaging
 *.vsix binary

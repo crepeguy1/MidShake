@@ -8,7 +8,7 @@
 import sys
 import json
 import threading
-from midshake_interpreter import check_errors
+from python.midshake_interpreter import check_errors
 
 
 # ------------------------------------------------------------

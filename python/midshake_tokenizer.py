@@ -2,7 +2,7 @@
 
 import re
 
-from midshake_ast import Number, String, Variable, Binary, Response
+from python.midshake_ast import Number, String, Variable, Binary, Response
 
 
 class Token:

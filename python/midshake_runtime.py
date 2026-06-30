@@ -1,7 +1,7 @@
 # midshake_runtime.py
 
 from typing import Dict, Any
-from midshake_ast import (
+from python.midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,

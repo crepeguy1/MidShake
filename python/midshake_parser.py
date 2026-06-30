@@ -1,4 +1,4 @@
-from midshake_ast import (
+from python.midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
