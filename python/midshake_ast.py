@@ -37,6 +37,15 @@ class Binary(Expression):
 class Response(Expression):
     pass
 
+# -----------------------------
+# FILE I/O EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class FileReadExpression(Expression):
+    path: str
+
+
 
 # -----------------------------
 # STATEMENTS
@@ -86,6 +95,16 @@ class While(Statement):
 @dataclass
 class Terminate(Statement):
     pass
+
+# -----------------------------
+# FILE I/O STATEMENTS
+# -----------------------------
+
+@dataclass
+class FileWriteStatement(Statement):
+    path: str
+    value: Expression
+
 
 
 # -----------------------------
