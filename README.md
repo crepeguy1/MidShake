@@ -14,18 +14,61 @@ PROCLAIM the string "Hello, World!";
 
 A slightly richer example:
 
-```midshake
-LET the variable name BE the string "MidShake";
-PROCLAIM the string "Hello, ";
-PROCLAIM the value of name;
+```
+midshake tokens examples/full.ms
 ```
 
-## Documentation
+Show AST:
 
-- [Syntax Guide](docs/syntax.md)
-- [Examples](docs/examples.md)
-- [Standard Library Reference](docs/stdlib_reference.md)
-- [Roadmap](docs/roadmap.md)
+```
+midshake ast examples/functions.ms
+```
+
+Show version:
+
+```
+midshake version
+```
+
+Show help:
+
+```
+midshake help
+```
+
+---
+
+## Example Program
+
+```
+PROCLAIM "Hello, World!"
+```
+
+Another example using input:
+
+```
+ASK "What is your name?" INTO name
+PROCLAIM "Hello, " + name
+```
+
+---
+
+## Language Features
+
+- Custom tokenizer  
+- AST‑based parser  
+- C++ runtime  
+- Standard library (`stdlib.ms`)  
+- CLI commands: run, tokens, ast, version  
+- Simple, readable syntax  
+- Cross‑platform source code (Windows executable provided)
+
+More details:  
+- [Syntax Guide](ca://s?q=Show_MidShake_Syntax_Guide)  
+- [Examples](ca://s?q=Show_MidShake_Examples)  
+- [Standard Library Reference](ca://s?q=Show_MidShake_Stdlib_Reference)
+
+---
 
 ## Project structure
 
