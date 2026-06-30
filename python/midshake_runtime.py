@@ -5,7 +5,9 @@ from python.midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,
-    Response, FunctionDef, Call, Return, 
+    Response, FunctionDef, Call, Return, FileReadExpression, 
+    FileWriteStatement
+
 )
 
 
@@ -92,6 +94,18 @@ class Runtime:
                 return left == right
             if expr.op == "!=":
                 return left != right
+
+
+        if isinstance(expr, FileReadExpression):
+            try:
+                with open(expr.path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as e:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Could not read the file '{expr.path}'.\n"
+                    f"  Details: {e}"
+                )
 
         raise ValueError(
             f"MidShake Runtime Error:\n"
@@ -247,6 +261,18 @@ class Runtime:
             # restore environment
             self.vars = saved_vars
 
+
+        elif isinstance(stmt, FileWriteStatement):
+            value = self.eval_expr(stmt.value)
+            try:
+                with open(stmt.path, "w", encoding="utf-8") as f:
+                    f.write(str(value))
+            except Exception as e:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Could not write to the file '{stmt.path}'.\n"
+                    f"  Details: {e}"
+                )
 
 
         # TERMINATE

@@ -295,6 +295,16 @@ class Tokenizer:
             question = question_part.rstrip('"')
             return Token("INQUIRE", (expected_type, question), line_no)
 
+
+        # FILE WRITE: IN the file "path" WRITE <expression>
+        if line.startswith("IN the file"):
+            path = self.extract_between(line, "IN the file", "WRITE", line_no).strip()
+            value_text = self.extract_after(line, "WRITE", line_no).strip()
+            expr = self.parse_expression(value_text, line_no)
+            return Token("FILE_WRITE", (path, expr), line_no)
+        # FILE READ inside LET / SET / PROCLAIM expressions
+        # (handled automatically by ExpressionParser)
+
         raise ValueError(
             f"MidShake Syntax Error (line {line_no}):\n"
             f"  I do not understand this line.\n"
@@ -362,7 +372,9 @@ class ExpressionParser:
                     self.skip_whitespace()
                     right = self.parse_term()
                     return Binary(op, expr, right)
-
+            
+            
+            
             if (
                 self.text[self.pos:].startswith("the number")
                 or self.text[self.pos:].startswith("the string")
@@ -491,6 +503,16 @@ class ExpressionParser:
         if token.startswith("the answer"):
             self.pos += len("the answer")
             return Response()
+
+
+        # FILE READ: the content of the file "path"
+        if token.startswith("the content of the file"):
+            self.pos += len("the content of the file")
+            self.skip_whitespace()
+            # Expect a string literal
+            string_expr = self.parse_string_literal()
+            from python.midshake_ast import FileReadExpression
+            return FileReadExpression(string_expr.value)
 
         if token.isdigit() or (token.startswith('-') and token[1:].isdigit()):
             return self.parse_number_literal()
