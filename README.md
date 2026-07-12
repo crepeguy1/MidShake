@@ -47,7 +47,7 @@ PROCLAIM "Hello, World!"
 Another example using input:
 
 ```
-ASK "What is your name?" INTO name
+INQUIRE the user "What is your name?" INTO name
 PROCLAIM "Hello, " + name
 ```
 
