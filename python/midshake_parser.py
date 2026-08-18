@@ -1,8 +1,10 @@
-from python.midshake_ast import (
+import token
+
+from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
-    Call, FunctionDef, Return
+    Call, FunctionDef, Return, FileWriteStatement
 )
 
 
@@ -109,6 +111,12 @@ class Parser:
             func_name, args = tok.value
             self.advance()
             return Call(func_name, args)
+        
+        elif tok.type == "FILE_WRITE":
+            path, expr = tok.value
+            self.advance()
+            return FileWriteStatement(path, expr)
+
 
         # RETURN
         if tok.type == "RETURN":

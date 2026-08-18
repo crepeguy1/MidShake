@@ -1,7 +1,8 @@
 # midshake_runtime.py
 
+import os
 from typing import Dict, Any
-from python.midshake_ast import (
+from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,
@@ -264,8 +265,12 @@ class Runtime:
 
         elif isinstance(stmt, FileWriteStatement):
             value = self.eval_expr(stmt.value)
+            path = str(stmt.path).strip().strip('"').strip("'")
             try:
-                with open(stmt.path, "w", encoding="utf-8") as f:
+                parent = os.path.dirname(path)
+                if parent:
+                    os.makedirs(parent, exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
                     f.write(str(value))
             except Exception as e:
                 raise ValueError(

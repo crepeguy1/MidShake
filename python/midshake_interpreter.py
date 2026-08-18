@@ -1,9 +1,9 @@
 # midshake_interpreter.py
 
-from python.midshake_tokenizer import Tokenizer
-from python.midshake_parser import Parser
-from python.midshake_runtime import Runtime
-from python.midshake_interpreter import Interpreter
+from midshake_tokenizer import Tokenizer
+from midshake_parser import Parser
+from midshake_runtime import Runtime
+#from python.midshake_interpreter import Interpreter
 
 import re
 
@@ -27,18 +27,18 @@ class Interpreter:
 
     def run_file(self, path):
         import os
-        print("READING:", path)
 
-        stdlib_path = os.path.join(os.path.dirname(path), "stdlib.ms")
+        abs_path = os.path.abspath(path)
+        stdlib_path = os.path.join(os.path.dirname(abs_path), "stdlib.ms")
         full_source = ""
 
         # load stdlib if present
         if os.path.exists(stdlib_path):
-            with open(stdlib_path, "r") as f:
+            with open(stdlib_path, "r", encoding="utf-8") as f:
                 full_source += f.read() + "\n"
 
         # load user file
-        with open(path, "r") as f:
+        with open(abs_path, "r", encoding="utf-8") as f:
             full_source += f.read()
 
         try:
