@@ -1,7 +1,5 @@
-LET the variable the hero BE the number 1;
-LET the variable testing variables BE the number 2;
-LET the variable string BE the string "Hello, World!";
-PROCLAIM the value of the hero;
-PROCLAIM the value of testing variables;
-PROCLAIM the value of string; ^strings work now!
-^Comments are working! This line should be ignored by the tokenizer.
+LET the variable text BE the string "Hello from MidShake!";
+
+IN the file "output.txt" WRITE the value of text;
+
+PROCLAIM the string "Done.";

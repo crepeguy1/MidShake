@@ -1,4 +1,4 @@
-from python.midshake_ast import (
+from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, Inquire,
     If, While, Terminate,
@@ -187,3 +187,4 @@ class CppCompiler:
         self.indent -= 1
         self.emit("}")
         self.emit("")
+

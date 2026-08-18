@@ -2,7 +2,7 @@
 
 import re
 
-from python.midshake_ast import Number, String, Variable, Binary, Response
+from midshake_ast import Number, String, Variable, Binary, Response
 
 
 class Token:
@@ -299,6 +299,7 @@ class Tokenizer:
         # FILE WRITE: IN the file "path" WRITE <expression>
         if line.startswith("IN the file"):
             path = self.extract_between(line, "IN the file", "WRITE", line_no).strip()
+            path = path.strip('"').strip("'")
             value_text = self.extract_after(line, "WRITE", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("FILE_WRITE", (path, expr), line_no)
@@ -503,6 +504,7 @@ class ExpressionParser:
         if token.startswith("the answer"):
             self.pos += len("the answer")
             return Response()
+        
 
 
         # FILE READ: the content of the file "path"

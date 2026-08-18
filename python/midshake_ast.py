@@ -45,6 +45,12 @@ class Response(Expression):
 class FileReadExpression(Expression):
     path: str
 
+@dataclass
+class FileWriteNode:
+    def __init__(self, path, expr):
+        self.path = path
+        self.expr = expr
+
 
 
 # -----------------------------
@@ -102,7 +108,7 @@ class Terminate(Statement):
 
 @dataclass
 class FileWriteStatement(Statement):
-    path: str
+    path: str  #try and fix things that have to do with path to include actual file
     value: Expression
 
 

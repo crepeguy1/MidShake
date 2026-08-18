@@ -14,9 +14,8 @@ from python.midshake_interpreter import Interpreter
 # Helper: load stdlib.ms automatically
 # ------------------------------------------------------------
 def load_stdlib(interpreter):
-    # stdlib folder will be next to midshake.exe after packaging
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    stdlib_path = os.path.join(base_dir, "..", "stdlib", "stdlib.ms")
+    # Always load stdlib relative to the working directory
+    stdlib_path = os.path.join(os.getcwd(), "stdlib", "stdlib.ms")
 
     if os.path.isfile(stdlib_path):
         with open(stdlib_path, "r", encoding="utf-8") as f:
@@ -29,6 +28,7 @@ def load_stdlib(interpreter):
         program = parser.parse()
 
         interpreter.run(program)
+
 
 
 # ------------------------------------------------------------
@@ -104,6 +104,7 @@ def command_help():
     print("  midshake run <file.ms>       Run a MidShake program")
     print("  midshake tokens <file.ms>    Show tokens")
     print("  midshake ast <file.ms>       Show AST")
+    print("  midshake contents <file.ms>  Show file contents")
     print("  midshake version             Show version")
     print("  midshake help                Show this help message")
     print("")
@@ -127,7 +128,7 @@ def main():
         if len(sys.argv) < 3:
             print("Error: Missing file path.")
             return
-        command_run(sys.argv[2])
+        command_run(os.path.abspath(sys.argv[2]))
 
     elif command == "tokens":
         if len(sys.argv) < 3:
@@ -140,6 +141,19 @@ def main():
             print("Error: Missing file path.")
             return
         command_ast(sys.argv[2])
+        
+    # for printing the contents of a file
+    elif command == "contents":
+        if len(sys.argv) < 3:
+            print("Error: Missing file path.")
+            return
+        file_path = sys.argv[2]
+        if not os.path.isfile(file_path):
+            print(f"Error: File not found: {file_path}")
+            return
+        with open(file_path, "r", encoding="utf-8") as f:
+            contents = f.read()
+        print(contents)
 
     elif command == "version":
         command_version()
