@@ -25,10 +25,23 @@ class Interpreter:
 
         self.runtime.exec_program(program)
 
-    def run_file(self, path):
+    def run_file(self, path, file_name=None):
         import os
 
-        abs_path = os.path.abspath(path)
+        requested_path = os.fspath(path)
+        if file_name is not None:
+            requested_path = os.path.join(requested_path, os.fspath(file_name))
+
+        abs_path = os.path.abspath(requested_path)
+
+        if os.path.isdir(abs_path):
+            raise IsADirectoryError(
+                f"Expected a .ms script file, but got a directory: {requested_path}"
+            )
+
+        if not os.path.isfile(abs_path):
+            raise FileNotFoundError(f"File not found: {requested_path}")
+
         stdlib_path = os.path.join(os.path.dirname(abs_path), "stdlib.ms")
         full_source = ""
 
@@ -43,10 +56,11 @@ class Interpreter:
 
         try:
             self.run(full_source)
-        except Exception as e:
+        except Exception as exc:
             print("\n--- MidShake Error ---")
-            print(str(e))
+            print(str(exc))
             print("----------------------\n")
+            raise
 
 
 # ------------------------------------------------------------

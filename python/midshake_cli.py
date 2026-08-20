@@ -1,11 +1,39 @@
 import sys
 import os
 
-# Import MidShake internals
-from python.midshake_tokenizer import Tokenizer
-from python.midshake_parser import Parser
-from python.midshake_runtime import Runtime
-from python.midshake_interpreter import Interpreter
+# Make the local project modules importable whether this file is run
+# directly from the python/ folder, from the repo root, or from a bundled exe.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+MEIPASS = getattr(sys, "_MEIPASS", "")
+
+for path in (
+    PROJECT_ROOT,
+    SCRIPT_DIR,
+    os.path.join(MEIPASS, "python") if MEIPASS else "",
+    MEIPASS,
+):
+    if path and os.path.isdir(path) and path not in sys.path:
+        sys.path.insert(0, path)
+
+# Import MidShake internals. PyInstaller bundles modules under a temp extraction
+# directory, so make sure the python directory is in sys.path before importing.
+try:
+    from midshake_tokenizer import Tokenizer
+    from midshake_parser import Parser
+    from midshake_runtime import Runtime
+    from midshake_interpreter import Interpreter
+except ModuleNotFoundError:
+    python_dir = os.path.join(MEIPASS, "python") if MEIPASS else os.path.join(SCRIPT_DIR)
+    if os.path.isdir(python_dir):
+        if python_dir not in sys.path:
+            sys.path.insert(0, python_dir)
+        from midshake_tokenizer import Tokenizer
+        from midshake_parser import Parser
+        from midshake_runtime import Runtime
+        from midshake_interpreter import Interpreter
+    else:
+        raise
 
 
 
@@ -14,10 +42,15 @@ from python.midshake_interpreter import Interpreter
 # Helper: load stdlib.ms automatically
 # ------------------------------------------------------------
 def load_stdlib(interpreter):
-    # Always load stdlib relative to the working directory
-    stdlib_path = os.path.join(os.getcwd(), "stdlib", "stdlib.ms")
+    candidates = [
+        os.path.join(os.getcwd(), "stdlib", "stdlib.ms"),
+        os.path.join(PROJECT_ROOT, "stdlib", "stdlib.ms"),
+        os.path.join(SCRIPT_DIR, "stdlib", "stdlib.ms"),
+        os.path.join(MEIPASS, "stdlib", "stdlib.ms") if MEIPASS else "",
+    ]
+    stdlib_path = next((p for p in candidates if p and os.path.isfile(p)), None)
 
-    if os.path.isfile(stdlib_path):
+    if stdlib_path:
         with open(stdlib_path, "r", encoding="utf-8") as f:
             source = f.read()
 
@@ -27,7 +60,7 @@ def load_stdlib(interpreter):
         parser = Parser(tokens)
         program = parser.parse()
 
-        interpreter.run(program)
+        interpreter.runtime.exec_program(program)
 
 
 
@@ -45,7 +78,11 @@ def command_run(path):
     load_stdlib(interpreter)
 
     # Run user file (Interpreter handles tokenizing + parsing)
-    interpreter.run_file(path)
+    try:
+        interpreter.run_file(path)
+    except Exception:
+        return 1
+    return 0
 
 
 
@@ -128,19 +165,21 @@ def main():
         if len(sys.argv) < 3:
             print("Error: Missing file path.")
             return
-        command_run(os.path.abspath(sys.argv[2]))
+        return command_run(os.path.abspath(sys.argv[2]))
 
     elif command == "tokens":
         if len(sys.argv) < 3:
             print("Error: Missing file path.")
             return
         command_tokens(sys.argv[2])
+        return 0
 
     elif command == "ast":
         if len(sys.argv) < 3:
             print("Error: Missing file path.")
             return
         command_ast(sys.argv[2])
+        return 0
         
     # for printing the contents of a file
     elif command == "contents":
@@ -157,14 +196,17 @@ def main():
 
     elif command == "version":
         command_version()
+        return 0
 
     elif command == "help":
         command_help()
+        return 0
 
     else:
         print(f"Unknown command: {command}")
         command_help()
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
