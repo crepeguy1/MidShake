@@ -36,7 +36,11 @@ Thumbs.db
 
 # Project-specific
 debug.txt
+output.txt
 python3.11
 midshake.exe
+tests/
 
-test/
+
+
+
