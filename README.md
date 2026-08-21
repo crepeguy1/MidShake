@@ -41,7 +41,7 @@ midshake help
 ## Example Program
 
 ```
-PROCLAIM "Hello, World!"
+PROCLAIM "Hello, World!";
 ```
 
 Another example using input:
