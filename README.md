@@ -8,7 +8,7 @@ MidShake programs are plain text files with the `.ms` extension. The language cu
 
 ## Example
 
-```midshake
+```MidShake
 PROCLAIM the string "Hello, World!";
 ```
 ## Instalation
@@ -36,25 +36,25 @@ PROCLAIM the string "Hello, World!";
 
 Show tokens:
 
-```
+```cmd
 midshake tokens examples/full.ms
 ```
 
 Show AST:
 
-```
+```cmd
 midshake ast examples/functions.ms
 ```
 
 Show version:
 
-```
+```cmd
 midshake version
 ```
 
 Show help:
 
-```
+```cmd
 midshake help
 ```
 
@@ -62,13 +62,13 @@ midshake help
 
 ## Example Program
 
-```
+```MidShake
 PROCLAIM "Hello, World!";
 ```
 
 Another example using input:
 
-```
+```MidShake
 INQUIRE the user for the string "What is your name?";
 LET name BE the RESPONSE;
 PROCLAIM "Hello, " + name;
