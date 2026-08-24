@@ -32,7 +32,7 @@ PROCLAIM the string "Hello, World!";
 * Open a brand new Command Prompt or PowerShell window.
 * Type midshake --version or just midshake and press Enter.
 
-CLI:
+## CLI:
 
 ```
 midshake tokens examples/full.ms
