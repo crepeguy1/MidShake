@@ -34,6 +34,8 @@ PROCLAIM the string "Hello, World!";
 
 ## CLI:
 
+Show tokens:
+
 ```
 midshake tokens examples/full.ms
 ```
