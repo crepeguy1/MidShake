@@ -46,6 +46,12 @@ Show AST:
 midshake ast examples/functions.ms
 ```
 
+Run program:
+
+```cmd
+midshake run example.ms
+```
+
 Show version:
 
 ```cmd
