@@ -11,8 +11,28 @@ MidShake programs are plain text files with the `.ms` extension. The language cu
 ```midshake
 PROCLAIM the string "Hello, World!";
 ```
+## Instalation
+### Step 1: 
+* Download midshake.exe.
+### Step 2: 
+* Open Environment Variables
+* Press the Windows key on your keyboard.
+* Type environment variables and click on Edit the system environment variables.
+* Click the Environment Variables... button at the bottom right of the window.
+### Step 3: 
+* Edit the Path Variable
+* Look at the bottom section labeled System variables (or the top section for your user account).
+* Find the row named Path and click on it.
+* Click the Edit... button.
+* Click the New button on the right side.
+* Type the exact folder path where your .exe is saved (for example: C:\Midshake).
+* Click OK on all open windows to save your changes.
+### Step 4: 
+* Test Your Installation
+* Open a brand new Command Prompt or PowerShell window.
+* Type midshake --version or just midshake and press Enter.
 
-A slightly richer example:
+CLI:
 
 ```
 midshake tokens examples/full.ms
