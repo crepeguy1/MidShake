@@ -5,9 +5,7 @@
 *.md text eol=lf
 *.js text eol=lf
 *.tmLanguage.json text eol=lf
-
-*.md linguist-detectable=false
-*.ms linguist-vendored
+*.mish text eol=lf
 
 *.png binary
 *.ico binary
