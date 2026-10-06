@@ -6,7 +6,8 @@
 *.js text eol=lf
 *.tmLanguage.json text eol=lf
 
-*.ms linguist-language=MidShake
+*.md linguist-detectable=false
+*.ms linguist-vendored
 
 *.png binary
 *.ico binary
