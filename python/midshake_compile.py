@@ -6,16 +6,16 @@ import os
 def main():
     try:
         # 1. Read MidShake source
-        file_name = input("Enter .ms file name (without extension): ").strip().strip(".")
+        file_name = input("Enter .mish file name (without extension): ").strip().strip(".")
         file_extension = input("Choose file extension: ")
         if not file_name:
             raise ValueError("File name cannot be empty.")
 
-        ms_path = os.path.join("examples", f"{file_name}.ms")
-        if not os.path.isfile(ms_path):
-            raise FileNotFoundError(f"Source file not found: {ms_path}")
+        ms_path = os.path.join("examples", f"{file_name}.mish")
+        if not os.path.isfile(mish_path):
+            raise FileNotFoundError(f"Source file not found: {mish_path}")
 
-        with open(ms_path, "r", encoding="utf-8") as f:
+        with open(mish_path, "r", encoding="utf-8") as f:
             source = f.read()
 
         # 2. Tokenize
