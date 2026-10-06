@@ -6,7 +6,7 @@
 *.js text eol=lf
 *.tmLanguage.json text eol=lf
 
-*.ms text
+*.ms linguist-language=MidShake
 
 *.png binary
 *.ico binary
