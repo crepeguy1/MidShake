@@ -1,6 +1,6 @@
 #include "midshake_runtime.hpp"
 
-namespace ms {
+namespace mish {
 
     // -------------------------
     // print
