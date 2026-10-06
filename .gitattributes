@@ -5,8 +5,7 @@
 *.md text eol=lf
 *.js text eol=lf
 *.tmLanguage.json text eol=lf
-
-*.ms text
+*.mish text eol=lf
 
 *.png binary
 *.ico binary

@@ -4,35 +4,63 @@ MidShake is a small interpreted programming language implemented in Python and C
 
 ## Overview
 
-MidShake programs are plain text files with the `.ms` extension. The language currently supports variables, input, conditionals, loops, functions, and a small standard library.
+MidShake programs are plain text files with the `.mish` extension. The language currently supports variables, input, conditionals, loops, functions, and a small standard library.
 
 ## Example
 
-```midshake
+```MidShake
 PROCLAIM the string "Hello, World!";
 ```
+## Instalation
+### Step 1: 
+* Download midshake.exe.
+### Step 2: 
+* Open Environment Variables
+* Press the Windows key on your keyboard.
+* Type environment variables and click on Edit the system environment variables.
+* Click the Environment Variables... button at the bottom right of the window.
+### Step 3: 
+* Edit the Path Variable
+* Look at the bottom section labeled System variables (or the top section for your user account).
+* Find the row named Path and click on it.
+* Click the Edit... button.
+* Click the New button on the right side.
+* Type the exact folder path where your .exe is saved (for example: C:\Midshake).
+* Click OK on all open windows to save your changes.
+### Step 4: 
+* Test Your Installation
+* Open a brand new Command Prompt or PowerShell window.
+* Type midshake --version or just midshake and press Enter.
 
-A slightly richer example:
+## CLI:
 
-```
-midshake tokens examples/full.ms
+Show tokens:
+
+```cmd
+midshake tokens examples/full.mish
 ```
 
 Show AST:
 
+```cmd
+midshake ast examples/functions.mish
 ```
-midshake ast examples/functions.ms
+
+Run program:
+
+```cmd
+midshake run example.mish
 ```
 
 Show version:
 
-```
+```cmd
 midshake version
 ```
 
 Show help:
 
-```
+```cmd
 midshake help
 ```
 
@@ -40,15 +68,16 @@ midshake help
 
 ## Example Program
 
-```
-PROCLAIM "Hello, World!"
+```MidShake
+PROCLAIM "Hello, World!";
 ```
 
 Another example using input:
 
-```
-ASK "What is your name?" INTO name
-PROCLAIM "Hello, " + name
+```MidShake
+INQUIRE the user for the string "What is your name?";
+LET name BE the RESPONSE;
+PROCLAIM "Hello, " + name;
 ```
 
 ---
@@ -58,7 +87,7 @@ PROCLAIM "Hello, " + name
 - Custom tokenizer  
 - AST‑based parser  
 - C++ runtime  
-- Standard library (`stdlib.ms`)  
+- Standard library (`stdlib.mish`)  
 - CLI commands: run, tokens, ast, version  
 - Simple, readable syntax  
 - Cross‑platform source code (Windows executable provided)
