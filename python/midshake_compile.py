@@ -11,7 +11,7 @@ def main():
         if not file_name:
             raise ValueError("File name cannot be empty.")
 
-        ms_path = os.path.join("examples", f"{file_name}.mish")
+        mish_path = os.path.join("examples", f"{file_name}.mish")
         if not os.path.isfile(mish_path):
             raise FileNotFoundError(f"Source file not found: {mish_path}")
 
