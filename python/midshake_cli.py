@@ -103,6 +103,20 @@ def command_tokens(path):
     for t in tokens:
         print(t)
 
+def command_tfind(path):
+    if not os.path.isfile(path):
+        print(f"Error: File not found: {path}")
+        return
+
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    trequest = input("What token would you like to find")
+
+    for t in tokens:
+        pass
 
 # ------------------------------------------------------------
 # Command: print AST
@@ -140,6 +154,7 @@ def command_help():
     print("Usage:")
     print("  midshake run <file.mish>       Run a MidShake program")
     print("  midshake tokens <file.mish>    Show tokens")
+    print("  midshake tfind <file.mish>     Find tokens")
     print("  midshake ast <file.mish>       Show AST")
     print("  midshake contents <file.mish>  Show file contents")
     print("  midshake version             Show version")
@@ -174,6 +189,16 @@ def main():
         command_tokens(sys.argv[2])
         return 0
 
+        
+        
+    elif command == "tfind":
+
+        if len(sys.argv) < 3:            
+            print("Error: Missing file path.")
+            return
+        command_tfind(sys.argv[2])
+        return 0
+    
     elif command == "ast":
         if len(sys.argv) < 3:
             print("Error: Missing file path.")

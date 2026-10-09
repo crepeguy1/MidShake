@@ -24,3 +24,49 @@ DEFINE function repeat WITH the variables count, message;
         SET the variable i TO the value of i plus the number 1;
     END WHILST;
 END FUNCTION;
+
+DEFINE function is_even WITH the variable num;
+    RETURN the value of num modulo the number 2 IS equal to the number 0;
+END FUNCTION;
+
+^ Convert negative numbers to positive
+DEFINE function absolute_value WITH the variable num;
+    IF the value of num IS less than the number 0 THEN
+        RETURN the number 0 minus the value of num;
+    END IF;
+    RETURN the value of num;
+END FUNCTION;
+
+^ Multiply all integers from 1 up to N
+DEFINE function factorial WITH the variable n;
+    LET the variable result BE the number 1;
+    LET the variable i BE the number 1;
+    WHILST the value of i IS less than or equal to the value of n DO
+        SET the variable result TO the value of result multiplied by the value of i;
+        SET the variable i TO the value of i plus the number 1;
+END FUNCTION;
+    END WHILST;
+    RETURN the value of result;
+
+^ Decorate a text message with lines
+DEFINE function bannerprint WITH the variable message;
+    PROCLAIM the string "--------------------";
+    PROCLAIM the value of message;
+    PROCLAIM the string "--------------------";
+END FUNCTION;
+
+^ Return true if string length or content is blank
+DEFINE function is_empty WITH the variable text;
+    RETURN the value of text IS equal to the string "";
+END FUNCTION;
+
+^ Add up all elements inside an array
+DEFINE function sum_list WITH the variables items, list_length;
+    LET the variable total BE the number 0;
+    LET the variable i BE the number 0;
+    WHILST the value of i IS less than the value of list_length DO
+        SET the variable total TO the value of total plus the element at index i of items;
+        SET the variable i TO the value of i plus the number 1;
+    END WHILST;
+    RETURN the value of total;
+END FUNCTION;

@@ -1,5 +1,8 @@
 INQUIRE user for string "What is your name?";
 LET the variable name BE the RESPONSE;
+LET the variable message BE the string "Words";
+LET the variable text BE the string "More Words";
 
 CALL greet WITH the value of name;
 CALL println WITH the string "Done.";
+CALL bannerprint WITH the value of message;
