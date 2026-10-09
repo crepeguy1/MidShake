@@ -1,0 +1,7 @@
+INQUIRE user for string "What is your name? ";
+LET the variable name BE the RESPONSE;
+IN the file "tests/text.txt" WRITE the string "Hello, ";
+IN the file "tests/text.txt" WRITE the value of name;
+IN the file "tests/text.txt" WRITE the string ". This is a file that was edited uding the MidShake";
+
+PROCLAIM the string "Done.";
