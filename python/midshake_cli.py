@@ -103,20 +103,52 @@ def command_tokens(path):
     for t in tokens:
         print(t)
 
+import os
+
 def command_tfind(path):
+    # 1. Check if the file exists
     if not os.path.isfile(path):
         print(f"Error: File not found: {path}")
         return
-
-    with open(path, "r", encoding="utf-8") as f:
+        
+    # 2. Read the file content
+    with open(path, 'r', encoding='utf-8') as f:
         source = f.read()
+        
+    # 3. Tokenize the source code
     tokenizer = Tokenizer(source)
     tokens = tokenizer.tokenize()
+    
+    # 4. Get user input for the target token
+    trequest = input("What token would you like to find? ")
+    
+    # 5. Initialize tracking variables
+    count = 0
+    found_lines = []
+    
+    # Split the original text into lines to track line numbers (1-indexed)
+    lines = source.splitlines()
+    
+    # 6. Search through tokens and match with original lines
+    # (Assuming your Tokenizer objects or tokens have a .value attribute)
+    for token in tokens:
+        # Adjust 'token' to 'token.value' if your Tokenizer returns token objects
+        if token == trequest: 
+            count += 1
+            
+    # Find the line numbers where the raw text/token appears
+    for line_num, line_content in enumerate(lines, start=1):
+        if trequest in line_content:
+            found_lines.append(str(line_num))
+            
+    # 7. Print the final summaries (outside the loop)
+    print(f"'{trequest}' has been found {count} times.")
+    if count > 0:
+        print(f"'{trequest}' found on lines: {', '.join(found_lines)}")
+    else:
+        print(f"'{trequest}' was not found in the file.")
 
-    trequest = input("What token would you like to find")
-
-    for t in tokens:
-        pass
+        
 
 # ------------------------------------------------------------
 # Command: print AST
