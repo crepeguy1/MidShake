@@ -103,6 +103,52 @@ def command_tokens(path):
     for t in tokens:
         print(t)
 
+import os
+
+def command_tfind(path):
+    # 1. Check if the file exists
+    if not os.path.isfile(path):
+        print(f"Error: File not found: {path}")
+        return
+        
+    # 2. Read the file content
+    with open(path, 'r', encoding='utf-8') as f:
+        source = f.read()
+        
+    # 3. Tokenize the source code
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+    
+    # 4. Get user input for the target token
+    trequest = input("What token would you like to find? ")
+    
+    # 5. Initialize tracking variables
+    count = 0
+    found_lines = []
+    
+    # Split the original text into lines to track line numbers (1-indexed)
+    lines = source.splitlines()
+    
+    # 6. Search through tokens and match with original lines
+    # (Assuming your Tokenizer objects or tokens have a .value attribute)
+    for token in tokens:
+        # Adjust 'token' to 'token.value' if your Tokenizer returns token objects
+        if token == trequest: 
+            count += 1
+            
+    # Find the line numbers where the raw text/token appears
+    for line_num, line_content in enumerate(lines, start=1):
+        if trequest in line_content:
+            found_lines.append(str(line_num))
+            
+    # 7. Print the final summaries (outside the loop)
+    print(f"'{trequest}' has been found {count} times.")
+    if count > 0:
+        print(f"'{trequest}' found on lines: {', '.join(found_lines)}")
+    else:
+        print(f"'{trequest}' was not found in the file.")
+
+        
 
 # ------------------------------------------------------------
 # Command: print AST
@@ -138,17 +184,18 @@ def command_help():
     print("MidShake CLI")
     print("")
     print("Usage:")
-    print("  midshake run <file.ms>       Run a MidShake program")
-    print("  midshake tokens <file.ms>    Show tokens")
-    print("  midshake ast <file.ms>       Show AST")
-    print("  midshake contents <file.ms>  Show file contents")
+    print("  midshake run <file.mish>       Run a MidShake program")
+    print("  midshake tokens <file.mish>    Show tokens")
+    print("  midshake tfind <file.mish>     Find tokens")
+    print("  midshake ast <file.mish>       Show AST")
+    print("  midshake contents <file.mish>  Show file contents")
     print("  midshake version             Show version")
     print("  midshake help                Show this help message")
     print("")
     print("Examples:")
-    print("  midshake run examples/hello.ms")
-    print("  midshake tokens examples/full.ms")
-    print("  midshake ast examples/functions.ms")
+    print("  midshake run examples/hello.mish")
+    print("  midshake tokens examples/full.mish")
+    print("  midshake ast examples/functions.mish")
 
 
 # ------------------------------------------------------------
@@ -174,6 +221,16 @@ def main():
         command_tokens(sys.argv[2])
         return 0
 
+        
+        
+    elif command == "tfind":
+
+        if len(sys.argv) < 3:            
+            print("Error: Missing file path.")
+            return
+        command_tfind(sys.argv[2])
+        return 0
+    
     elif command == "ast":
         if len(sys.argv) < 3:
             print("Error: Missing file path.")

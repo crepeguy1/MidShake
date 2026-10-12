@@ -1,6 +1,6 @@
 #include "midshake_runtime.hpp"
 #include "stdlib.hpp"
-using namespace ms;
+using namespace mish;
 
 int main() {
     Environment env;

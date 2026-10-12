@@ -21,7 +21,7 @@ class CppCompiler:
     def compile_program(self, program: Program) -> str:
         # includes and namespace
         self.emit('#include "midshake_runtime.hpp"')
-        self.emit("using namespace ms;")
+        self.emit("using namespace mish;")
         self.emit("")
 
         # function definitions first

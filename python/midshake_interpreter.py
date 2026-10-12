@@ -36,13 +36,13 @@ class Interpreter:
 
         if os.path.isdir(abs_path):
             raise IsADirectoryError(
-                f"Expected a .ms script file, but got a directory: {requested_path}"
+                f"Expected a .mish script file, but got a directory: {requested_path}"
             )
 
         if not os.path.isfile(abs_path):
             raise FileNotFoundError(f"File not found: {requested_path}")
 
-        stdlib_path = os.path.join(os.path.dirname(abs_path), "stdlib.ms")
+        stdlib_path = os.path.join(os.path.dirname(abs_path), "stdlib.mish")
         full_source = ""
 
         # load stdlib if present

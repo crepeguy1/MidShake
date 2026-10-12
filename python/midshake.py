@@ -12,9 +12,21 @@ def run_midshake(code):
         line = lines[i].strip()
 
         # ignore empty lines and comments
-        if not line or line.startswith("^"):
+        if not line
             i += 1
-            continue
+        
+        elif '^' in line:
+            if line.startswith("^"):
+                i += 1
+            ncline, cline = line.split('^', 1)
+    
+            # Do "something" to the characters after
+            # after_modified = after.upper()   Example: Make them uppercase
+            
+            # Put the line back together
+           # new_line = before + '^' + after_modified
+        
+
 
         # LET the variable X BE the number N;
         if line.startswith("LET the variable"):
