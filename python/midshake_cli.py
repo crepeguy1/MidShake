@@ -23,6 +23,7 @@ try:
     from midshake_parser import Parser
     from midshake_runtime import Runtime
     from midshake_interpreter import Interpreter
+    from midshake_compiler import CppCompiler
 except ModuleNotFoundError:
     python_dir = os.path.join(MEIPASS, "python") if MEIPASS else os.path.join(SCRIPT_DIR)
     if os.path.isdir(python_dir):
@@ -32,6 +33,7 @@ except ModuleNotFoundError:
         from midshake_parser import Parser
         from midshake_runtime import Runtime
         from midshake_interpreter import Interpreter
+        from midshake_compiler import CppCompiler
     else:
         raise
 
@@ -39,14 +41,14 @@ except ModuleNotFoundError:
 
 
 # ------------------------------------------------------------
-# Helper: load stdlib.ms automatically
+# Helper: load stdlib.mish automatically
 # ------------------------------------------------------------
 def load_stdlib(interpreter):
     candidates = [
-        os.path.join(os.getcwd(), "stdlib", "stdlib.ms"),
-        os.path.join(PROJECT_ROOT, "stdlib", "stdlib.ms"),
-        os.path.join(SCRIPT_DIR, "stdlib", "stdlib.ms"),
-        os.path.join(MEIPASS, "stdlib", "stdlib.ms") if MEIPASS else "",
+        os.path.join(os.getcwd(), "stdlib", "stdlib.mish"),
+        os.path.join(PROJECT_ROOT, "stdlib", "stdlib.mish"),
+        os.path.join(SCRIPT_DIR, "stdlib", "stdlib.mish"),
+        os.path.join(MEIPASS, "stdlib", "stdlib.mish") if MEIPASS else "",
     ]
     stdlib_path = next((p for p in candidates if p and os.path.isfile(p)), None)
 
@@ -65,7 +67,7 @@ def load_stdlib(interpreter):
 
 
 # ------------------------------------------------------------
-# Command: run .ms file
+# Command: run .mish file
 # ------------------------------------------------------------
 def command_run(path):
     if not os.path.isfile(path):
@@ -84,6 +86,81 @@ def command_run(path):
         return 1
     return 0
 
+
+
+# ------------------------------------------------------------
+# Command: compile .mish file to native executable
+# ------------------------------------------------------------
+def command_compile(path, output_name=None):
+    if not os.path.isfile(path):
+        print(f"Error: File not found: {path}")
+        return
+
+    # 1. Read and parse the MidShake source
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    parser = Parser(tokens)
+    program = parser.parse()
+
+    # 2. Compile to C++ source
+    compiler = CppCompiler()
+    cpp_source = compiler.compile_program(program)
+
+    # 3. Determine output directory and names
+    out_dir = os.path.join(PROJECT_ROOT, "cpp", "output")
+    os.makedirs(out_dir, exist_ok=True)
+
+    base = os.path.splitext(os.path.basename(path))[0]
+    if output_name is None:
+        output_name = base
+
+    cpp_file = os.path.join(out_dir, f"{output_name}.cpp")
+    exe_ext = ".exe"
+    exe_file = os.path.join(out_dir, f"{output_name}{exe_ext}")
+
+    # 4. Write the generated C++ file
+    with open(cpp_file, "w", encoding="utf-8") as f:
+        f.write(cpp_source)
+    print(f"Generated: {cpp_file}")
+
+    # 5. Find the runtime source files
+    cpp_dir = os.path.join(PROJECT_ROOT, "cpp")
+    runtime_cpp = os.path.join(cpp_dir, "midshake_runtime.cpp")
+
+    # 6. Find g++ compiler
+    import shutil
+    gpp = shutil.which("g++")
+    if gpp is None:
+        print("Error: g++ not found in PATH. Install MinGW or MSYS2 to compile C++ output.")
+        return
+
+    # 7. Compile with g++
+    import subprocess
+    cmd = [
+        gpp,
+        "-std=c++17",
+        "-I" + cpp_dir,
+        cpp_file,
+        runtime_cpp,
+        "-o", exe_file
+    ]
+    print(f"Compiling: {' '.join(cmd)}")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        print("Compilation failed:")
+        if result.stderr:
+            print(result.stderr)
+        if result.stdout:
+            print(result.stdout)
+        return 1
+
+    print(f"Success: {exe_file}")
+    return 0
 
 
 # ------------------------------------------------------------
@@ -138,17 +215,19 @@ def command_help():
     print("MidShake CLI")
     print("")
     print("Usage:")
-    print("  midshake run <file.ms>       Run a MidShake program")
-    print("  midshake tokens <file.ms>    Show tokens")
-    print("  midshake ast <file.ms>       Show AST")
-    print("  midshake contents <file.ms>  Show file contents")
+    print("  midshake run <file.mish>       Run a MidShake program (interpreter)")
+    print("  midshake compile <file.mish>   Compile to native executable")
+    print("  midshake tokens <file.mish>    Show tokens")
+    print("  midshake ast <file.mish>       Show AST")
+    print("  midshake contents <file.mish>  Show file contents")
     print("  midshake version             Show version")
     print("  midshake help                Show this help message")
     print("")
     print("Examples:")
-    print("  midshake run examples/hello.ms")
-    print("  midshake tokens examples/full.ms")
-    print("  midshake ast examples/functions.ms")
+    print("  midshake run examples/hello.mish")
+    print("  midshake compile examples/hello.mish")
+    print("  midshake tokens examples/full.mish")
+    print("  midshake ast examples/functions.mish")
 
 
 # ------------------------------------------------------------
@@ -166,6 +245,14 @@ def main():
             print("Error: Missing file path.")
             return
         return command_run(os.path.abspath(sys.argv[2]))
+
+    elif command == "compile":
+        if len(sys.argv) < 3:
+            print("Error: Missing file path.")
+            return
+        path = sys.argv[2]
+        output_name = sys.argv[3] if len(sys.argv) >= 4 else None
+        return command_compile(path, output_name)
 
     elif command == "tokens":
         if len(sys.argv) < 3:

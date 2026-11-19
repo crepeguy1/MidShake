@@ -6,12 +6,12 @@ import os
 def main():
     try:
         # 1. Read MidShake source
-        file_name = input("Enter .ms file name (without extension): ").strip().strip(".")
+        file_name = input("Enter .mish file name (without extension): ").strip().strip(".")
         file_extension = input("Choose file extension: ")
         if not file_name:
             raise ValueError("File name cannot be empty.")
 
-        ms_path = os.path.join("examples", f"{file_name}.ms")
+        ms_path = os.path.join("examples", f"{file_name}.mish")
         if not os.path.isfile(ms_path):
             raise FileNotFoundError(f"Source file not found: {ms_path}")
 

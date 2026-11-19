@@ -296,6 +296,12 @@ class Tokenizer:
             return Token("INQUIRE", (expected_type, question), line_no)
 
 
+        # IMPORT: IMPORT the file "path/to/file.mish";
+        if line.startswith("IMPORT the file"):
+            path = self.extract_after(line, "IMPORT the file", line_no).strip()
+            path = path.strip('"').strip("'").rstrip(";").strip()
+            return Token("IMPORT", path, line_no)
+
         # FILE WRITE: IN the file "path" WRITE <expression>
         if line.startswith("IN the file"):
             path = self.extract_between(line, "IN the file", "WRITE", line_no).strip()

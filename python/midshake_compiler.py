@@ -3,7 +3,7 @@ from midshake_ast import (
     Let, Set, Proclaim, Inquire,
     If, While, Terminate,
     Number, String, Variable, Binary, Response,
-    FunctionDef, Call, Return
+    FunctionDef, Call, Return, Import
 )
 
 
@@ -24,27 +24,148 @@ class CppCompiler:
         self.emit("using namespace ms;")
         self.emit("")
 
-        # function definitions first
-        for section in program.sections:
-            for stmt in section.body:
-                if isinstance(stmt, FunctionDef):
-                    self.compile_function_def(stmt)
+        # Pre-pass: collect all function definitions, resolving imports
+        if not hasattr(self, "_imported_files"):
+            self._imported_files = set()
+
+        all_funcs = self._collect_functions(program)
+        main_stmts = self._collect_main_stmts(program)
+
+        # emit function definitions
+        for func in all_funcs:
+            self.compile_function_def(func)
 
         # main()
         self.emit("int main() {")
         self.indent += 1
         self.emit("Environment env;")
 
-        for section in program.sections:
-            for stmt in section.body:
-                if not isinstance(stmt, FunctionDef):
-                    self.compile_stmt(stmt)
+        for stmt in main_stmts:
+            self.compile_stmt(stmt)
 
         self.emit("return 0;")
         self.indent -= 1
         self.emit("}")
 
         return "\n".join(self.lines)
+
+    def _collect_functions(self, program):
+        """Walk the program (resolving imports) and collect all FunctionDef nodes."""
+        funcs = []
+        for section in program.sections:
+            for stmt in section.body:
+                if isinstance(stmt, FunctionDef):
+                    funcs.append(stmt)
+                elif isinstance(stmt, Import):
+                    imported_funcs = self._import_program(stmt)
+                    if imported_funcs:
+                        funcs.extend(imported_funcs)
+        return funcs
+
+    def _collect_main_stmts(self, program):
+        """Walk the program (resolving imports) and collect non-function statements."""
+        stmts = []
+        for section in program.sections:
+            for stmt in section.body:
+                if isinstance(stmt, FunctionDef):
+                    continue
+                elif isinstance(stmt, Import):
+                    imported_stmts = self._import_main_stmts(stmt)
+                    if imported_stmts:
+                        stmts.extend(imported_stmts)
+                else:
+                    stmts.append(stmt)
+        return stmts
+
+    def _import_program(self, stmt: Import):
+        """Load and parse an imported file, returning its FunctionDef nodes."""
+        import os
+        from midshake_tokenizer import Tokenizer
+        from midshake_parser import Parser
+
+        path = str(stmt.path).strip().strip('"').strip("'")
+        candidates = [
+            os.path.abspath(path),
+            os.path.join(os.getcwd(), path),
+            os.path.join(os.getcwd(), "stdlib", os.path.basename(path)),
+        ]
+        resolved = None
+        for c in candidates:
+            if os.path.isfile(c):
+                resolved = c
+                break
+        if resolved is None:
+            return []
+
+        real_path = os.path.realpath(resolved)
+        if real_path in self._imported_files:
+            return []
+        self._imported_files.add(real_path)
+
+        with open(resolved, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        parser = Parser(tokens)
+        imported_program = parser.parse()
+
+        funcs = []
+        for section in imported_program.sections:
+            for s in section.body:
+                if isinstance(s, FunctionDef):
+                    funcs.append(s)
+                elif isinstance(s, Import):
+                    imported_funcs = self._import_program(s)
+                    if imported_funcs:
+                        funcs.extend(imported_funcs)
+        return funcs
+
+    def _import_main_stmts(self, stmt: Import):
+        """Load and parse an imported file, returning its non-function statements."""
+        import os
+        from midshake_tokenizer import Tokenizer
+        from midshake_parser import Parser
+
+        path = str(stmt.path).strip().strip('"').strip("'")
+        candidates = [
+            os.path.abspath(path),
+            os.path.join(os.getcwd(), path),
+            os.path.join(os.getcwd(), "stdlib", os.path.basename(path)),
+        ]
+        resolved = None
+        for c in candidates:
+            if os.path.isfile(c):
+                resolved = c
+                break
+        if resolved is None:
+            return []
+
+        real_path = os.path.realpath(resolved)
+        if real_path in self._imported_files:
+            return []
+        self._imported_files.add(real_path)
+
+        with open(resolved, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        parser = Parser(tokens)
+        imported_program = parser.parse()
+
+        stmts = []
+        for section in imported_program.sections:
+            for s in section.body:
+                if isinstance(s, FunctionDef):
+                    continue
+                elif isinstance(s, Import):
+                    imported_stmts = self._import_main_stmts(s)
+                    if imported_stmts:
+                        stmts.extend(imported_stmts)
+                else:
+                    stmts.append(s)
+        return stmts
 
     # ------------------------------------------------------------
     # STATEMENTS

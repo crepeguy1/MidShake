@@ -4,7 +4,7 @@ MidShake currently ships with a small, growing standard library. The library is 
 
 ## What is available now
 
-The standard library is defined in `stdlib/stdlib.ms` and provides a few helper functions that are easy to reuse in programs.
+The standard library is defined in `stdlib/stdlib.mish` and provides a few helper functions that are easy to reuse in programs.
 
 ### `println`
 

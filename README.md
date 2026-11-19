@@ -4,7 +4,7 @@ MidShake is a small interpreted programming language implemented in Python and C
 
 ## Overview
 
-MidShake programs are plain text files with the `.ms` extension. The language currently supports variables, input, conditionals, loops, functions, and a small standard library.
+MidShake programs are plain text files with the `.mish` extension. The language currently supports variables, input, conditionals, loops, functions, and a small standard library.
 
 ## Example
 
@@ -15,13 +15,13 @@ PROCLAIM the string "Hello, World!";
 A slightly richer example:
 
 ```
-midshake tokens examples/full.ms
+midshake tokens examples/full.mish
 ```
 
 Show AST:
 
 ```
-midshake ast examples/functions.ms
+midshake ast examples/functions.mish
 ```
 
 Show version:
@@ -58,7 +58,7 @@ PROCLAIM "Hello, " + name
 - Custom tokenizer  
 - AST‑based parser  
 - C++ runtime  
-- Standard library (`stdlib.ms`)  
+- Standard library (`stdlib.mish`)  
 - CLI commands: run, tokens, ast, version  
 - Simple, readable syntax  
 - Cross‑platform source code (Windows executable provided)

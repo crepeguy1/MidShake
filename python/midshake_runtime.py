@@ -6,8 +6,8 @@ from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,
-    Response, FunctionDef, Call, Return, FileReadExpression, 
-    FileWriteStatement
+    Response, FunctionDef, Call, Return, FileReadExpression,
+    FileWriteStatement, Import
 
 )
 
@@ -50,6 +50,53 @@ class Runtime:
                 f"MidShake Runtime Error:\n"
                 f"  The variable '{name}' was never declared with LET."
             )
+
+    # ------------------------------------------------------------
+    # IMPORT
+    # ------------------------------------------------------------
+    def exec_import(self, stmt: Import) -> None:
+        from midshake_tokenizer import Tokenizer
+        from midshake_parser import Parser
+
+        path = str(stmt.path).strip().strip('"').strip("'")
+
+        # resolve relative to the current working directory first,
+        # then relative to the stdlib directory
+        candidates = [
+            os.path.abspath(path),
+            os.path.join(os.getcwd(), path),
+            os.path.join(os.getcwd(), "stdlib", os.path.basename(path)),
+        ]
+
+        resolved = None
+        for c in candidates:
+            if os.path.isfile(c):
+                resolved = c
+                break
+
+        if resolved is None:
+            raise ValueError(
+                f"MidShake Runtime Error:\n"
+                f"  Could not find the file '{path}' for IMPORT."
+            )
+
+        # prevent circular imports by tracking what's been imported
+        if not hasattr(self, "_imported_files"):
+            self._imported_files = set()
+
+        real_path = os.path.realpath(resolved)
+        if real_path in self._imported_files:
+            return  # already imported, skip
+        self._imported_files.add(real_path)
+
+        with open(resolved, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        parser = Parser(tokens)
+        program = parser.parse()
+        self.exec_program(program)
 
     # ------------------------------------------------------------
     # EXPRESSION EVALUATION
@@ -283,4 +330,8 @@ class Runtime:
         # TERMINATE
         elif isinstance(stmt, Terminate):
             self.terminated = True
+
+        # IMPORT
+        elif isinstance(stmt, Import):
+            self.exec_import(stmt)
 

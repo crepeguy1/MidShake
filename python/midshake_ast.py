@@ -112,6 +112,15 @@ class FileWriteStatement(Statement):
     value: Expression
 
 
+# -----------------------------
+# IMPORT / INCLUDE
+# -----------------------------
+
+@dataclass
+class Import(Statement):
+    path: str  # file path to import
+
+
 
 # -----------------------------
 # FUNCTIONS

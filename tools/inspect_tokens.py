@@ -14,6 +14,6 @@ def print_tokens(path):
 if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument('file', nargs='?', default='examples/functions.ms')
+    p.add_argument('file', nargs='?', default='examples/functions.mish')
     args = p.parse_args()
     print_tokens(args.file)
