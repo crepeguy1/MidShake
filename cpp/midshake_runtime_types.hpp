@@ -3,13 +3,14 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 namespace ms {
 
     // -------------------------
     // ValueKind
     // -------------------------
-    enum class ValueKind { Number, String };
+    enum class ValueKind { Number, String, List, Map };
 
     // -------------------------
     // Number
@@ -51,6 +52,21 @@ namespace ms {
     };
 
     // -------------------------
+    // Forward declaration for Value
+    // -------------------------
+    class Value;
+
+    // -------------------------
+    // List (vector of Values)
+    // -------------------------
+    using List = std::vector<Value>;
+
+    // -------------------------
+    // Map (unordered_map of string to Value)
+    // -------------------------
+    using Map = std::unordered_map<std::string, Value>;
+
+    // -------------------------
     // Value (union)
     // -------------------------
     class Value {
@@ -58,13 +74,50 @@ namespace ms {
         ValueKind kind;
         Number num;
         String str;
+        List lst;
+        Map mp;
 
         Value() : kind(ValueKind::Number), num(0) {}
         Value(const Number& n) : kind(ValueKind::Number), num(n) {}
         Value(const String& s) : kind(ValueKind::String), str(s) {}
+        Value(const List& l) : kind(ValueKind::List), lst(l) {}
+        Value(const Map& m) : kind(ValueKind::Map), mp(m) {}
 
         static Value from_double(double d) { return Value(Number(d)); }
         static Value from_string(const std::string& s) { return Value(String(s)); }
+        static Value from_list(const List& l) { return Value(l); }
+        static Value from_map(const Map& m) { return Value(m); }
+
+        // Helper: convert value to string for printing
+        std::string to_string() const {
+            switch (kind) {
+                case ValueKind::Number:
+                    return std::to_string(num.value);
+                case ValueKind::String:
+                    return str.value;
+                case ValueKind::List: {
+                    std::string result = "[";
+                    for (size_t i = 0; i < lst.size(); i++) {
+                        if (i > 0) result += ", ";
+                        result += lst[i].to_string();
+                    }
+                    result += "]";
+                    return result;
+                }
+                case ValueKind::Map: {
+                    std::string result = "{";
+                    bool first = true;
+                    for (const auto& pair : mp) {
+                        if (!first) result += ", ";
+                        result += pair.first + ": " + pair.second.to_string();
+                        first = false;
+                    }
+                    result += "}";
+                    return result;
+                }
+            }
+            return "";
+        }
     };
 
 }

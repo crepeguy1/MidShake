@@ -36,4 +36,26 @@ namespace ms {
     Value inquire_number(const std::string& question);
     Value inquire_string(const std::string& question);
 
+    // -------------------------
+    // String functions
+    // -------------------------
+    Value string_length(const Value& s);
+    Value substring(const Value& s, const Value& start, const Value& end);
+    Value char_at(const Value& s, const Value& index);
+    Value string_split(const Value& s, const Value& delimiter);
+    Value string_trim(const Value& s);
+    Value string_join(const Value& lst, const Value& delimiter);
+
+    // -------------------------
+    // List functions
+    // -------------------------
+    Value list_length(const Value& lst);
+    Value list_append(const Value& lst, const Value& element);
+    Value list_index(const Value& lst, const Value& index);
+
+    // -------------------------
+    // Map functions
+    // -------------------------
+    Value map_get(const Value& mp, const Value& key);
+
 }

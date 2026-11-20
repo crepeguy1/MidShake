@@ -1,4 +1,6 @@
 #include "midshake_runtime.hpp"
+#include <sstream>
+#include <algorithm>
 
 namespace ms {
 
@@ -6,15 +8,7 @@ namespace ms {
     // print
     // -------------------------
     void print(const Value& v) {
-        switch (v.kind) {
-        case ValueKind::Number:
-            std::cout << v.num.value;
-            break;
-        case ValueKind::String:
-            std::cout << v.str.value;
-            break;
-        }
-        std::cout << std::endl;
+        std::cout << v.to_string() << std::endl;
     }
 
     // -------------------------
@@ -35,6 +29,117 @@ namespace ms {
         std::string s;
         std::getline(std::cin >> std::ws, s);
         return Value::from_string(s);
+    }
+
+    // -------------------------
+    // String functions
+    // -------------------------
+    Value string_length(const Value& s) {
+        std::string str = s.to_string();
+        return Value::from_double(static_cast<double>(str.length()));
+    }
+
+    Value substring(const Value& s, const Value& start, const Value& end) {
+        std::string str = s.to_string();
+        size_t startIdx = static_cast<size_t>(start.num.value);
+        size_t endIdx = static_cast<size_t>(end.num.value);
+        if (startIdx > str.length()) startIdx = str.length();
+        if (endIdx > str.length()) endIdx = str.length();
+        return Value::from_string(str.substr(startIdx, endIdx - startIdx));
+    }
+
+    Value char_at(const Value& s, const Value& index) {
+        std::string str = s.to_string();
+        size_t idx = static_cast<size_t>(index.num.value);
+        if (idx >= str.length()) {
+            throw std::runtime_error("Character index out of range");
+        }
+        return Value::from_string(std::string(1, str[idx]));
+    }
+
+    Value string_split(const Value& s, const Value& delimiter) {
+        std::string str = s.to_string();
+        std::string delim = delimiter.to_string();
+        List result;
+        if (delim.empty()) {
+            result.push_back(s);
+            return Value::from_list(result);
+        }
+        size_t start = 0;
+        size_t end = str.find(delim);
+        while (end != std::string::npos) {
+            result.push_back(Value::from_string(str.substr(start, end - start)));
+            start = end + delim.length();
+            end = str.find(delim, start);
+        }
+        result.push_back(Value::from_string(str.substr(start)));
+        return Value::from_list(result);
+    }
+
+    Value string_trim(const Value& s) {
+        std::string str = s.to_string();
+        size_t start = str.find_first_not_of(" \t\n\r");
+        if (start == std::string::npos) return Value::from_string("");
+        size_t end = str.find_last_not_of(" \t\n\r");
+        return Value::from_string(str.substr(start, end - start + 1));
+    }
+
+    Value string_join(const Value& lst, const Value& delimiter) {
+        if (lst.kind != ValueKind::List) {
+            throw std::runtime_error("Expected a list for join");
+        }
+        std::string delim = delimiter.to_string();
+        std::string result;
+        for (size_t i = 0; i < lst.lst.size(); i++) {
+            if (i > 0) result += delim;
+            result += lst.lst[i].to_string();
+        }
+        return Value::from_string(result);
+    }
+
+    // -------------------------
+    // List functions
+    // -------------------------
+    Value list_length(const Value& lst) {
+        if (lst.kind != ValueKind::List) {
+            throw std::runtime_error("Expected a list");
+        }
+        return Value::from_double(static_cast<double>(lst.lst.size()));
+    }
+
+    Value list_append(const Value& lst, const Value& element) {
+        if (lst.kind != ValueKind::List) {
+            throw std::runtime_error("Expected a list");
+        }
+        List result = lst.lst;
+        result.push_back(element);
+        return Value::from_list(result);
+    }
+
+    Value list_index(const Value& lst, const Value& index) {
+        if (lst.kind != ValueKind::List) {
+            throw std::runtime_error("Expected a list");
+        }
+        size_t idx = static_cast<size_t>(index.num.value);
+        if (idx >= lst.lst.size()) {
+            throw std::runtime_error("List index out of range");
+        }
+        return lst.lst[idx];
+    }
+
+    // -------------------------
+    // Map functions
+    // -------------------------
+    Value map_get(const Value& mp, const Value& key) {
+        if (mp.kind != ValueKind::Map) {
+            throw std::runtime_error("Expected a map");
+        }
+        std::string keyStr = key.to_string();
+        auto it = mp.mp.find(keyStr);
+        if (it == mp.mp.end()) {
+            throw std::runtime_error("Key not found in map: " + keyStr);
+        }
+        return it->second;
     }
 
 }

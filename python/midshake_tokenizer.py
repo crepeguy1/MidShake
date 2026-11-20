@@ -2,7 +2,7 @@
 
 import re
 
-from midshake_ast import Number, String, Variable, Binary, Response
+from midshake_ast import Number, String, Variable, Binary, Response, ListLiteral, MapLiteral, ListIndex, MapGet, StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin, ListLength, ListAppend
 
 
 class Token:
@@ -115,6 +115,16 @@ class Tokenizer:
                         statements.append((possible, start_line))
                         current = []
                         start_line = line_no
+                    elif possible.startswith("LET ") or possible.startswith("SET ") or \
+                         possible.startswith("PROCLAIM") or possible.startswith("CALL ") or \
+                         possible.startswith("INQUIRE") or possible.startswith("RETURN") or \
+                         possible.startswith("TERMINATE") or possible.startswith("WHILST ") or \
+                         possible.startswith("IF ") or possible.startswith("IN the file"):
+                        statements.append((possible, line_no))
+                        current = []
+                        start_line = line_no
+                        i += 1
+                        continue
                     else:
                         current.append(' ')
                 i += 1
@@ -420,7 +430,7 @@ class ExpressionParser:
 
         start = self.pos
         idx = self.pos
-        while idx < len(self.text) and self.text[idx] not in "+-*/()":
+        while idx < len(self.text) and self.text[idx] not in "+-*/()[]{},:":
             idx += 1
         return self.text[start:idx].strip()
 
@@ -475,6 +485,14 @@ class ExpressionParser:
                 f"  Expected an expression but found nothing."
             )
 
+        # List literal: [1, 2, 3]
+        if self.current_char() == '[':
+            return self.parse_list_literal()
+
+        # Map literal: {key: value}
+        if self.current_char() == '{':
+            return self.parse_map_literal()
+
         if self.current_char() == '(':
             self.pos += 1
             expr = self.parse_term()
@@ -504,8 +522,173 @@ class ExpressionParser:
         if token.startswith("the answer"):
             self.pos += len("the answer")
             return Response()
-        
 
+        # String functions
+        if token.startswith("the length of"):
+            self.pos += len("the length of")
+            self.skip_whitespace()
+            string_expr = self.parse_variable_name()
+            return StringLength(string_expr)
+
+        if token.startswith("the substring of"):
+            self.pos += len("the substring of")
+            self.skip_whitespace()
+            string_expr = self.parse_variable_name()
+            self.skip_whitespace()
+            # Expect "starting at"
+            if self.text[self.pos:].startswith("starting at"):
+                self.pos += len("starting at")
+                self.skip_whitespace()
+                start_expr = self.parse_number_literal()
+                self.skip_whitespace()
+                # Expect "ending at"
+                if self.text[self.pos:].startswith("ending at"):
+                    self.pos += len("ending at")
+                    self.skip_whitespace()
+                    end_expr = self.parse_number_literal()
+                    return Substring(string_expr, start_expr, end_expr)
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'starting at' after 'the substring of'."
+            )
+
+        if token.startswith("the character at"):
+            self.pos += len("the character at")
+            self.skip_whitespace()
+            index_expr = self.parse_number_literal()
+            self.skip_whitespace()
+            # Expect "in"
+            if self.text[self.pos:].startswith("in"):
+                self.pos += len("in")
+                self.skip_whitespace()
+                string_expr = self.parse_variable_name()
+                return CharAt(string_expr, index_expr)
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'in' after 'the character at'."
+            )
+
+        if token.startswith("the split of"):
+            self.pos += len("the split of")
+            self.skip_whitespace()
+            if not self.is_at_end() and self.current_char() == '"':
+                string_expr = self.parse_string_literal()
+            else:
+                string_expr = self.parse_variable_name()
+            self.skip_whitespace()
+            # Expect "by"
+            if self.text[self.pos:].startswith("by"):
+                self.pos += len("by")
+                self.skip_whitespace()
+                delimiter_expr = self.parse_string_literal()
+                return StringSplit(string_expr, delimiter_expr)
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'by' after 'the split of'."
+            )
+
+        if token.startswith("the trimmed"):
+            self.pos += len("the trimmed")
+            self.skip_whitespace()
+            if not self.is_at_end() and self.current_char() == '"':
+                string_expr = self.parse_string_literal()
+            else:
+                string_expr = self.parse_variable_name()
+            return StringTrim(string_expr)
+
+        if token.startswith("the join of"):
+            self.pos += len("the join of")
+            self.skip_whitespace()
+            list_expr = self.parse_variable_name()
+            self.skip_whitespace()
+            # Expect "with"
+            if self.text[self.pos:].startswith("with"):
+                self.pos += len("with")
+                self.skip_whitespace()
+                delimiter_expr = self.parse_string_literal()
+                return StringJoin(list_expr, delimiter_expr)
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'with' after 'the join of'."
+            )
+
+        # List functions
+        if token.startswith("the size of"):
+            self.pos += len("the size of")
+            self.skip_whitespace()
+            list_expr = self.parse_variable_name()
+            return ListLength(list_expr)
+
+        if token.startswith("the append of"):
+            self.pos += len("the append of")
+            self.skip_whitespace()
+            # Parse the element - could be a number, string, or variable
+            if not self.is_at_end() and self.current_char().isdigit():
+                element_expr = self.parse_number_literal()
+            elif not self.is_at_end() and self.current_char() == '"':
+                element_expr = self.parse_string_literal()
+            else:
+                element_expr = self.parse_primary()
+            self.skip_whitespace()
+            # Expect "to"
+            if self.text[self.pos:].startswith("to"):
+                self.pos += len("to")
+                self.skip_whitespace()
+                list_expr = self.parse_primary()
+                return ListAppend(list_expr, element_expr)
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'to' after 'the append of'."
+            )
+
+        # List index: the item at position N in LIST
+        if token.startswith("the item at"):
+            self.pos += len("the item at")
+            self.skip_whitespace()
+            # Expect "position"
+            if self.text[self.pos:].startswith("position"):
+                self.pos += len("position")
+                self.skip_whitespace()
+                # Parse the index number directly
+                index_expr = self.parse_number_literal()
+                self.skip_whitespace()
+                # Expect "in"
+                if self.text[self.pos:].startswith("in"):
+                    self.pos += len("in")
+                    self.skip_whitespace()
+                    list_expr = self.parse_primary()
+                    return ListIndex(list_expr, index_expr)
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'position' after 'the item at'."
+            )
+
+        # Map get: the value of KEY in MAP
+        if token.startswith("the value of"):
+            # Check if this is a map access: "the value of KEY in MAP"
+            saved_pos = self.pos
+            self.pos += len("the value of")
+            self.skip_whitespace()
+            # Try to parse a key (variable or string)
+            if not self.is_at_end() and self.current_char() == '"':
+                key_expr = self.parse_string_literal()
+                self.skip_whitespace()
+                if self.text[self.pos:].startswith("in"):
+                    self.pos += len("in")
+                    self.skip_whitespace()
+                    map_expr = self.parse_variable_name()
+                    return MapGet(map_expr, key_expr)
+            else:
+                key_expr = self.parse_variable_name()
+                self.skip_whitespace()
+                if self.text[self.pos:].startswith("in"):
+                    self.pos += len("in")
+                    self.skip_whitespace()
+                    map_expr = self.parse_variable_name()
+                    return MapGet(map_expr, key_expr)
+            # Not a map access, restore and parse as variable phrase
+            self.pos = saved_pos
+            return self.parse_variable_phrase()
 
         # FILE READ: the content of the file "path"
         if token.startswith("the content of the file"):
@@ -525,20 +708,28 @@ class ExpressionParser:
         if token.startswith("the number"):
             return self.parse_number_phrase()
 
-        if token.startswith("the value of"):
-            return self.parse_variable_phrase()
-
         if token.startswith("the string"):
             self.pos += len("the string")
             self.skip_whitespace()
-            token = self.current_token
-            if token.startswith('"') and token.endswith('"'):
+            # Check if what follows is a string literal or a variable name
+            if not self.is_at_end() and self.current_char() == '"':
                 return self.parse_string_literal()
-            raise SyntaxError(
-                f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string after 'the string'"
-            )
+            else:
+                # It's a variable name like "the string name"
+                return self.parse_variable_name()
+
+        if token.startswith("the list"):
+            self.pos += len("the list")
+            self.skip_whitespace()
+            return self.parse_variable_name()
+
+        if token.startswith("the map"):
+            self.pos += len("the map")
+            self.skip_whitespace()
+            return self.parse_variable_name()
 
         if token.replace(" ", "").isalpha():
+            self.pos += len(token)
             return Variable(token)
 
         raise SyntaxError(
@@ -546,12 +737,115 @@ class ExpressionParser:
         )
 
     # -----------------------------
+    # LIST LITERAL: [1, 2, 3]
+    # -----------------------------
+    def parse_list_literal(self):
+        self.pos += 1  # skip '['
+        elements = []
+        self.skip_whitespace()
+        if self.current_char() == ']':
+            self.pos += 1
+            return ListLiteral(elements)
+        while True:
+            elem = self.parse_term()
+            elements.append(elem)
+            self.skip_whitespace()
+            if self.current_char() == ',':
+                self.pos += 1
+                self.skip_whitespace()
+                if self.current_char() == ']':
+                    self.pos += 1
+                    return ListLiteral(elements)
+            elif self.current_char() == ']':
+                self.pos += 1
+                return ListLiteral(elements)
+            else:
+                raise ValueError(
+                    f"MidShake Syntax Error (line {self.line_no}):\n"
+                    f"  Expected ',' or ']' in list literal."
+                )
+
+    # -----------------------------
+    # MAP LITERAL: {key: value, key: value}
+    # -----------------------------
+    def parse_map_literal(self):
+        self.pos += 1  # skip '{'
+        keys = []
+        values = []
+        self.skip_whitespace()
+        if self.current_char() == '}':
+            self.pos += 1
+            return MapLiteral(keys, values)
+        while True:
+            # Parse key (string or variable name)
+            self.skip_whitespace()
+            key_token = self.current_token
+            if key_token.startswith('"') and key_token.endswith('"'):
+                key_expr = self.parse_string_literal()
+            elif key_token.replace(" ", "").isalpha():
+                key_expr = Variable(key_token)
+                self.pos += len(key_token)
+            else:
+                raise ValueError(
+                    f"MidShake Syntax Error (line {self.line_no}):\n"
+                    f"  Expected a key in map literal."
+                )
+            keys.append(key_expr)
+            self.skip_whitespace()
+            # Expect ':'
+            if self.current_char() != ':':
+                raise ValueError(
+                    f"MidShake Syntax Error (line {self.line_no}):\n"
+                    f"  Expected ':' after key in map literal."
+                )
+            self.pos += 1
+            self.skip_whitespace()
+            # Parse value
+            val_expr = self.parse_term()
+            values.append(val_expr)
+            self.skip_whitespace()
+            if self.current_char() == ',':
+                self.pos += 1
+                self.skip_whitespace()
+                if self.current_char() == '}':
+                    self.pos += 1
+                    return MapLiteral(keys, values)
+            elif self.current_char() == '}':
+                self.pos += 1
+                return MapLiteral(keys, values)
+            else:
+                raise ValueError(
+                    f"MidShake Syntax Error (line {self.line_no}):\n"
+                    f"  Expected ',' or '}}' in map literal."
+                )
+
+    # -----------------------------
     # NUMBER / VARIABLE / STRING
     # -----------------------------
     def parse_number_phrase(self):
         self.pos += len("the number")
         self.skip_whitespace()
-        return self.parse_number_literal()
+        # Check if what follows is a number literal or a variable name
+        if not self.is_at_end() and self.current_char().isdigit():
+            return self.parse_number_literal()
+        elif not self.is_at_end() and self.current_char() == '-':
+            return self.parse_number_literal()
+        else:
+            # It's a variable name like "the number first"
+            return self.parse_variable_name()
+
+    def parse_variable_name(self):
+        self.skip_whitespace()
+        start = self.pos
+        while not self.is_at_end() and self.current_char() not in "+-*/()[]{},: ":
+            self.pos += 1
+        name = self.text[start:self.pos].strip()
+        if not name:
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected a variable name."
+            )
+        return Variable(name)
 
     def parse_variable_phrase(self):
         if self.text[self.pos:].startswith("the value of"):

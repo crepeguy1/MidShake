@@ -7,8 +7,10 @@ from midshake_ast import (
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,
     Response, FunctionDef, Call, Return, FileReadExpression, 
-    FileWriteStatement
-
+    FileWriteStatement,
+    ListLiteral, MapLiteral, ListIndex, MapGet,
+    StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
+    ListLength, ListAppend
 )
 
 
@@ -108,6 +110,163 @@ class Runtime:
                     f"  Details: {e}"
                 )
 
+        # List literal: [1, 2, 3]
+        if isinstance(expr, ListLiteral):
+            return [self.eval_expr(e) for e in expr.elements]
+
+        # Map literal: {key: value}
+        if isinstance(expr, MapLiteral):
+            result = {}
+            for k, v in zip(expr.keys, expr.values):
+                # Map keys that are bare identifiers are treated as string keys
+                if isinstance(k, Variable):
+                    key = k.name
+                elif isinstance(k, String):
+                    key = k.value
+                else:
+                    key = self.eval_expr(k)
+                    if isinstance(key, (int, float)):
+                        key = str(key)
+                    elif not isinstance(key, str):
+                        key = str(key)
+                result[key] = self.eval_expr(v)
+            return result
+
+        # List index: the item at position N in LIST
+        if isinstance(expr, ListIndex):
+            lst = self.eval_expr(expr.list_expr)
+            idx = self.eval_expr(expr.index_expr)
+            if not isinstance(lst, list):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a list but got a different type."
+                )
+            if not isinstance(idx, int):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  List index must be a number."
+                )
+            try:
+                return lst[idx]
+            except IndexError:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  List index {idx} is out of range."
+                )
+
+        # Map get: the value of KEY in MAP
+        if isinstance(expr, MapGet):
+            mapping = self.eval_expr(expr.map_expr)
+            # Map keys that are bare identifiers are treated as string keys
+            if isinstance(expr.key_expr, Variable):
+                key = expr.key_expr.name
+            elif isinstance(expr.key_expr, String):
+                key = expr.key_expr.value
+            else:
+                key = self.eval_expr(expr.key_expr)
+                if isinstance(key, (int, float)):
+                    key = str(key)
+                elif not isinstance(key, str):
+                    key = str(key)
+            if not isinstance(mapping, dict):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a map but got a different type."
+                )
+            if key not in mapping:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Key '{key}' not found in map."
+                )
+            return mapping[key]
+
+        # String length: the length of STRING
+        if isinstance(expr, StringLength):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                s = str(s)
+            return len(s)
+
+        # Substring: the substring of STRING starting at START ending at END
+        if isinstance(expr, Substring):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                s = str(s)
+            start = self.eval_expr(expr.start_expr)
+            end = self.eval_expr(expr.end_expr)
+            if not isinstance(start, int):
+                start = int(start)
+            if not isinstance(end, int):
+                end = int(end)
+            return s[start:end]
+
+        # Char at: the character at INDEX in STRING
+        if isinstance(expr, CharAt):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                s = str(s)
+            idx = self.eval_expr(expr.index_expr)
+            if not isinstance(idx, int):
+                idx = int(idx)
+            try:
+                return s[idx]
+            except IndexError:
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Character index {idx} is out of range for string of length {len(s)}."
+                )
+
+        # String split: the split of STRING by DELIMITER
+        if isinstance(expr, StringSplit):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                s = str(s)
+            delimiter = self.eval_expr(expr.delimiter_expr)
+            if not isinstance(delimiter, str):
+                delimiter = str(delimiter)
+            return s.split(delimiter)
+
+        # String trim: the trimmed STRING
+        if isinstance(expr, StringTrim):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                s = str(s)
+            return s.strip()
+
+        # String join: the join of LIST with DELIMITER
+        if isinstance(expr, StringJoin):
+            lst = self.eval_expr(expr.list_expr)
+            delimiter = self.eval_expr(expr.delimiter_expr)
+            if not isinstance(lst, list):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a list for join but got a different type."
+                )
+            if not isinstance(delimiter, str):
+                delimiter = str(delimiter)
+            return delimiter.join(str(item) for item in lst)
+
+        # List length: the size of LIST
+        if isinstance(expr, ListLength):
+            lst = self.eval_expr(expr.list_expr)
+            if not isinstance(lst, list):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a list but got a different type."
+                )
+            return len(lst)
+
+        # List append: the append of ELEMENT to LIST
+        if isinstance(expr, ListAppend):
+            lst = self.eval_expr(expr.list_expr)
+            elem = self.eval_expr(expr.element_expr)
+            if not isinstance(lst, list):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a list but got a different type."
+                )
+            return lst + [elem]
+
         raise ValueError(
             f"MidShake Runtime Error:\n"
             f"  Unknown expression type: {expr}"
@@ -130,7 +289,13 @@ class Runtime:
         # PROCLAIM
         elif isinstance(stmt, Proclaim):
             value = self.eval_expr(stmt.value)
-            print(value)
+            if isinstance(value, list):
+                print("[" + ", ".join(str(item) for item in value) + "]")
+            elif isinstance(value, dict):
+                items = ", ".join(f"{k}: {v}" for k, v in value.items())
+                print("{" + items + "}")
+            else:
+                print(value)
 
         # IF
         elif isinstance(stmt, If):

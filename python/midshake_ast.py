@@ -38,6 +38,87 @@ class Response(Expression):
     pass
 
 # -----------------------------
+# COLLECTION EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class ListLiteral(Expression):
+    elements: List[Expression]
+
+
+@dataclass
+class MapLiteral(Expression):
+    keys: List[Expression]
+    values: List[Expression]
+
+
+@dataclass
+class ListIndex(Expression):
+    list_expr: Expression
+    index_expr: Expression
+
+
+@dataclass
+class MapGet(Expression):
+    map_expr: Expression
+    key_expr: Expression
+
+
+# -----------------------------
+# STRING FUNCTION EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class StringLength(Expression):
+    string_expr: Expression
+
+
+@dataclass
+class Substring(Expression):
+    string_expr: Expression
+    start_expr: Expression
+    end_expr: Expression
+
+
+@dataclass
+class CharAt(Expression):
+    string_expr: Expression
+    index_expr: Expression
+
+
+@dataclass
+class StringSplit(Expression):
+    string_expr: Expression
+    delimiter_expr: Expression
+
+
+@dataclass
+class StringTrim(Expression):
+    string_expr: Expression
+
+
+@dataclass
+class StringJoin(Expression):
+    list_expr: Expression
+    delimiter_expr: Expression
+
+
+# -----------------------------
+# LIST FUNCTION EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class ListLength(Expression):
+    list_expr: Expression
+
+
+@dataclass
+class ListAppend(Expression):
+    list_expr: Expression
+    element_expr: Expression
+
+
+# -----------------------------
 # FILE I/O EXPRESSIONS
 # -----------------------------
 
