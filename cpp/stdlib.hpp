@@ -26,6 +26,7 @@ Value repeat(Environment& env, const std::vector<Value>& args) {
     env.set("message", args[1]);
     env.set("i", Value::from_double(0));
     while (Value(Number((env.get("i").num.value < env.get("count").num.value) ? 1 : 0)).num.value != 0) {
+        print(env.get("message"));
         env.set("i", Value(Number(env.get("i").num.value + Value::from_double(1).num.value)));
     }
     return Value::from_double(0);

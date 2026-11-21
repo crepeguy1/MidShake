@@ -2,7 +2,7 @@
 
 import re
 
-from midshake_ast import Number, String, Variable, Binary, Response, ListLiteral, MapLiteral, ListIndex, MapGet, StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin, ListLength, ListAppend
+from midshake_ast import Number, String, Variable, Binary, Response
 
 
 class Token:
@@ -111,20 +111,27 @@ class Tokenizer:
                         i += 1
                         continue
 
-                    if possible in standalone:
-                        statements.append((possible, start_line))
+                    # Check if the accumulated text starts a new statement type
+                    # that should be separated from the previous line
+                    stmt_keywords = [
+                        "PROCLAIM", "LET the variable", "SET the variable",
+                        "CALL", "IF the value of", "WHILST the value of",
+                        "INQUIRE", "RETURN", "DEFINE function",
+                    ]
+                    is_new_stmt = False
+                    for kw in stmt_keywords:
+                        if possible.startswith(kw):
+                            is_new_stmt = True
+                            break
+                    
+                    if possible in standalone or is_new_stmt:
+                        # Flush any previously accumulated text (e.g., WHILST ... DO header)
+                        prev = ''.join(current).strip()
+                        if prev and prev != possible:
+                            statements.append((prev, start_line))
+                        statements.append((possible, line_no - 1))
                         current = []
                         start_line = line_no
-                    elif possible.startswith("LET ") or possible.startswith("SET ") or \
-                         possible.startswith("PROCLAIM") or possible.startswith("CALL ") or \
-                         possible.startswith("INQUIRE") or possible.startswith("RETURN") or \
-                         possible.startswith("TERMINATE") or possible.startswith("WHILST ") or \
-                         possible.startswith("IF ") or possible.startswith("IN the file"):
-                        statements.append((possible, line_no))
-                        current = []
-                        start_line = line_no
-                        i += 1
-                        continue
                     else:
                         current.append(' ')
                 i += 1
@@ -306,6 +313,12 @@ class Tokenizer:
             return Token("INQUIRE", (expected_type, question), line_no)
 
 
+        # IMPORT: IMPORT the file "path/to/file.mish";
+        if line.startswith("IMPORT the file"):
+            path = self.extract_after(line, "IMPORT the file", line_no).strip()
+            path = path.strip('"').strip("'").rstrip(";").strip()
+            return Token("IMPORT", path, line_no)
+
         # FILE WRITE: IN the file "path" WRITE <expression>
         if line.startswith("IN the file"):
             path = self.extract_between(line, "IN the file", "WRITE", line_no).strip()
@@ -485,14 +498,6 @@ class ExpressionParser:
                 f"  Expected an expression but found nothing."
             )
 
-        # List literal: [1, 2, 3]
-        if self.current_char() == '[':
-            return self.parse_list_literal()
-
-        # Map literal: {key: value}
-        if self.current_char() == '{':
-            return self.parse_map_literal()
-
         if self.current_char() == '(':
             self.pos += 1
             expr = self.parse_term()
@@ -509,6 +514,14 @@ class ExpressionParser:
             self.pos += 1
             return self.parse_primary()
 
+        # List literal: [1, 2, 3]
+        if self.current_char() == '[':
+            return self.parse_list_literal()
+
+        # Map literal: {key: value, key: value}
+        if self.current_char() == '{':
+            return self.parse_map_literal()
+
         token = self.current_token
 
         if token == "RESPONSE":
@@ -523,11 +536,22 @@ class ExpressionParser:
             self.pos += len("the answer")
             return Response()
 
+
+        # FILE READ: the content of the file "path"
+        if token.startswith("the content of the file"):
+            self.pos += len("the content of the file")
+            self.skip_whitespace()
+            # Expect a string literal
+            string_expr = self.parse_string_literal()
+            from midshake_ast import FileReadExpression
+            return FileReadExpression(string_expr.value)
+
         # String functions
         if token.startswith("the length of"):
             self.pos += len("the length of")
             self.skip_whitespace()
             string_expr = self.parse_variable_name()
+            from midshake_ast import StringLength
             return StringLength(string_expr)
 
         if token.startswith("the substring of"):
@@ -546,6 +570,7 @@ class ExpressionParser:
                     self.pos += len("ending at")
                     self.skip_whitespace()
                     end_expr = self.parse_number_literal()
+                    from midshake_ast import Substring
                     return Substring(string_expr, start_expr, end_expr)
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
@@ -562,6 +587,7 @@ class ExpressionParser:
                 self.pos += len("in")
                 self.skip_whitespace()
                 string_expr = self.parse_variable_name()
+                from midshake_ast import CharAt
                 return CharAt(string_expr, index_expr)
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
@@ -581,6 +607,7 @@ class ExpressionParser:
                 self.pos += len("by")
                 self.skip_whitespace()
                 delimiter_expr = self.parse_string_literal()
+                from midshake_ast import StringSplit
                 return StringSplit(string_expr, delimiter_expr)
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
@@ -594,6 +621,7 @@ class ExpressionParser:
                 string_expr = self.parse_string_literal()
             else:
                 string_expr = self.parse_variable_name()
+            from midshake_ast import StringTrim
             return StringTrim(string_expr)
 
         if token.startswith("the join of"):
@@ -606,6 +634,7 @@ class ExpressionParser:
                 self.pos += len("with")
                 self.skip_whitespace()
                 delimiter_expr = self.parse_string_literal()
+                from midshake_ast import StringJoin
                 return StringJoin(list_expr, delimiter_expr)
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
@@ -617,6 +646,7 @@ class ExpressionParser:
             self.pos += len("the size of")
             self.skip_whitespace()
             list_expr = self.parse_variable_name()
+            from midshake_ast import ListLength
             return ListLength(list_expr)
 
         if token.startswith("the append of"):
@@ -634,14 +664,14 @@ class ExpressionParser:
             if self.text[self.pos:].startswith("to"):
                 self.pos += len("to")
                 self.skip_whitespace()
-                list_expr = self.parse_primary()
-                return ListAppend(list_expr, element_expr)
+                list_expr = self.parse_variable_name()
+                from midshake_ast import ListAppend
+                return ListAppend(element_expr, list_expr)
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
                 f"  Expected 'to' after 'the append of'."
             )
 
-        # List index: the item at position N in LIST
         if token.startswith("the item at"):
             self.pos += len("the item at")
             self.skip_whitespace()
@@ -656,16 +686,16 @@ class ExpressionParser:
                 if self.text[self.pos:].startswith("in"):
                     self.pos += len("in")
                     self.skip_whitespace()
-                    list_expr = self.parse_primary()
-                    return ListIndex(list_expr, index_expr)
+                    list_expr = self.parse_variable_name()
+                    from midshake_ast import ListGet
+                    return ListGet(list_expr, index_expr)
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
                 f"  Expected 'position' after 'the item at'."
             )
 
-        # Map get: the value of KEY in MAP
+        # Map functions: the value of KEY in MAP
         if token.startswith("the value of"):
-            # Check if this is a map access: "the value of KEY in MAP"
             saved_pos = self.pos
             self.pos += len("the value of")
             self.skip_whitespace()
@@ -677,6 +707,7 @@ class ExpressionParser:
                     self.pos += len("in")
                     self.skip_whitespace()
                     map_expr = self.parse_variable_name()
+                    from midshake_ast import MapGet
                     return MapGet(map_expr, key_expr)
             else:
                 key_expr = self.parse_variable_name()
@@ -685,19 +716,11 @@ class ExpressionParser:
                     self.pos += len("in")
                     self.skip_whitespace()
                     map_expr = self.parse_variable_name()
+                    from midshake_ast import MapGet
                     return MapGet(map_expr, key_expr)
             # Not a map access, restore and parse as variable phrase
             self.pos = saved_pos
             return self.parse_variable_phrase()
-
-        # FILE READ: the content of the file "path"
-        if token.startswith("the content of the file"):
-            self.pos += len("the content of the file")
-            self.skip_whitespace()
-            # Expect a string literal
-            string_expr = self.parse_string_literal()
-            from python.midshake_ast import FileReadExpression
-            return FileReadExpression(string_expr.value)
 
         if token.isdigit() or (token.startswith('-') and token[1:].isdigit()):
             return self.parse_number_literal()
@@ -736,88 +759,71 @@ class ExpressionParser:
             f"MidShake Syntax Error (line {self.line_no}): Unexpected token '{token}'"
         )
 
-    # -----------------------------
-    # LIST LITERAL: [1, 2, 3]
-    # -----------------------------
     def parse_list_literal(self):
+        """Parse [elem1, elem2, ...]"""
         self.pos += 1  # skip '['
+        from midshake_ast import ListLiteral
         elements = []
         self.skip_whitespace()
-        if self.current_char() == ']':
-            self.pos += 1
-            return ListLiteral(elements)
-        while True:
+        while not self.is_at_end() and self.current_char() != ']':
             elem = self.parse_term()
             elements.append(elem)
             self.skip_whitespace()
             if self.current_char() == ',':
                 self.pos += 1
                 self.skip_whitespace()
-                if self.current_char() == ']':
-                    self.pos += 1
-                    return ListLiteral(elements)
-            elif self.current_char() == ']':
-                self.pos += 1
-                return ListLiteral(elements)
-            else:
-                raise ValueError(
-                    f"MidShake Syntax Error (line {self.line_no}):\n"
-                    f"  Expected ',' or ']' in list literal."
-                )
+        if self.is_at_end():
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected ']'"
+            )
+        self.pos += 1  # skip ']'
+        return ListLiteral(elements)
 
-    # -----------------------------
-    # MAP LITERAL: {key: value, key: value}
-    # -----------------------------
     def parse_map_literal(self):
+        """Parse {key: value, key: value, ...}"""
         self.pos += 1  # skip '{'
+        from midshake_ast import MapLiteral
         keys = []
         values = []
         self.skip_whitespace()
-        if self.current_char() == '}':
-            self.pos += 1
-            return MapLiteral(keys, values)
-        while True:
-            # Parse key (string or variable name)
+        while not self.is_at_end() and self.current_char() != '}':
+            # Parse key (bare identifier or string)
             self.skip_whitespace()
-            key_token = self.current_token
-            if key_token.startswith('"') and key_token.endswith('"'):
-                key_expr = self.parse_string_literal()
-            elif key_token.replace(" ", "").isalpha():
-                key_expr = Variable(key_token)
-                self.pos += len(key_token)
+            if self.current_char() == '"':
+                key = self.parse_string_literal()
             else:
-                raise ValueError(
-                    f"MidShake Syntax Error (line {self.line_no}):\n"
-                    f"  Expected a key in map literal."
-                )
-            keys.append(key_expr)
+                # Bare identifier as key
+                start = self.pos
+                while not self.is_at_end() and self.current_char() not in ":,} ":
+                    self.pos += 1
+                key_name = self.text[start:self.pos].strip()
+                from midshake_ast import Variable
+                key = Variable(key_name)
             self.skip_whitespace()
             # Expect ':'
             if self.current_char() != ':':
                 raise ValueError(
                     f"MidShake Syntax Error (line {self.line_no}):\n"
-                    f"  Expected ':' after key in map literal."
+                    f"  Expected ':' in map literal."
                 )
             self.pos += 1
             self.skip_whitespace()
             # Parse value
-            val_expr = self.parse_term()
-            values.append(val_expr)
+            value = self.parse_term()
+            keys.append(key)
+            values.append(value)
             self.skip_whitespace()
             if self.current_char() == ',':
                 self.pos += 1
                 self.skip_whitespace()
-                if self.current_char() == '}':
-                    self.pos += 1
-                    return MapLiteral(keys, values)
-            elif self.current_char() == '}':
-                self.pos += 1
-                return MapLiteral(keys, values)
-            else:
-                raise ValueError(
-                    f"MidShake Syntax Error (line {self.line_no}):\n"
-                    f"  Expected ',' or '}}' in map literal."
-                )
+        if self.is_at_end():
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected '}}'"
+            )
+        self.pos += 1  # skip '}'
+        return MapLiteral(keys, values)
 
     # -----------------------------
     # NUMBER / VARIABLE / STRING

@@ -6,11 +6,10 @@ from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Number, String, Variable, Binary, Inquire,
-    Response, FunctionDef, Call, Return, FileReadExpression, 
-    FileWriteStatement,
-    ListLiteral, MapLiteral, ListIndex, MapGet,
-    StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
-    ListLength, ListAppend
+    Response, FunctionDef, Call, Return, FileReadExpression,
+    FileWriteStatement, Import,
+    ListLiteral, MapLiteral, ListGet, MapGet, ListAppend, ListLength,
+    StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin
 )
 
 
@@ -52,6 +51,53 @@ class Runtime:
                 f"MidShake Runtime Error:\n"
                 f"  The variable '{name}' was never declared with LET."
             )
+
+    # ------------------------------------------------------------
+    # IMPORT
+    # ------------------------------------------------------------
+    def exec_import(self, stmt: Import) -> None:
+        from midshake_tokenizer import Tokenizer
+        from midshake_parser import Parser
+
+        path = str(stmt.path).strip().strip('"').strip("'")
+
+        # resolve relative to the current working directory first,
+        # then relative to the stdlib directory
+        candidates = [
+            os.path.abspath(path),
+            os.path.join(os.getcwd(), path),
+            os.path.join(os.getcwd(), "stdlib", os.path.basename(path)),
+        ]
+
+        resolved = None
+        for c in candidates:
+            if os.path.isfile(c):
+                resolved = c
+                break
+
+        if resolved is None:
+            raise ValueError(
+                f"MidShake Runtime Error:\n"
+                f"  Could not find the file '{path}' for IMPORT."
+            )
+
+        # prevent circular imports by tracking what's been imported
+        if not hasattr(self, "_imported_files"):
+            self._imported_files = set()
+
+        real_path = os.path.realpath(resolved)
+        if real_path in self._imported_files:
+            return  # already imported, skip
+        self._imported_files.add(real_path)
+
+        with open(resolved, "r", encoding="utf-8") as f:
+            source = f.read()
+
+        tokenizer = Tokenizer(source)
+        tokens = tokenizer.tokenize()
+        parser = Parser(tokens)
+        program = parser.parse()
+        self.exec_program(program)
 
     # ------------------------------------------------------------
     # EXPRESSION EVALUATION
@@ -110,11 +156,11 @@ class Runtime:
                     f"  Details: {e}"
                 )
 
-        # List literal: [1, 2, 3]
+        # List literal
         if isinstance(expr, ListLiteral):
             return [self.eval_expr(e) for e in expr.elements]
 
-        # Map literal: {key: value}
+        # Map literal
         if isinstance(expr, MapLiteral):
             result = {}
             for k, v in zip(expr.keys, expr.values):
@@ -132,8 +178,8 @@ class Runtime:
                 result[key] = self.eval_expr(v)
             return result
 
-        # List index: the item at position N in LIST
-        if isinstance(expr, ListIndex):
+        # List get: the item at position N in LIST
+        if isinstance(expr, ListGet):
             lst = self.eval_expr(expr.list_expr)
             idx = self.eval_expr(expr.index_expr)
             if not isinstance(lst, list):
@@ -141,18 +187,33 @@ class Runtime:
                     f"MidShake Runtime Error:\n"
                     f"  Expected a list but got a different type."
                 )
-            if not isinstance(idx, int):
+            if idx < 0 or idx >= len(lst):
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
-                    f"  List index must be a number."
+                    f"  Index {idx} out of range for list of size {len(lst)}."
                 )
-            try:
-                return lst[idx]
-            except IndexError:
+            return lst[idx]
+
+        # List append: the append of X to LIST
+        if isinstance(expr, ListAppend):
+            lst = self.eval_expr(expr.list_expr)
+            elem = self.eval_expr(expr.element_expr)
+            if not isinstance(lst, list):
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
-                    f"  List index {idx} is out of range."
+                    f"  Expected a list but got a different type."
                 )
+            return lst + [elem]
+
+        # List length: the size of LIST
+        if isinstance(expr, ListLength):
+            lst = self.eval_expr(expr.list_expr)
+            if not isinstance(lst, list):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a list but got a different type."
+                )
+            return len(lst)
 
         # Map get: the value of KEY in MAP
         if isinstance(expr, MapGet):
@@ -184,88 +245,71 @@ class Runtime:
         if isinstance(expr, StringLength):
             s = self.eval_expr(expr.string_expr)
             if not isinstance(s, str):
-                s = str(s)
-            return len(s)
-
-        # Substring: the substring of STRING starting at START ending at END
-        if isinstance(expr, Substring):
-            s = self.eval_expr(expr.string_expr)
-            if not isinstance(s, str):
-                s = str(s)
-            start = self.eval_expr(expr.start_expr)
-            end = self.eval_expr(expr.end_expr)
-            if not isinstance(start, int):
-                start = int(start)
-            if not isinstance(end, int):
-                end = int(end)
-            return s[start:end]
-
-        # Char at: the character at INDEX in STRING
-        if isinstance(expr, CharAt):
-            s = self.eval_expr(expr.string_expr)
-            if not isinstance(s, str):
-                s = str(s)
-            idx = self.eval_expr(expr.index_expr)
-            if not isinstance(idx, int):
-                idx = int(idx)
-            try:
-                return s[idx]
-            except IndexError:
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
-                    f"  Character index {idx} is out of range for string of length {len(s)}."
+                    f"  Expected a string but got a different type."
                 )
+            return len(s)
+
+        # Substring: the substring of STRING starting at S ending at E
+        if isinstance(expr, Substring):
+            s = self.eval_expr(expr.string_expr)
+            start = self.eval_expr(expr.start_expr)
+            end = self.eval_expr(expr.end_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return s[start:end]
+
+        # Character at: the character at N in STRING
+        if isinstance(expr, CharAt):
+            s = self.eval_expr(expr.string_expr)
+            idx = self.eval_expr(expr.index_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            if idx < 0 or idx >= len(s):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Index {idx} out of range for string of length {len(s)}."
+                )
+            return s[idx]
 
         # String split: the split of STRING by DELIMITER
         if isinstance(expr, StringSplit):
             s = self.eval_expr(expr.string_expr)
+            delim = self.eval_expr(expr.delimiter_expr)
             if not isinstance(s, str):
-                s = str(s)
-            delimiter = self.eval_expr(expr.delimiter_expr)
-            if not isinstance(delimiter, str):
-                delimiter = str(delimiter)
-            return s.split(delimiter)
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return s.split(str(delim))
 
         # String trim: the trimmed STRING
         if isinstance(expr, StringTrim):
             s = self.eval_expr(expr.string_expr)
             if not isinstance(s, str):
-                s = str(s)
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
             return s.strip()
 
         # String join: the join of LIST with DELIMITER
         if isinstance(expr, StringJoin):
             lst = self.eval_expr(expr.list_expr)
-            delimiter = self.eval_expr(expr.delimiter_expr)
-            if not isinstance(lst, list):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Expected a list for join but got a different type."
-                )
-            if not isinstance(delimiter, str):
-                delimiter = str(delimiter)
-            return delimiter.join(str(item) for item in lst)
-
-        # List length: the size of LIST
-        if isinstance(expr, ListLength):
-            lst = self.eval_expr(expr.list_expr)
+            delim = self.eval_expr(expr.delimiter_expr)
             if not isinstance(lst, list):
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
                     f"  Expected a list but got a different type."
                 )
-            return len(lst)
-
-        # List append: the append of ELEMENT to LIST
-        if isinstance(expr, ListAppend):
-            lst = self.eval_expr(expr.list_expr)
-            elem = self.eval_expr(expr.element_expr)
-            if not isinstance(lst, list):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Expected a list but got a different type."
-                )
-            return lst + [elem]
+            return str(delim).join(str(item) for item in lst)
 
         raise ValueError(
             f"MidShake Runtime Error:\n"
@@ -289,13 +333,7 @@ class Runtime:
         # PROCLAIM
         elif isinstance(stmt, Proclaim):
             value = self.eval_expr(stmt.value)
-            if isinstance(value, list):
-                print("[" + ", ".join(str(item) for item in value) + "]")
-            elif isinstance(value, dict):
-                items = ", ".join(f"{k}: {v}" for k, v in value.items())
-                print("{" + items + "}")
-            else:
-                print(value)
+            print(value)
 
         # IF
         elif isinstance(stmt, If):
@@ -448,4 +486,8 @@ class Runtime:
         # TERMINATE
         elif isinstance(stmt, Terminate):
             self.terminated = True
+
+        # IMPORT
+        elif isinstance(stmt, Import):
+            self.exec_import(stmt)
 

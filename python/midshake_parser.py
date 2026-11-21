@@ -4,7 +4,7 @@ from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
-    Call, FunctionDef, Return, FileWriteStatement
+    Call, FunctionDef, Return, FileWriteStatement, Import
 )
 
 
@@ -117,6 +117,11 @@ class Parser:
             self.advance()
             return FileWriteStatement(path, expr)
 
+        # IMPORT
+        if tok.type == "IMPORT":
+            path = tok.value
+            self.advance()
+            return Import(path)
 
         # RETURN
         if tok.type == "RETURN":

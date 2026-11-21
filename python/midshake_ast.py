@@ -38,6 +38,21 @@ class Response(Expression):
     pass
 
 # -----------------------------
+# FILE I/O EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class FileReadExpression(Expression):
+    path: str
+
+@dataclass
+class FileWriteNode:
+    def __init__(self, path, expr):
+        self.path = path
+        self.expr = expr
+
+
+# -----------------------------
 # COLLECTION EXPRESSIONS
 # -----------------------------
 
@@ -53,7 +68,7 @@ class MapLiteral(Expression):
 
 
 @dataclass
-class ListIndex(Expression):
+class ListGet(Expression):
     list_expr: Expression
     index_expr: Expression
 
@@ -62,6 +77,17 @@ class ListIndex(Expression):
 class MapGet(Expression):
     map_expr: Expression
     key_expr: Expression
+
+
+@dataclass
+class ListAppend(Expression):
+    element_expr: Expression
+    list_expr: Expression
+
+
+@dataclass
+class ListLength(Expression):
+    list_expr: Expression
 
 
 # -----------------------------
@@ -101,36 +127,6 @@ class StringTrim(Expression):
 class StringJoin(Expression):
     list_expr: Expression
     delimiter_expr: Expression
-
-
-# -----------------------------
-# LIST FUNCTION EXPRESSIONS
-# -----------------------------
-
-@dataclass
-class ListLength(Expression):
-    list_expr: Expression
-
-
-@dataclass
-class ListAppend(Expression):
-    list_expr: Expression
-    element_expr: Expression
-
-
-# -----------------------------
-# FILE I/O EXPRESSIONS
-# -----------------------------
-
-@dataclass
-class FileReadExpression(Expression):
-    path: str
-
-@dataclass
-class FileWriteNode:
-    def __init__(self, path, expr):
-        self.path = path
-        self.expr = expr
 
 
 
@@ -191,6 +187,15 @@ class Terminate(Statement):
 class FileWriteStatement(Statement):
     path: str  #try and fix things that have to do with path to include actual file
     value: Expression
+
+
+# -----------------------------
+# IMPORT / INCLUDE
+# -----------------------------
+
+@dataclass
+class Import(Statement):
+    path: str  # file path to import
 
 
 
