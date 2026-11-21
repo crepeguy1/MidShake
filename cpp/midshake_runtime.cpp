@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <fstream>
 
 namespace ms {
 
@@ -208,6 +209,27 @@ namespace ms {
         std::string str = s.to_string();
         bool result = str.length() == 1 && std::isspace(static_cast<unsigned char>(str[0]));
         return Value::from_double(result ? 1.0 : 0.0);
+    }
+
+    // -------------------------
+    // File I/O functions
+    // -------------------------
+    Value file_read(const std::string& path) {
+        std::ifstream infile(path);
+        if (!infile.is_open()) {
+            throw std::runtime_error("Cannot open file for reading: " + path);
+        }
+        std::stringstream ss;
+        ss << infile.rdbuf();
+        return Value::from_string(ss.str());
+    }
+
+    void file_write(const std::string& path, const Value& value) {
+        std::ofstream outfile(path);
+        if (!outfile.is_open()) {
+            throw std::runtime_error("Cannot open file for writing: " + path);
+        }
+        outfile << value.to_string();
     }
 
 }

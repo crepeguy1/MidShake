@@ -90,3 +90,9 @@ DEFINE function isWhitespace WITH the variable c;
     LET the variable result BE the check if the value of c is whitespace;
     RETURN the value of result;
 END FUNCTION;
+
+^ Read the contents of a file
+DEFINE function readFile WITH the variable path;
+    LET the variable result BE the content of the file the value of path;
+    RETURN the value of result;
+END FUNCTION;

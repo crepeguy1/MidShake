@@ -223,6 +223,32 @@ def command_version():
 
 
 # ------------------------------------------------------------
+# Command: highlight (syntax-colored output)
+# ------------------------------------------------------------
+def command_highlight(path):
+    if not os.path.isfile(path):
+        print(f"Error: File not found: {path}")
+        return
+
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+
+    # Import the highlighter from tools/
+    tools_dir = os.path.join(PROJECT_ROOT, "tools")
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+
+    try:
+        from midshake_highlight import highlight
+        colored = highlight(source)
+        print(colored)
+    except ImportError:
+        print("Error: Syntax highlighter not found. Make sure tools/midshake_highlight.py exists.")
+        return 1
+    return 0
+
+
+# ------------------------------------------------------------
 # Command: help
 # ------------------------------------------------------------
 def command_help():
@@ -235,14 +261,16 @@ def command_help():
     print("  midshake tfind <file.mish>     Find tokens")
     print("  midshake ast <file.mish>       Show AST")
     print("  midshake contents <file.mish>  Show file contents")
-    print("  midshake version             Show version")
-    print("  midshake help                Show this help message")
+    print("  midshake highlight <file.mish> Show syntax-highlighted code")
+    print("  midshake version               Show version")
+    print("  midshake help                  Show this help message")
     print("")
     print("Examples:")
     print("  midshake run examples/hello.mish")
     print("  midshake compile examples/hello.mish")
     print("  midshake tokens examples/full.mish")
     print("  midshake ast examples/functions.mish")
+    print("  midshake highlight examples/hello.mish")
 
 
 # ------------------------------------------------------------
@@ -305,6 +333,12 @@ def main():
         with open(file_path, "r", encoding="utf-8") as f:
             contents = f.read()
         print(contents)
+
+    elif command == "highlight":
+        if len(sys.argv) < 3:
+            print("Error: Missing file path.")
+            return
+        return command_highlight(sys.argv[2])
 
     elif command == "version":
         command_version()

@@ -77,4 +77,10 @@ namespace ms {
     Value string_isletter(const Value& s);
     Value string_iswhitespace(const Value& s);
 
+    // -------------------------
+    // File I/O functions
+    // -------------------------
+    Value file_read(const std::string& path);
+    void file_write(const std::string& path, const Value& value);
+
 }

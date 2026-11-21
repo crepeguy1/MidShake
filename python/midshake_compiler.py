@@ -4,6 +4,7 @@ from midshake_ast import (
     If, While, Terminate,
     Number, String, Variable, Binary, Response,
     FunctionDef, Call, Return, Import,
+    FileReadExpression, FileWriteNode, FileWriteStatement,
     ListLiteral, MapLiteral, ListGet, MapGet,
     StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
     ListLength, ListAppend,
@@ -27,7 +28,7 @@ class CppCompiler:
     def compile_program(self, program: Program) -> str:
         # includes and namespace
         self.emit('#include "midshake_runtime.hpp"')
-        self.emit("using namespace mish;")
+        self.emit("using namespace ms;")
         self.emit("")
 
         # Pre-pass: collect all function definitions, resolving imports
@@ -251,6 +252,12 @@ class CppCompiler:
         elif isinstance(stmt, Terminate):
             self.emit("return Value::from_double(0);")
 
+        # FILE WRITE
+        elif isinstance(stmt, (FileWriteNode, FileWriteStatement)):
+            value = self.compile_expr(stmt.value if isinstance(stmt, FileWriteStatement) else stmt.expr)
+            path = str(stmt.path).strip().strip('"').strip("'")
+            self.emit(f'file_write("{path}", {value});')
+
     # ------------------------------------------------------------
     # EXPRESSIONS
     # ------------------------------------------------------------
@@ -422,6 +429,16 @@ class CppCompiler:
         if isinstance(expr, StringIsWhitespace):
             s = self.compile_expr(expr.string_expr)
             return f'string_iswhitespace({s})'
+
+        # File read: the contents of FILE
+        if isinstance(expr, FileReadExpression):
+            if isinstance(expr.path, str):
+                path = expr.path.strip().strip('"').strip("'")
+                return f'file_read("{path}")'
+            else:
+                # Dynamic path from a variable
+                path_expr = self.compile_expr(expr.path)
+                return f'file_read({path_expr}.to_string())'
 
         raise ValueError(f"Unknown expression: {expr}")
 

@@ -537,14 +537,24 @@ class ExpressionParser:
             return Response()
 
 
-        # FILE READ: the content of the file "path"
+        # FILE READ: the content of the file "path" or the content of the file the value of VAR
         if self.text[self.pos:].startswith("the content of the file"):
             self.pos += len("the content of the file")
             self.skip_whitespace()
-            # Expect a string literal
-            string_expr = self.parse_string_literal()
             from midshake_ast import FileReadExpression
-            return FileReadExpression(string_expr.value)
+            if self.text[self.pos:].startswith("the value of"):
+                var_expr = self.parse_variable_phrase()
+                # For variable paths, we need a runtime-evaluated path
+                # We'll store the variable and evaluate at runtime
+                return FileReadExpression(var_expr)
+            elif not self.is_at_end() and self.current_char() == '"':
+                string_expr = self.parse_string_literal()
+                return FileReadExpression(string_expr.value)
+            else:
+                raise SyntaxError(
+                    f"MidShake Syntax Error (line {self.line_no}):\n"
+                    f"  Expected a quoted file path or 'the value of' variable."
+                )
 
         # String functions
         if self.text[self.pos:].startswith("the length of"):

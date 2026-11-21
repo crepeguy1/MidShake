@@ -149,13 +149,18 @@ class Runtime:
 
 
         if isinstance(expr, FileReadExpression):
+            # path can be a string literal or an Expression (variable)
+            if isinstance(expr.path, str):
+                path = expr.path
+            else:
+                path = str(self.eval_expr(expr.path))
             try:
-                with open(expr.path, "r", encoding="utf-8") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     return f.read()
             except Exception as e:
                 raise ValueError(
                     f"MidShake Runtime Error:\n"
-                    f"  Could not read the file '{expr.path}'.\n"
+                    f"  Could not read the file '{path}'.\n"
                     f"  Details: {e}"
                 )
 

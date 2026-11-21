@@ -43,7 +43,7 @@ class Response(Expression):
 
 @dataclass
 class FileReadExpression(Expression):
-    path: str
+    path: str  # Can be a string literal or an Expression for dynamic paths
 
 @dataclass
 class FileWriteNode:
