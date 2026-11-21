@@ -44,9 +44,9 @@ DEFINE function factorial WITH the variable n;
     WHILST the value of i IS less than or equal to the value of n DO
         SET the variable result TO the value of result multiplied by the value of i;
         SET the variable i TO the value of i plus the number 1;
-END FUNCTION;
     END WHILST;
     RETURN the value of result;
+END FUNCTION;
 
 ^ Decorate a text message with lines
 DEFINE function bannerprint WITH the variable message;

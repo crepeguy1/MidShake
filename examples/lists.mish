@@ -1,0 +1,22 @@
+^ List examples demonstrating creation, access, size, and append
+
+LET the variable mylist BE [1, 2, 3, 4, 5]
+PROCLAIM the list mylist
+
+LET the variable first BE the item at position 0 in mylist
+PROCLAIM the number first
+
+LET the variable third BE the item at position 2 in mylist
+PROCLAIM the number third
+
+LET the variable size BE the size of mylist
+PROCLAIM the number size
+
+LET the variable extended BE the append of 6 to mylist
+PROCLAIM the list extended
+
+LET the variable stringlist BE ["hello", "world", "midshake"]
+PROCLAIM the list stringlist
+
+LET the variable first_word BE the item at position 0 in stringlist
+PROCLAIM the string first_word
