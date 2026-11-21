@@ -47,6 +47,7 @@ STATEMENT_KEYWORDS = {
     "END WHILST",
     "END FUNCTION",
     "TERMINATE",
+    "IN",
 }
 
 # Block-level structural keywords
@@ -59,6 +60,8 @@ BLOCK_KEYWORDS = {
     "FOR",
     "function",
     "the program",
+    "WRITE",
+    "the file",
 }
 
 # Expression prefixes
@@ -70,6 +73,8 @@ EXPR_PREFIXES = [
     "the length of",
     "the size of",
     "the index of",
+    "the element at index",
+    "the item at position",
     "the character at",
     "the substring of",
     "the split of",
@@ -79,6 +84,7 @@ EXPR_PREFIXES = [
     "the maximum of",
     "the absolute value of",
     "the round of",
+    "the rounded value of",
     "the upper case of",
     "the lower case of",
     "the starts with",
@@ -91,6 +97,8 @@ EXPR_PREFIXES = [
     "the list",
     "the map",
     "the key",
+    "the variables",
+    "the append of",
 ]
 
 # Arithmetic and comparison operators
@@ -99,10 +107,15 @@ OPERATORS = {
     "minus",
     "times",
     "divided",
+    "modulo",
+    "multiplied by",
     "IS greater than",
     "IS less than",
     "IS equal to",
     "IS not equal to",
+    "IS greater than or equal to",
+    "IS less than or equal to",
+    "or equal to",
     "and",
     "or",
     "not",
