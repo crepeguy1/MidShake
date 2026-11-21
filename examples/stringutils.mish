@@ -1,0 +1,55 @@
+^ String utility examples demonstrating uppercase, lowercase, startsWith, endsWith, isDigit, isLetter, and isWhitespace
+
+^ Uppercase conversion
+LET the variable greeting BE "Hello, World!"
+LET the variable upper BE the uppercase of greeting
+PROCLAIM the string upper
+
+LET the variable upper2 BE the uppercase of "midshake"
+PROCLAIM the string upper2
+
+^ Lowercase conversion
+LET the variable lower BE the lowercase of greeting
+PROCLAIM the string lower
+
+LET the variable lower2 BE the lowercase of "MIDSHAKE"
+PROCLAIM the string lower2
+
+^ Check if string starts with a prefix
+LET the variable text BE "Hello, World!"
+LET the variable starts BE the check if text starts with "Hello"
+PROCLAIM the number starts
+
+LET the variable starts2 BE the check if text starts with "World"
+PROCLAIM the number starts2
+
+^ Check if string ends with a suffix
+LET the variable ends BE the check if text ends with "!"
+PROCLAIM the number ends
+
+LET the variable ends2 BE the check if text ends with "World"
+PROCLAIM the number ends2
+
+^ Check if a character is a digit
+LET the variable char1 BE the character at the number 0 in "42"
+LET the variable isdigit BE the check if char1 is a digit
+PROCLAIM the number isdigit
+
+LET the variable char2 BE the character at the number 0 in "abc"
+LET the variable isdigit2 BE the check if char2 is a digit
+PROCLAIM the number isdigit2
+
+^ Check if a character is a letter
+LET the variable isletter BE the check if char2 is a letter
+PROCLAIM the number isletter
+
+LET the variable isletter2 BE the check if char1 is a letter
+PROCLAIM the number isletter2
+
+^ Check if a character is whitespace
+LET the variable space BE the character at the number 0 in " "
+LET the variable isws BE the check if space is whitespace
+PROCLAIM the number isws
+
+LET the variable notws BE the check if char1 is whitespace
+PROCLAIM the number notws

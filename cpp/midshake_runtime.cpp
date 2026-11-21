@@ -1,6 +1,8 @@
 #include "midshake_runtime.hpp"
 #include <sstream>
 #include <algorithm>
+#include <cctype>
+#include <cmath>
 
 namespace ms {
 
@@ -140,6 +142,72 @@ namespace ms {
             throw std::runtime_error("Key not found in map: " + keyStr);
         }
         return it->second;
+    }
+
+    // -------------------------
+    // Math functions
+    // -------------------------
+    Value math_min(const Value& a, const Value& b) {
+        return Value::from_double(std::min(a.num.value, b.num.value));
+    }
+
+    Value math_max(const Value& a, const Value& b) {
+        return Value::from_double(std::max(a.num.value, b.num.value));
+    }
+
+    Value math_abs(const Value& a) {
+        return Value::from_double(std::abs(a.num.value));
+    }
+
+    Value math_round(const Value& a) {
+        return Value::from_double(std::round(a.num.value));
+    }
+
+    // -------------------------
+    // String utility functions
+    // -------------------------
+    Value string_toupper(const Value& s) {
+        std::string str = s.to_string();
+        std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+        return Value::from_string(str);
+    }
+
+    Value string_tolower(const Value& s) {
+        std::string str = s.to_string();
+        std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+        return Value::from_string(str);
+    }
+
+    Value string_startswith(const Value& s, const Value& prefix) {
+        std::string str = s.to_string();
+        std::string pref = prefix.to_string();
+        bool result = str.rfind(pref, 0) == 0;
+        return Value::from_double(result ? 1.0 : 0.0);
+    }
+
+    Value string_endswith(const Value& s, const Value& suffix) {
+        std::string str = s.to_string();
+        std::string suff = suffix.to_string();
+        bool result = str.size() >= suff.size() && str.compare(str.size() - suff.size(), suff.size(), suff) == 0;
+        return Value::from_double(result ? 1.0 : 0.0);
+    }
+
+    Value string_isdigit(const Value& s) {
+        std::string str = s.to_string();
+        bool result = str.length() == 1 && std::isdigit(static_cast<unsigned char>(str[0]));
+        return Value::from_double(result ? 1.0 : 0.0);
+    }
+
+    Value string_isletter(const Value& s) {
+        std::string str = s.to_string();
+        bool result = str.length() == 1 && std::isalpha(static_cast<unsigned char>(str[0]));
+        return Value::from_double(result ? 1.0 : 0.0);
+    }
+
+    Value string_iswhitespace(const Value& s) {
+        std::string str = s.to_string();
+        bool result = str.length() == 1 && std::isspace(static_cast<unsigned char>(str[0]));
+        return Value::from_double(result ? 1.0 : 0.0);
     }
 
 }

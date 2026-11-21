@@ -9,7 +9,10 @@ from midshake_ast import (
     Response, FunctionDef, Call, Return, FileReadExpression,
     FileWriteStatement, Import,
     ListLiteral, MapLiteral, ListGet, MapGet, ListAppend, ListLength,
-    StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin
+    StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
+    MathMin, MathMax, MathAbs, MathRound,
+    StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
+    StringIsDigit, StringIsLetter, StringIsWhitespace
 )
 
 
@@ -310,6 +313,100 @@ class Runtime:
                     f"  Expected a list but got a different type."
                 )
             return str(delim).join(str(item) for item in lst)
+
+        # Math min: the minimum of A and B
+        if isinstance(expr, MathMin):
+            left = self.eval_expr(expr.left)
+            right = self.eval_expr(expr.right)
+            return min(left, right)
+
+        # Math max: the maximum of A and B
+        if isinstance(expr, MathMax):
+            left = self.eval_expr(expr.left)
+            right = self.eval_expr(expr.right)
+            return max(left, right)
+
+        # Math abs: the absolute value of X
+        if isinstance(expr, MathAbs):
+            val = self.eval_expr(expr.expr)
+            return abs(val)
+
+        # Math round: the rounded value of X
+        if isinstance(expr, MathRound):
+            val = self.eval_expr(expr.expr)
+            return round(val)
+
+        # String toUpperCase: the uppercase of STRING
+        if isinstance(expr, StringToUpper):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return s.upper()
+
+        # String toLowerCase: the lowercase of STRING
+        if isinstance(expr, StringToLower):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return s.lower()
+
+        # String startsWith: STRING starts with PREFIX
+        if isinstance(expr, StringStartsWith):
+            s = self.eval_expr(expr.string_expr)
+            prefix = self.eval_expr(expr.prefix_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return 1 if str(s).startswith(str(prefix)) else 0
+
+        # String endsWith: STRING ends with SUFFIX
+        if isinstance(expr, StringEndsWith):
+            s = self.eval_expr(expr.string_expr)
+            suffix = self.eval_expr(expr.suffix_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return 1 if str(s).endswith(str(suffix)) else 0
+
+        # String isDigit: the character X is a digit
+        if isinstance(expr, StringIsDigit):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return 1 if str(s).isdigit() and len(str(s)) == 1 else 0
+
+        # String isLetter: the character X is a letter
+        if isinstance(expr, StringIsLetter):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return 1 if str(s).isalpha() and len(str(s)) == 1 else 0
+
+        # String isWhitespace: the character X is whitespace
+        if isinstance(expr, StringIsWhitespace):
+            s = self.eval_expr(expr.string_expr)
+            if not isinstance(s, str):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a string but got a different type."
+                )
+            return 1 if str(s).isspace() and len(str(s)) == 1 else 0
 
         raise ValueError(
             f"MidShake Runtime Error:\n"

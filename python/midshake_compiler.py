@@ -6,7 +6,10 @@ from midshake_ast import (
     FunctionDef, Call, Return, Import,
     ListLiteral, MapLiteral, ListGet, MapGet,
     StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
-    ListLength, ListAppend
+    ListLength, ListAppend,
+    MathMin, MathMax, MathAbs, MathRound,
+    StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
+    StringIsDigit, StringIsLetter, StringIsWhitespace
 )
 
 
@@ -360,6 +363,65 @@ class CppCompiler:
             lst = self.compile_expr(expr.list_expr)
             elem = self.compile_expr(expr.element_expr)
             return f'list_append({lst}, {elem})'
+
+        # Math min
+        if isinstance(expr, MathMin):
+            left = self.compile_expr(expr.left)
+            right = self.compile_expr(expr.right)
+            return f'math_min({left}, {right})'
+
+        # Math max
+        if isinstance(expr, MathMax):
+            left = self.compile_expr(expr.left)
+            right = self.compile_expr(expr.right)
+            return f'math_max({left}, {right})'
+
+        # Math abs
+        if isinstance(expr, MathAbs):
+            e = self.compile_expr(expr.expr)
+            return f'math_abs({e})'
+
+        # Math round
+        if isinstance(expr, MathRound):
+            e = self.compile_expr(expr.expr)
+            return f'math_round({e})'
+
+        # String toUpperCase
+        if isinstance(expr, StringToUpper):
+            s = self.compile_expr(expr.string_expr)
+            return f'string_toupper({s})'
+
+        # String toLowerCase
+        if isinstance(expr, StringToLower):
+            s = self.compile_expr(expr.string_expr)
+            return f'string_tolower({s})'
+
+        # String startsWith
+        if isinstance(expr, StringStartsWith):
+            s = self.compile_expr(expr.string_expr)
+            prefix = self.compile_expr(expr.prefix_expr)
+            return f'string_startswith({s}, {prefix})'
+
+        # String endsWith
+        if isinstance(expr, StringEndsWith):
+            s = self.compile_expr(expr.string_expr)
+            suffix = self.compile_expr(expr.suffix_expr)
+            return f'string_endswith({s}, {suffix})'
+
+        # String isDigit
+        if isinstance(expr, StringIsDigit):
+            s = self.compile_expr(expr.string_expr)
+            return f'string_isdigit({s})'
+
+        # String isLetter
+        if isinstance(expr, StringIsLetter):
+            s = self.compile_expr(expr.string_expr)
+            return f'string_isletter({s})'
+
+        # String isWhitespace
+        if isinstance(expr, StringIsWhitespace):
+            s = self.compile_expr(expr.string_expr)
+            return f'string_iswhitespace({s})'
 
         raise ValueError(f"Unknown expression: {expr}")
 

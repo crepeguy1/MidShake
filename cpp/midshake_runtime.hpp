@@ -58,4 +58,23 @@ namespace ms {
     // -------------------------
     Value map_get(const Value& mp, const Value& key);
 
+    // -------------------------
+    // Math functions
+    // -------------------------
+    Value math_min(const Value& a, const Value& b);
+    Value math_max(const Value& a, const Value& b);
+    Value math_abs(const Value& a);
+    Value math_round(const Value& a);
+
+    // -------------------------
+    // String utility functions
+    // -------------------------
+    Value string_toupper(const Value& s);
+    Value string_tolower(const Value& s);
+    Value string_startswith(const Value& s, const Value& prefix);
+    Value string_endswith(const Value& s, const Value& suffix);
+    Value string_isdigit(const Value& s);
+    Value string_isletter(const Value& s);
+    Value string_iswhitespace(const Value& s);
+
 }

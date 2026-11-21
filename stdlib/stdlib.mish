@@ -24,3 +24,69 @@ DEFINE function repeat WITH the variables count, message;
         SET the variable i TO the value of i plus the number 1;
     END WHILST;
 END FUNCTION;
+
+^ Get the minimum of two numbers
+DEFINE function min WITH the variables a, b;
+    LET the variable result BE the minimum of the value of a and the value of b;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the maximum of two numbers
+DEFINE function max WITH the variables a, b;
+    LET the variable result BE the maximum of the value of a and the value of b;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the absolute value of a number
+DEFINE function abs WITH the variable a;
+    LET the variable result BE the absolute value of the value of a;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Round a number to the nearest integer
+DEFINE function round WITH the variable a;
+    LET the variable result BE the rounded value of the value of a;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Convert a string to uppercase
+DEFINE function toupper WITH the variable s;
+    LET the variable result BE the uppercase of the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Convert a string to lowercase
+DEFINE function tolower WITH the variable s;
+    LET the variable result BE the lowercase of the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a string starts with a prefix
+DEFINE function startsWith WITH the variables s, prefix;
+    LET the variable result BE the check if the value of s starts with the value of prefix;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a string ends with a suffix
+DEFINE function endsWith WITH the variables s, suffix;
+    LET the variable result BE the check if the value of s ends with the value of suffix;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a character is a digit
+DEFINE function isDigit WITH the variable c;
+    LET the variable result BE the check if the value of c is a digit;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a character is a letter
+DEFINE function isLetter WITH the variable c;
+    LET the variable result BE the check if the value of c is a letter;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a character is whitespace
+DEFINE function isWhitespace WITH the variable c;
+    LET the variable result BE the check if the value of c is whitespace;
+    RETURN the value of result;
+END FUNCTION;

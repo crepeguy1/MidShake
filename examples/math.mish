@@ -1,0 +1,35 @@
+^ Math function examples demonstrating min, max, absolute, and round
+
+^ Minimum of two numbers
+LET the variable minval BE the minimum of the number 5 and the number 10
+PROCLAIM the number minval
+
+LET the variable minval2 BE the minimum of the number -3 and the number 7
+PROCLAIM the number minval2
+
+^ Maximum of two numbers
+LET the variable maxval BE the maximum of the number 5 and the number 10
+PROCLAIM the number maxval
+
+LET the variable maxval2 BE the maximum of the number -3 and the number 7
+PROCLAIM the number maxval2
+
+^ Absolute value
+LET the variable absval BE the absolute value of the number -42
+PROCLAIM the number absval
+
+LET the variable absval2 BE the absolute value of the number 42
+PROCLAIM the number absval2
+
+^ Round a number
+LET the variable rounded BE the rounded value of the number 3.7
+PROCLAIM the number rounded
+
+LET the variable rounded2 BE the rounded value of the number 2.3
+PROCLAIM the number rounded2
+
+^ Using with variables
+LET the variable a BE the number 15
+LET the variable b BE the number 25
+LET the variable result BE the maximum of the value of a and the value of b
+PROCLAIM the number result

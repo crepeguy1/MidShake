@@ -129,6 +129,63 @@ class StringJoin(Expression):
     delimiter_expr: Expression
 
 
+# -----------------------------
+# MATH FUNCTION EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class MathMin(Expression):
+    left: Expression
+    right: Expression
+
+@dataclass
+class MathMax(Expression):
+    left: Expression
+    right: Expression
+
+@dataclass
+class MathAbs(Expression):
+    expr: Expression
+
+@dataclass
+class MathRound(Expression):
+    expr: Expression
+
+
+# -----------------------------
+# STRING UTILITY EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class StringToUpper(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringToLower(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringStartsWith(Expression):
+    string_expr: Expression
+    prefix_expr: Expression
+
+@dataclass
+class StringEndsWith(Expression):
+    string_expr: Expression
+    suffix_expr: Expression
+
+@dataclass
+class StringIsDigit(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringIsLetter(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringIsWhitespace(Expression):
+    string_expr: Expression
+
 
 # -----------------------------
 # STATEMENTS
