@@ -117,6 +117,13 @@ class Tokenizer:
                         "PROCLAIM", "LET the variable", "SET the variable",
                         "CALL", "IF the value of", "WHILST the value of",
                         "INQUIRE", "RETURN", "DEFINE function",
+                        "the item at", "the value of", "the string", "the number",
+                        "the list", "the map", "the trimmed", "the check if",
+                        "the content of the file", "the length of", "the size of",
+                        "the character at", "the substring of", "the split of",
+                        "the join of", "the append of", "the minimum of",
+                        "the maximum of", "the absolute value of",
+                        "the rounded value of", "the uppercase of", "the lowercase of",
                     ]
                     is_new_stmt = False
                     for kw in stmt_keywords:
@@ -205,7 +212,7 @@ class Tokenizer:
             return Token("PROCLAIM", expr, line_no)
 
         # IF
-        if line.startswith("IF the value of"):
+        if line.startswith("IF the value of") and "THEN" in line:
             condition_text = line[len("IF "):line.index("THEN")].strip()
             expr = self.parse_expression(condition_text, line_no)
             return Token("IF", expr, line_no)
@@ -219,7 +226,7 @@ class Tokenizer:
             return Token("END_IF", None, line_no)
 
         # WHILST
-        if line.startswith("WHILST the value of"):
+        if line.startswith("WHILST the value of") and "DO" in line:
             condition_text = line[len("WHILST "):line.index("DO")].strip()
             expr = self.parse_expression(condition_text, line_no)
             return Token("WHILST", expr, line_no)
@@ -751,6 +758,8 @@ class ExpressionParser:
                 self.skip_whitespace()
                 if not self.is_at_end() and self.current_char() == '"':
                     prefix_expr = self.parse_string_literal()
+                elif self.text[self.pos:].startswith("the value of"):
+                    prefix_expr = self.parse_variable_phrase()
                 else:
                     prefix_expr = self.parse_variable_name()
                 from midshake_ast import StringStartsWith
@@ -761,6 +770,8 @@ class ExpressionParser:
                 self.skip_whitespace()
                 if not self.is_at_end() and self.current_char() == '"':
                     suffix_expr = self.parse_string_literal()
+                elif self.text[self.pos:].startswith("the value of"):
+                    suffix_expr = self.parse_variable_phrase()
                 else:
                     suffix_expr = self.parse_variable_name()
                 from midshake_ast import StringEndsWith
@@ -818,23 +829,28 @@ class ExpressionParser:
         if self.text[self.pos:].startswith("the item at"):
             self.pos += len("the item at")
             self.skip_whitespace()
-            # Expect "position"
+            # Expect "position" — handle "the item at position" and "the item at"
             if self.text[self.pos:].startswith("position"):
                 self.pos += len("position")
                 self.skip_whitespace()
-                # Parse the index number directly
+            # Parse the index - could be a number literal, "the number N", or "the value of VAR"
+            if self.text[self.pos:].startswith("the value of"):
+                index_expr = self.parse_variable_phrase()
+            elif self.text[self.pos:].startswith("the number"):
+                index_expr = self.parse_number_phrase()
+            else:
                 index_expr = self.parse_number_literal()
+            self.skip_whitespace()
+            # Expect "in"
+            if self.text[self.pos:].startswith("in"):
+                self.pos += len("in")
                 self.skip_whitespace()
-                # Expect "in"
-                if self.text[self.pos:].startswith("in"):
-                    self.pos += len("in")
-                    self.skip_whitespace()
-                    list_expr = self.parse_variable_name()
-                    from midshake_ast import ListGet
-                    return ListGet(list_expr, index_expr)
+                list_expr = self.parse_variable_name()
+                from midshake_ast import ListGet
+                return ListGet(list_expr, index_expr)
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"
-                f"  Expected 'position' after 'the item at'."
+                f"  Expected 'in' after index in 'the item at'."
             )
 
         # Map functions: the value of KEY in MAP
@@ -1005,6 +1021,9 @@ class ExpressionParser:
             " plus", " minus", " times", " multiplied", " divided",
             " IS", " IS ", "IS ", "IS",
             " and", " AND",
+            " starts with", " ends with",
+            " is a digit", " is a letter", " is whitespace",
+            " in ", " in\n", " in;", " in",
         ]
         while not self.is_at_end():
             if self.current_char() in "+-*/()":
@@ -1052,7 +1071,9 @@ class ExpressionParser:
                 f"MidShake Syntax Error (line {self.line_no}):\n"
                 f"  Unterminated string literal."
             )
-        value = self.text[start:self.pos]
+        raw = self.text[start:self.pos]
         self.pos += 1
+        # Process escape sequences
+        value = raw.replace("\\n", "\n").replace("\\t", "\t").replace("\\\\", "\\").replace('\\"', '"')
         return String(value)
 

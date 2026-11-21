@@ -520,6 +520,9 @@ class Runtime:
             self.return_value = saved_return
             self.in_function = saved_flag
 
+            # store in RESPONSE for LET ... BE the RESPONSE
+            self.vars["RESPONSE"] = result
+
             # return the function result to the caller
             return result
 

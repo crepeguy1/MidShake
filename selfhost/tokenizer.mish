@@ -1,0 +1,203 @@
+^ tokenizer.mish
+^ A tokenizer written in MidShake that reads source code and produces tokens.
+^ This is the first step toward a self-hosting compiler.
+^ Reads a file, splits into lines, and classifies each line by its starting keyword.
+
+IMPORT the file "stdlib/stdlib.mish";
+
+^ Main: tokenize a file and print the tokens
+LET the variable file BE "examples/hello.mish";
+LET the variable source BE the content of the file the value of file;
+
+PROCLAIM the string "Tokenizing:";
+PROCLAIM the string file;
+PROCLAIM the string "";
+
+^ Split source into lines by newline
+LET the variable lines BE the split of source by "\n";
+LET the variable lineCount BE the size of lines;
+
+LET the variable lineIdx BE the number 0;
+LET the variable totalTokens BE the number 0;
+
+WHILST the value of lineIdx IS less than the value of lineCount DO
+    LET the variable line BE the item at position the value of lineIdx in lines;
+    LET the variable trimmed BE the trimmed line;
+    
+    ^ Skip empty lines
+    IF the value of trimmed IS not equal to the string "" THEN
+        LET the variable firstChar BE the character at 0 in trimmed;
+        
+        ^ Check for comment lines
+        IF the value of firstChar IS equal to the string "^" THEN
+            PROCLAIM the string "COMMENT: ";
+            PROCLAIM the string trimmed;
+            SET the variable totalTokens TO the value of totalTokens plus the number 1;
+        ELSE
+            ^ Classify the line by checking its prefix using CALL
+            LET the variable found BE the number 0;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "LET";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: LET declaration";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "SET";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: SET assignment";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "PROCLAIM";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: PROCLAIM output";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "WHILST";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: WHILST loop";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "DEFINE";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: DEFINE function";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "CALL";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: CALL function";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "RETURN";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: RETURN value";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "END FUNCTION";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: END FUNCTION";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "END WHILST";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: END WHILST";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "END IF";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: END IF";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "IF";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: IF conditional";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "IN the file";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: FILE WRITE";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "IMPORT";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: IMPORT statement";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "TERMINATE";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: TERMINATE";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                CALL startsWith WITH the value of trimmed, "INQUIRE";
+                LET the variable check BE the RESPONSE;
+                IF the value of check IS equal to the number 1 THEN
+                    PROCLAIM the string "TOKEN: INQUIRE input";
+                    SET the variable totalTokens TO the value of totalTokens plus the number 1;
+                    SET the variable found TO the number 1;
+                END IF;
+            END IF;
+            
+            IF the value of found IS equal to the number 0 THEN
+                PROCLAIM the string "TOKEN: UNKNOWN statement";
+                SET the variable totalTokens TO the value of totalTokens plus the number 1;
+            END IF;
+            
+        END IF;
+    END IF;
+    
+    SET the variable lineIdx TO the value of lineIdx plus the number 1;
+END WHILST;
+
+PROCLAIM the string "";
+PROCLAIM the string "Total tokens:";
+PROCLAIM the number totalTokens;
