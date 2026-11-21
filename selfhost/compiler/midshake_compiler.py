@@ -267,8 +267,14 @@ class CppCompiler:
             return f'Value::from_double({expr.value})'
 
         if isinstance(expr, String):
-            # naive escaping; you can improve later
-            return f'Value::from_string("{expr.value}")'
+            # Escape special characters for C++ strings
+            escaped = str(expr.value)
+            escaped = escaped.replace("\\", "\\\\")
+            escaped = escaped.replace('"', '\\"')
+            escaped = escaped.replace("\n", "\\n")
+            escaped = escaped.replace("\t", "\\t")
+            escaped = escaped.replace("\r", "\\r")
+            return f'Value::from_string("{escaped}")'
 
         if isinstance(expr, Variable):
             return f'env.get("{expr.name}")'

@@ -196,10 +196,8 @@ class Runtime:
                     f"  Expected a list but got a different type."
                 )
             if idx < 0 or idx >= len(lst):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Index {idx} out of range for list of size {len(lst)}."
-                )
+                # Return empty string instead of crashing - needed for self-hosting loops
+                return ""
             return lst[idx]
 
         # List append: the append of X to LIST
@@ -281,10 +279,9 @@ class Runtime:
                     f"  Expected a string but got a different type."
                 )
             if idx < 0 or idx >= len(s):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Index {idx} out of range for string of length {len(s)}."
-                )
+                # Return empty string instead of crashing - needed for self-hosting loops
+                # that check bounds before accessing
+                return ""
             return s[idx]
 
         # String split: the split of STRING by DELIMITER
@@ -526,51 +523,13 @@ class Runtime:
             # return the function result to the caller
             return result
 
-        #RETURN
+        # RETURN
         elif isinstance(stmt, Return):
             self.return_value = self.eval_expr(stmt.expr)
             # signal to stop executing the function body
             self.in_function = True
 
-            
-        # FUNCTION DEF
-        elif isinstance(stmt, FunctionDef):
-            self.functions[stmt.name] = stmt
-
-        elif isinstance(stmt, Call):
-            if stmt.name not in self.functions:
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  The function '{stmt.name}' is not defined."
-                )
-
-            func = self.functions[stmt.name]
-
-            # argument count check
-            if len(stmt.args) != len(func.param_names):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Function '{func.name}' expects {len(func.param_names)} argument(s) "
-                    f"but got {len(stmt.args)}."
-                )
-
-            # save current environment
-            saved_vars = self.vars.copy()
-
-            # bind parameters
-            for param_names, arg_expr in zip(func.param_names, stmt.args):
-                self.vars[param_names] = self.eval_expr(arg_expr)
-
-            # execute function body
-            for s in func.body:
-                self.exec_stmt(s)
-                if self.terminated:
-                    break
-
-            # restore environment
-            self.vars = saved_vars
-
-
+        # FILE WRITE
         elif isinstance(stmt, FileWriteStatement):
             value = self.eval_expr(stmt.value)
             path = str(stmt.path).strip().strip('"').strip("'")

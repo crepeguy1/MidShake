@@ -117,13 +117,7 @@ class Tokenizer:
                         "PROCLAIM", "LET the variable", "SET the variable",
                         "CALL", "IF the value of", "WHILST the value of",
                         "INQUIRE", "RETURN", "DEFINE function",
-                        "the item at", "the value of", "the string", "the number",
-                        "the list", "the map", "the trimmed", "the check if",
-                        "the content of the file", "the length of", "the size of",
-                        "the character at", "the substring of", "the split of",
-                        "the join of", "the append of", "the minimum of",
-                        "the maximum of", "the absolute value of",
-                        "the rounded value of", "the uppercase of", "the lowercase of",
+                        "the string", "the number",
                     ]
                     is_new_stmt = False
                     for kw in stmt_keywords:
@@ -567,26 +561,46 @@ class ExpressionParser:
         if self.text[self.pos:].startswith("the length of"):
             self.pos += len("the length of")
             self.skip_whitespace()
-            string_expr = self.parse_variable_name()
+            if self.text[self.pos:].startswith("the value of"):
+                string_expr = self.parse_variable_phrase()
+            elif not self.is_at_end() and self.current_char() == '"':
+                string_expr = self.parse_string_literal()
+            else:
+                string_expr = self.parse_variable_name()
             from midshake_ast import StringLength
             return StringLength(string_expr)
 
         if self.text[self.pos:].startswith("the substring of"):
             self.pos += len("the substring of")
             self.skip_whitespace()
-            string_expr = self.parse_variable_name()
+            if self.text[self.pos:].startswith("the value of"):
+                string_expr = self.parse_variable_phrase()
+            elif not self.is_at_end() and self.current_char() == '"':
+                string_expr = self.parse_string_literal()
+            else:
+                string_expr = self.parse_variable_name()
             self.skip_whitespace()
             # Expect "starting at"
             if self.text[self.pos:].startswith("starting at"):
                 self.pos += len("starting at")
                 self.skip_whitespace()
-                start_expr = self.parse_number_literal()
+                if self.text[self.pos:].startswith("the value of"):
+                    start_expr = self.parse_variable_phrase()
+                elif self.text[self.pos:].startswith("the number"):
+                    start_expr = self.parse_number_phrase()
+                else:
+                    start_expr = self.parse_number_literal()
                 self.skip_whitespace()
                 # Expect "ending at"
                 if self.text[self.pos:].startswith("ending at"):
                     self.pos += len("ending at")
                     self.skip_whitespace()
-                    end_expr = self.parse_number_literal()
+                    if self.text[self.pos:].startswith("the value of"):
+                        end_expr = self.parse_variable_phrase()
+                    elif self.text[self.pos:].startswith("the number"):
+                        end_expr = self.parse_number_phrase()
+                    else:
+                        end_expr = self.parse_number_literal()
                     from midshake_ast import Substring
                     return Substring(string_expr, start_expr, end_expr)
             raise ValueError(
@@ -597,9 +611,11 @@ class ExpressionParser:
         if self.text[self.pos:].startswith("the character at"):
             self.pos += len("the character at")
             self.skip_whitespace()
-            # Parse the index — could be "the number N" or just a number
+            # Parse the index — could be "the number N", "the value of VAR", or just a number
             if self.text[self.pos:].startswith("the number"):
                 index_expr = self.parse_number_phrase()
+            elif self.text[self.pos:].startswith("the value of"):
+                index_expr = self.parse_variable_phrase()
             else:
                 index_expr = self.parse_number_literal()
             self.skip_whitespace()
@@ -625,6 +641,8 @@ class ExpressionParser:
             self.skip_whitespace()
             if not self.is_at_end() and self.current_char() == '"':
                 string_expr = self.parse_string_literal()
+            elif self.text[self.pos:].startswith("the value of"):
+                string_expr = self.parse_variable_phrase()
             else:
                 string_expr = self.parse_variable_name()
             self.skip_whitespace()
@@ -632,7 +650,12 @@ class ExpressionParser:
             if self.text[self.pos:].startswith("by"):
                 self.pos += len("by")
                 self.skip_whitespace()
-                delimiter_expr = self.parse_string_literal()
+                if self.text[self.pos:].startswith("the value of"):
+                    delimiter_expr = self.parse_variable_phrase()
+                elif not self.is_at_end() and self.current_char() == '"':
+                    delimiter_expr = self.parse_string_literal()
+                else:
+                    delimiter_expr = self.parse_variable_name()
                 from midshake_ast import StringSplit
                 return StringSplit(string_expr, delimiter_expr)
             raise ValueError(
@@ -645,6 +668,8 @@ class ExpressionParser:
             self.skip_whitespace()
             if not self.is_at_end() and self.current_char() == '"':
                 string_expr = self.parse_string_literal()
+            elif self.text[self.pos:].startswith("the value of"):
+                string_expr = self.parse_variable_phrase()
             else:
                 string_expr = self.parse_variable_name()
             from midshake_ast import StringTrim
@@ -653,13 +678,21 @@ class ExpressionParser:
         if self.text[self.pos:].startswith("the join of"):
             self.pos += len("the join of")
             self.skip_whitespace()
-            list_expr = self.parse_variable_name()
+            if self.text[self.pos:].startswith("the value of"):
+                list_expr = self.parse_variable_phrase()
+            else:
+                list_expr = self.parse_variable_name()
             self.skip_whitespace()
             # Expect "with"
             if self.text[self.pos:].startswith("with"):
                 self.pos += len("with")
                 self.skip_whitespace()
-                delimiter_expr = self.parse_string_literal()
+                if self.text[self.pos:].startswith("the value of"):
+                    delimiter_expr = self.parse_variable_phrase()
+                elif not self.is_at_end() and self.current_char() == '"':
+                    delimiter_expr = self.parse_string_literal()
+                else:
+                    delimiter_expr = self.parse_variable_name()
                 from midshake_ast import StringJoin
                 return StringJoin(list_expr, delimiter_expr)
             raise ValueError(
@@ -799,7 +832,10 @@ class ExpressionParser:
         if self.text[self.pos:].startswith("the size of"):
             self.pos += len("the size of")
             self.skip_whitespace()
-            list_expr = self.parse_variable_name()
+            if self.text[self.pos:].startswith("the value of"):
+                list_expr = self.parse_variable_phrase()
+            else:
+                list_expr = self.parse_variable_name()
             from midshake_ast import ListLength
             return ListLength(list_expr)
 
@@ -818,7 +854,10 @@ class ExpressionParser:
             if self.text[self.pos:].startswith("to"):
                 self.pos += len("to")
                 self.skip_whitespace()
-                list_expr = self.parse_variable_name()
+                if self.text[self.pos:].startswith("the value of"):
+                    list_expr = self.parse_variable_phrase()
+                else:
+                    list_expr = self.parse_variable_name()
                 from midshake_ast import ListAppend
                 return ListAppend(element_expr, list_expr)
             raise ValueError(
@@ -845,7 +884,10 @@ class ExpressionParser:
             if self.text[self.pos:].startswith("in"):
                 self.pos += len("in")
                 self.skip_whitespace()
-                list_expr = self.parse_variable_name()
+                if self.text[self.pos:].startswith("the value of"):
+                    list_expr = self.parse_variable_phrase()
+                else:
+                    list_expr = self.parse_variable_name()
                 from midshake_ast import ListGet
                 return ListGet(list_expr, index_expr)
             raise ValueError(
@@ -1003,6 +1045,16 @@ class ExpressionParser:
         self.skip_whitespace()
         start = self.pos
         while not self.is_at_end() and self.current_char() not in "+-*/()[]{},: ":
+            # Stop at common expression keywords that follow variable names
+            remaining = self.text[self.pos:]
+            if remaining.startswith(" plus") or remaining.startswith(" minus") or \
+               remaining.startswith(" times") or remaining.startswith(" multiplied") or \
+               remaining.startswith(" divided") or remaining.startswith(" IS") or \
+               remaining.startswith(" and") or remaining.startswith(" AND") or \
+               remaining.startswith(" in ") or remaining.startswith(" to ") or \
+               remaining.startswith(" by ") or remaining.startswith(" with ") or \
+               remaining.startswith(" starting at") or remaining.startswith(" ending at"):
+                break
             self.pos += 1
         name = self.text[start:self.pos].strip()
         if not name:
@@ -1024,6 +1076,11 @@ class ExpressionParser:
             " starts with", " ends with",
             " is a digit", " is a letter", " is whitespace",
             " in ", " in\n", " in;", " in",
+            " to ", " to\n", " to;", " to",
+            " by ", " by\n", " by;", " by",
+            " with ", " with\n", " with;", " with",
+            " starting at", " ending at",
+            " of ", " of\n", " of;", " of",
         ]
         while not self.is_at_end():
             if self.current_char() in "+-*/()":
@@ -1051,6 +1108,9 @@ class ExpressionParser:
             while not self.is_at_end() and self.current_char().isdigit():
                 self.pos += 1
         text = self.text[start:self.pos]
+        if not text or text == '-':
+            # Return 0 as a safe default instead of crashing on empty input
+            return Number(0)
         if '.' in text:
             return Number(float(text))
         return Number(int(text))

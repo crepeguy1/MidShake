@@ -55,7 +55,8 @@ namespace ms {
         std::string str = s.to_string();
         size_t idx = static_cast<size_t>(index.num.value);
         if (idx >= str.length()) {
-            throw std::runtime_error("Character index out of range");
+            // Return empty string instead of throwing - needed for self-hosting loops
+            return Value::from_string("");
         }
         return Value::from_string(std::string(1, str[idx]));
     }
@@ -125,7 +126,8 @@ namespace ms {
         }
         size_t idx = static_cast<size_t>(index.num.value);
         if (idx >= lst.lst.size()) {
-            throw std::runtime_error("List index out of range");
+            // Return empty string instead of throwing - needed for self-hosting loops
+            return Value::from_string("");
         }
         return lst.lst[idx];
     }

@@ -96,3 +96,57 @@ DEFINE function readFile WITH the variable path;
     LET the variable result BE the content of the file the value of path;
     RETURN the value of result;
 END FUNCTION;
+
+^ Get the length of a string
+DEFINE function length WITH the variable s;
+    LET the variable result BE the length of the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the character at a position in a string
+DEFINE function charAt WITH the variables s, index;
+    LET the variable result BE the character at the value of index in the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get a substring from a string
+DEFINE function substring WITH the variables s, start, end;
+    LET the variable result BE the substring of the value of s starting at the value of start ending at the value of end;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Split a string by a delimiter
+DEFINE function split WITH the variables s, delimiter;
+    LET the variable result BE the split of the value of s by the value of delimiter;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Join a list with a delimiter
+DEFINE function join WITH the variables list, delimiter;
+    LET the variable result BE the join of the value of list with the value of delimiter;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Trim whitespace from a string
+DEFINE function trim WITH the variable s;
+    LET the variable result BE the trimmed the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the size of a list
+DEFINE function size WITH the variable list;
+    LET the variable result BE the size of the value of list;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Append an element to a list
+DEFINE function append WITH the variables element, list;
+    LET the variable result BE the append of the value of element to the value of list;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get an item at a position in a list
+DEFINE function getItem WITH the variables index, list;
+    LET the variable result BE the item at position the value of index in the value of list;
+    RETURN the value of result;
+END FUNCTION;
