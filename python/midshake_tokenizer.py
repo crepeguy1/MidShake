@@ -125,7 +125,7 @@ class Tokenizer:
                     # Check if the accumulated text starts a new statement type
                     # that should be separated from the previous line
                     stmt_keywords = [
-                        "PROCLAIM", "LET the variable", "SET the variable",
+                        "PROCLAIM", "LET the variable", "SET the variable", "GLOBAL SET the variable",
                         "CALL", "IF the value of", "WHILST the value of",
                         "INQUIRE", "RETURN", "DEFINE function",
                         "the string", "the number",
@@ -192,8 +192,11 @@ class Tokenizer:
     # STATEMENT TOKENIZATION
     # ------------------------------------------------------------
     def tokenize_line(self, line: str, line_no: int):
+        # Strip leading/trailing whitespace so indented lines inside functions work
+        line = line.strip()
+
         # caret comments
-        if line.strip().startswith("^"):
+        if line.startswith("^"):
             return None
 
         # LET
@@ -202,6 +205,13 @@ class Tokenizer:
             value_text = self.extract_after(line, "BE", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
             return Token("LET", (name, expr), line_no)
+
+        # GLOBAL SET — allows functions to modify global variables (enables recursion with shared state)
+        if line.startswith("GLOBAL SET the variable"):
+            name = self.extract_between(line, "variable", "TO", line_no).strip()
+            value_text = self.extract_after(line, "TO", line_no).strip()
+            expr = self.parse_expression(value_text, line_no)
+            return Token("GLOBAL_SET", (name, expr), line_no)
 
         # SET
         if line.startswith("SET the variable"):

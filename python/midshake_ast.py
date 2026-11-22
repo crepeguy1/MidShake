@@ -264,6 +264,17 @@ class Terminate(Statement):
 
 
 # -----------------------------
+# GLOBAL STATEMENTS
+# -----------------------------
+
+@dataclass
+class GlobalSet(Statement):
+    """Set a global variable from within a function (enables recursion with shared state)."""
+    name: str
+    value: Expression
+
+
+# -----------------------------
 # MAP STATEMENTS
 # -----------------------------
 

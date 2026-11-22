@@ -14,7 +14,7 @@ from midshake_ast import (
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
     StringIsDigit, StringIsLetter, StringIsWhitespace,
-    Boolean, MapSet, Break, Continue, ForIn
+    Boolean, MapSet, Break, Continue, ForIn, GlobalSet
 )
 
 
@@ -26,6 +26,8 @@ class Runtime:
         self.terminated: bool = False
         self.return_value = None
         self.in_function = False
+        # Global variables that survive deep copy across function calls
+        self.globals: Dict[str, Any] = {}
 
 
 
@@ -119,6 +121,9 @@ class Runtime:
 
         if isinstance(expr, Variable):
             self.require_declared(expr.name)
+            # Check globals first (for GLOBAL SET variables), then local vars
+            if expr.name in self.globals:
+                return self.globals[expr.name]
             return self.vars[expr.name]
 
         if isinstance(expr, Call):
@@ -241,15 +246,9 @@ class Runtime:
                 elif not isinstance(key, str):
                     key = str(key)
             if not isinstance(mapping, dict):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Expected a map but got a different type."
-                )
+                return ""
             if key not in mapping:
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Key '{key}' not found in map."
-                )
+                return ""
             return mapping[key]
 
         # String length: the length of STRING
@@ -503,6 +502,11 @@ class Runtime:
             else:
                 map_name = None
             mapping = self.eval_expr(stmt.map_expr)
+            if not isinstance(mapping, dict):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a map but got a different type."
+                )
             # Evaluate key
             if isinstance(stmt.key_expr, Variable):
                 key = stmt.key_expr.name
@@ -514,11 +518,6 @@ class Runtime:
                     key = str(key)
                 elif not isinstance(key, str):
                     key = str(key)
-            if not isinstance(mapping, dict):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Expected a map but got a different type."
-                )
             value = self.eval_expr(stmt.value_expr)
             mapping[key] = value
             # Update the variable in the environment
@@ -622,6 +621,13 @@ class Runtime:
                     f"  Details: {e}"
                 )
 
+
+        # GLOBAL SET: modify a global variable that survives across function calls
+        elif isinstance(stmt, GlobalSet):
+            val = self.eval_expr(stmt.value)
+            self.globals[stmt.name] = val
+            # Also update local scope so the current function sees it immediately
+            self.vars[stmt.name] = val
 
         # TERMINATE
         elif isinstance(stmt, Terminate):

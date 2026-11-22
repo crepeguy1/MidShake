@@ -158,7 +158,7 @@ DEFINE function mapSet WITH the variables map, key, value;
 END FUNCTION;
 
 ^ Get a value from a map by key
-DEFINE function mapGet WITH the variables map, key;
+DEFINE function mapGet WITH the variables key, map;
     LET the variable result BE the value of key in map;
     RETURN the value of result;
 END FUNCTION;

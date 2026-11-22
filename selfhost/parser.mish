@@ -1,9 +1,20 @@
 ^ parser.mish
-^ An AST-building parser written in MidShake.
+^ A recursive AST-building parser written in MidShake.
 ^ It reads source code, splits it into lines, and builds AST nodes as nested maps.
 ^ Each AST node is a map with "type", "name", "value", "body", and "children" properties.
+^ Block statements (IF, WHILST, DEFINE, FOR) recursively parse their body lines into proper child AST nodes.
+^ Uses GLOBAL SET to share state across recursive function calls.
 
 IMPORT the file "stdlib/stdlib.mish";
+
+^ ====== Global State ======
+^ These variables are shared across recursive calls to parseStatement using GLOBAL SET.
+LET the variable g_lines BE [];
+LET the variable g_pos BE the number 0;
+LET the variable g_lineCount BE the number 0;
+LET the variable g_ast BE [];
+^ g_result holds the return value of parseStatement, shared via GLOBAL SET
+LET the variable g_result BE {};
 
 ^ ====== Helper Functions ======
 
@@ -17,9 +28,7 @@ DEFINE function createNode WITH the variable nodeType;
 END FUNCTION;
 
 ^ Extract the variable name from a LET statement
-^ e.g., "LET the variable x BE ..." -> "x"
 DEFINE function extractLetName WITH the variable line;
-    ^ Find "the variable" and extract the next word
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
@@ -32,7 +41,6 @@ DEFINE function extractLetName WITH the variable line;
         LET the variable word BE the RESPONSE;
         
         IF the value of found IS equal to the number 1 THEN
-            ^ The next word after "variable" is the name
             CALL trim WITH the value of word;
             LET the variable trimmedWord BE the RESPONSE;
             IF the length of trimmedWord IS greater than the number 0 THEN
@@ -52,7 +60,6 @@ DEFINE function extractLetName WITH the variable line;
 END FUNCTION;
 
 ^ Extract the variable name from a SET statement
-^ e.g., "SET the variable x TO ..." -> "x"
 DEFINE function extractSetName WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
@@ -85,7 +92,6 @@ DEFINE function extractSetName WITH the variable line;
 END FUNCTION;
 
 ^ Extract the function name from a DEFINE statement
-^ e.g., "DEFINE function greet WITH the variables name" -> "greet"
 DEFINE function extractFuncName WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
@@ -118,11 +124,9 @@ DEFINE function extractFuncName WITH the variable line;
 END FUNCTION;
 
 ^ Extract the function parameters from a DEFINE statement
-^ e.g., "DEFINE function greet WITH the variables name, age" -> ["name", "age"]
 DEFINE function extractFuncParams WITH the variable line;
     LET the variable params BE [];
     
-    ^ Find "the variables" and extract everything after it
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
@@ -148,7 +152,6 @@ DEFINE function extractFuncParams WITH the variable line;
         SET the variable idx TO the value of idx plus the number 1;
     END WHILST;
     
-    ^ Split by comma
     IF the length of paramStr IS greater than the number 0 THEN
         CALL split WITH the value of paramStr, the string ",";
         LET the variable paramList BE the RESPONSE;
@@ -171,7 +174,6 @@ DEFINE function extractFuncParams WITH the variable line;
 END FUNCTION;
 
 ^ Extract the CALL function name
-^ e.g., "CALL greet WITH the value of name" -> "greet"
 DEFINE function extractCallName WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
@@ -203,12 +205,10 @@ DEFINE function extractCallName WITH the variable line;
     RETURN the value of name;
 END FUNCTION;
 
-^ Extract the IMPORT path from an IMPORT statement
-^ Extracts text after "the file" and removes trailing semicolons
+^ Extract the IMPORT path
 DEFINE function extractImportPath WITH the variable line;
     LET the variable path BE the string "";
     
-    ^ Split by space and find the word after "file"
     CALL split WITH the value of line, the string " ";
     LET the variable parts BE the RESPONSE;
     LET the variable partCount BE the size of parts;
@@ -231,7 +231,6 @@ DEFINE function extractImportPath WITH the variable line;
         SET the variable idx TO the value of idx plus the number 1;
     END WHILST;
     
-    ^ Remove trailing semicolon if present
     CALL trim WITH the value of path;
     LET the variable trimmedPath BE the RESPONSE;
     SET the variable path TO the value of trimmedPath;
@@ -259,50 +258,103 @@ DEFINE function extractProclaimExpr WITH the variable line;
         SET the variable idx TO the value of idx plus the number 1;
     END WHILST;
     
-    ^ Remove trailing semicolon
     CALL trim WITH the value of expr;
     LET the variable trimmedExpr BE the RESPONSE;
     RETURN the value of trimmedExpr;
 END FUNCTION;
 
-^ ====== Main Parser ======
+^ Extract everything after a keyword (e.g., after "BE", "TO", "RETURN")
+DEFINE function extractAfterKeyword WITH the variable line, the variable keyword;
+    CALL split WITH the value of line, the string " ";
+    LET the variable words BE the RESPONSE;
+    LET the variable wordCount BE the size of words;
+    LET the variable idx BE the number 0;
+    LET the variable found BE the number 0;
+    LET the variable result BE the string "";
+    
+    WHILST the value of idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of idx, the value of words;
+        LET the variable word BE the RESPONSE;
+        
+        IF the value of found IS equal to the number 1 THEN
+            IF the length of result IS greater than the number 0 THEN
+                SET the variable result TO the value of result plus the string " ";
+            END IF;
+            SET the variable result TO the value of result plus the value of word;
+        END IF;
+        
+        IF the value of word IS equal to the value of keyword THEN
+            SET the variable found TO the number 1;
+        END IF;
+        
+        SET the variable idx TO the value of idx plus the number 1;
+    END WHILST;
+    
+    CALL trim WITH the value of result;
+    LET the variable trimmedResult BE the RESPONSE;
+    RETURN the value of trimmedResult;
+END FUNCTION;
 
-LET the variable filePath BE "examples/hello.mish";
-PROCLAIM the string "Parsing: ";
-PROCLAIM the value of filePath;
-PROCLAIM the string "";
+^ Extract condition (everything between start keyword and end keyword)
+DEFINE function extractCondition WITH the variable line, the variable endKeyword;
+    CALL split WITH the value of line, the string " ";
+    LET the variable words BE the RESPONSE;
+    LET the variable wordCount BE the size of words;
+    LET the variable idx BE the number 1;
+    LET the variable condition BE the string "";
+    
+    WHILST the value of idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of idx, the value of words;
+        LET the variable word BE the RESPONSE;
+        
+        IF the value of word IS equal to the value of endKeyword THEN
+            BREAK;
+        END IF;
+        
+        IF the length of condition IS greater than the number 0 THEN
+            SET the variable condition TO the value of condition plus the string " ";
+        END IF;
+        SET the variable condition TO the value of condition plus the value of word;
+        
+        SET the variable idx TO the value of idx plus the number 1;
+    END WHILST;
+    
+    RETURN the value of condition;
+END FUNCTION;
 
-LET the variable source BE the content of the file the value of filePath;
-CALL split WITH the value of source, the string "\n";
-LET the variable lines BE the RESPONSE;
-LET the variable lineCount BE the size of lines;
+^ ====== Recursive Parse Statement Function ======
+^ This function parses the current line (at g_pos) and returns an AST node.
+^ It advances g_pos past the statement.
+^ For block statements, it recursively calls itself to parse body lines.
 
-^ The AST root - a list of statement nodes
-LET the variable ast BE [];
-
-LET the variable i BE the number 0;
-WHILST the value of i IS less than the value of lineCount DO
-    CALL getItem WITH the value of i, the value of lines;
+DEFINE function parseStatement WITH the variable dummy;
+    LET the variable node BE {};
+    LET the variable consumed BE the number 0;
+    
+    ^ Skip empty lines and comments
+    CALL getItem WITH the value of g_pos, the value of g_lines;
     LET the variable line BE the RESPONSE;
     CALL trim WITH the value of line;
     LET the variable trimmed BE the RESPONSE;
     
-    ^ Skip empty lines and comments
     IF the value of trimmed IS equal to the string "" THEN
-        SET the variable i TO the value of i plus the number 1;
-        CONTINUE;
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        CALL createNode WITH "Empty";
+        LET the variable emptyNode BE the RESPONSE;
+        GLOBAL SET the variable g_result TO the value of emptyNode;
+        RETURN the value of emptyNode;
     END IF;
     
     CALL startsWith WITH the value of trimmed, the string "^";
     LET the variable isComment BE the RESPONSE;
     IF the value of isComment IS equal to the number 1 THEN
-        SET the variable i TO the value of i plus the number 1;
-        CONTINUE;
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        CALL createNode WITH "Comment";
+        LET the variable commentNode BE the RESPONSE;
+        SET the key "text" IN the map commentNode TO the value of trimmed;
+        GLOBAL SET the variable g_result TO the value of commentNode;
+        RETURN the value of commentNode;
     END IF;
-    
-    ^ Parse the statement and build an AST node
-    LET the variable node BE {};
-    LET the variable consumed BE the number 0;
     
     ^ --- LET statement ---
     CALL startsWith WITH the value of trimmed, the string "LET";
@@ -314,35 +366,9 @@ WHILST the value of i IS less than the value of lineCount DO
         LET the variable varName BE the RESPONSE;
         SET the key "name" IN the map letNode TO the value of varName;
         
-        ^ Extract the value expression (everything after "BE")
-        CALL split WITH the value of trimmed, the string " ";
-        LET the variable words BE the RESPONSE;
-        LET the variable wordCount BE the size of words;
-        LET the variable idx BE the number 0;
-        LET the variable found BE the number 0;
-        LET the variable valueExpr BE the string "";
-        
-        WHILST the value of idx IS less than the value of wordCount DO
-            CALL getItem WITH the value of idx, the value of words;
-            LET the variable word BE the RESPONSE;
-            
-            IF the value of found IS equal to the number 1 THEN
-                IF the length of valueExpr IS greater than the number 0 THEN
-                    SET the variable valueExpr TO the value of valueExpr plus the string " ";
-                END IF;
-                SET the variable valueExpr TO the value of valueExpr plus the value of word;
-            END IF;
-            
-            IF the value of word IS equal to the string "BE" THEN
-                SET the variable found TO the number 1;
-            END IF;
-            
-            SET the variable idx TO the value of idx plus the number 1;
-        END WHILST;
-        
-        CALL trim WITH the value of valueExpr;
-        LET the variable trimmedValue BE the RESPONSE;
-        SET the key "value" IN the map letNode TO the value of trimmedValue;
+        CALL extractAfterKeyword WITH the value of trimmed, the string "BE";
+        LET the variable valueExpr BE the RESPONSE;
+        SET the key "value" IN the map letNode TO the value of valueExpr;
         
         SET the variable node TO the value of letNode;
         SET the variable consumed TO the number 1;
@@ -359,35 +385,9 @@ WHILST the value of i IS less than the value of lineCount DO
             LET the variable varName BE the RESPONSE;
             SET the key "name" IN the map setNode TO the value of varName;
             
-            ^ Extract the value expression (everything after "TO")
-            CALL split WITH the value of trimmed, the string " ";
-            LET the variable words BE the RESPONSE;
-            LET the variable wordCount BE the size of words;
-            LET the variable idx BE the number 0;
-            LET the variable found BE the number 0;
-            LET the variable valueExpr BE the string "";
-            
-            WHILST the value of idx IS less than the value of wordCount DO
-                CALL getItem WITH the value of idx, the value of words;
-                LET the variable word BE the RESPONSE;
-                
-                IF the value of found IS equal to the number 1 THEN
-                    IF the length of valueExpr IS greater than the number 0 THEN
-                        SET the variable valueExpr TO the value of valueExpr plus the string " ";
-                    END IF;
-                    SET the variable valueExpr TO the value of valueExpr plus the value of word;
-                END IF;
-                
-                IF the value of word IS equal to the string "TO" THEN
-                    SET the variable found TO the number 1;
-                END IF;
-                
-                SET the variable idx TO the value of idx plus the number 1;
-            END WHILST;
-            
-            CALL trim WITH the value of valueExpr;
-            LET the variable trimmedValue BE the RESPONSE;
-            SET the key "value" IN the map setNode TO the value of trimmedValue;
+            CALL extractAfterKeyword WITH the value of trimmed, the string "TO";
+            LET the variable valueExpr BE the RESPONSE;
+            SET the key "value" IN the map setNode TO the value of valueExpr;
             
             SET the variable node TO the value of setNode;
             SET the variable consumed TO the number 1;
@@ -409,7 +409,7 @@ WHILST the value of i IS less than the value of lineCount DO
         END IF;
     END IF;
     
-    ^ --- IF statement (with body collection) ---
+    ^ --- IF statement (recursive body parsing) ---
     IF the value of consumed IS equal to the number 0 THEN
         CALL startsWith WITH the value of trimmed, the string "IF";
         LET the variable isIf BE the RESPONSE;
@@ -417,61 +417,43 @@ WHILST the value of i IS less than the value of lineCount DO
             CALL createNode WITH "If";
             LET the variable ifNode BE the RESPONSE;
             
-            ^ Extract condition (everything after IF, before THEN)
-            CALL split WITH the value of trimmed, the string " ";
-            LET the variable words BE the RESPONSE;
-            LET the variable wordCount BE the size of words;
-            LET the variable idx BE the number 1;
-            LET the variable condition BE the string "";
-            
-            WHILST the value of idx IS less than the value of wordCount DO
-                CALL getItem WITH the value of idx, the value of words;
-                LET the variable word BE the RESPONSE;
-                
-                IF the value of word IS equal to the string "THEN" THEN
-                    BREAK;
-                END IF;
-                
-                IF the length of condition IS greater than the number 0 THEN
-                    SET the variable condition TO the value of condition plus the string " ";
-                END IF;
-                SET the variable condition TO the value of condition plus the value of word;
-                
-                SET the variable idx TO the value of idx plus the number 1;
-            END WHILST;
-            
+            CALL extractCondition WITH the value of trimmed, the string "THEN";
+            LET the variable condition BE the RESPONSE;
             SET the key "condition" IN the map ifNode TO the value of condition;
             
-            ^ Collect body lines until END IF
+            ^ Collect body by recursively parsing until END IF or ELSE
             LET the variable body BE [];
-            SET the variable i TO the value of i plus the number 1;
-            WHILST the value of i IS less than the value of lineCount DO
-                CALL getItem WITH the value of i, the value of lines;
+            GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+            WHILST the value of g_pos IS less than the value of g_lineCount DO
+                CALL getItem WITH the value of g_pos, the value of g_lines;
                 LET the variable bodyLine BE the RESPONSE;
                 CALL trim WITH the value of bodyLine;
                 LET the variable trimmedBody BE the RESPONSE;
                 
-                ^ Check for END IF
                 CALL startsWith WITH the value of trimmedBody, the string "END IF";
                 LET the variable isEndIf BE the RESPONSE;
                 IF the value of isEndIf IS equal to the number 1 THEN
-                    SET the variable i TO the value of i plus the number 1;
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
                     BREAK;
                 END IF;
                 
-                ^ Check for ELSE
                 IF the value of trimmedBody IS equal to the string "ELSE" THEN
-                    SET the variable i TO the value of i plus the number 1;
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
                     BREAK;
                 END IF;
                 
-                ^ Add body line as a child node (simplified - just store the line text)
-                LET the variable childNode BE {};
-                SET the key "type" IN the map childNode TO "BodyLine";
-                SET the key "text" IN the map childNode TO the value of trimmedBody;
-                SET the variable body TO the append of the value of childNode to body;
+                ^ Recursively parse this body line
+                CALL parseStatement WITH the number 0;
+                LET the variable childNode BE the value of g_result;
+                CALL mapGet WITH "type", the value of childNode;
+                LET the variable childType BE the RESPONSE;
                 
-                SET the variable i TO the value of i plus the number 1;
+                ^ Only add non-empty, non-comment nodes
+                IF the value of childType IS not equal to the string "Empty" THEN
+                    IF the value of childType IS not equal to the string "Comment" THEN
+                        SET the variable body TO the append of the value of childNode to body;
+                    END IF;
+                END IF;
             END WHILST;
             
             SET the key "body" IN the map ifNode TO the value of body;
@@ -480,7 +462,7 @@ WHILST the value of i IS less than the value of lineCount DO
         END IF;
     END IF;
     
-    ^ --- WHILST statement (with body collection) ---
+    ^ --- WHILST statement (recursive body parsing) ---
     IF the value of consumed IS equal to the number 0 THEN
         CALL startsWith WITH the value of trimmed, the string "WHILST";
         LET the variable isWhile BE the RESPONSE;
@@ -488,36 +470,14 @@ WHILST the value of i IS less than the value of lineCount DO
             CALL createNode WITH "While";
             LET the variable whileNode BE the RESPONSE;
             
-            ^ Extract condition (everything after WHILST, before DO)
-            CALL split WITH the value of trimmed, the string " ";
-            LET the variable words BE the RESPONSE;
-            LET the variable wordCount BE the size of words;
-            LET the variable idx BE the number 1;
-            LET the variable condition BE the string "";
-            
-            WHILST the value of idx IS less than the value of wordCount DO
-                CALL getItem WITH the value of idx, the value of words;
-                LET the variable word BE the RESPONSE;
-                
-                IF the value of word IS equal to the string "DO" THEN
-                    BREAK;
-                END IF;
-                
-                IF the length of condition IS greater than the number 0 THEN
-                    SET the variable condition TO the value of condition plus the string " ";
-                END IF;
-                SET the variable condition TO the value of condition plus the value of word;
-                
-                SET the variable idx TO the value of idx plus the number 1;
-            END WHILST;
-            
+            CALL extractCondition WITH the value of trimmed, the string "DO";
+            LET the variable condition BE the RESPONSE;
             SET the key "condition" IN the map whileNode TO the value of condition;
             
-            ^ Collect body lines until END WHILST
             LET the variable body BE [];
-            SET the variable i TO the value of i plus the number 1;
-            WHILST the value of i IS less than the value of lineCount DO
-                CALL getItem WITH the value of i, the value of lines;
+            GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+            WHILST the value of g_pos IS less than the value of g_lineCount DO
+                CALL getItem WITH the value of g_pos, the value of g_lines;
                 LET the variable bodyLine BE the RESPONSE;
                 CALL trim WITH the value of bodyLine;
                 LET the variable trimmedBody BE the RESPONSE;
@@ -525,16 +485,21 @@ WHILST the value of i IS less than the value of lineCount DO
                 CALL startsWith WITH the value of trimmedBody, the string "END WHILST";
                 LET the variable isEndWhile BE the RESPONSE;
                 IF the value of isEndWhile IS equal to the number 1 THEN
-                    SET the variable i TO the value of i plus the number 1;
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
                     BREAK;
                 END IF;
                 
-                LET the variable childNode BE {};
-                SET the key "type" IN the map childNode TO "BodyLine";
-                SET the key "text" IN the map childNode TO the value of trimmedBody;
-                SET the variable body TO the append of the value of childNode to body;
+                ^ Recursively parse this body line
+                CALL parseStatement WITH the number 0;
+                LET the variable childNode BE the value of g_result;
+                CALL mapGet WITH "type", the value of childNode;
+                LET the variable childType BE the RESPONSE;
                 
-                SET the variable i TO the value of i plus the number 1;
+                IF the value of childType IS not equal to the string "Empty" THEN
+                    IF the value of childType IS not equal to the string "Comment" THEN
+                        SET the variable body TO the append of the value of childNode to body;
+                    END IF;
+                END IF;
             END WHILST;
             
             SET the key "body" IN the map whileNode TO the value of body;
@@ -543,7 +508,7 @@ WHILST the value of i IS less than the value of lineCount DO
         END IF;
     END IF;
     
-    ^ --- DEFINE function (with body collection) ---
+    ^ --- DEFINE function (recursive body parsing) ---
     IF the value of consumed IS equal to the number 0 THEN
         CALL startsWith WITH the value of trimmed, the string "DEFINE";
         LET the variable isDefine BE the RESPONSE;
@@ -559,11 +524,10 @@ WHILST the value of i IS less than the value of lineCount DO
             LET the variable params BE the RESPONSE;
             SET the key "params" IN the map funcNode TO the value of params;
             
-            ^ Collect body lines until END FUNCTION
             LET the variable body BE [];
-            SET the variable i TO the value of i plus the number 1;
-            WHILST the value of i IS less than the value of lineCount DO
-                CALL getItem WITH the value of i, the value of lines;
+            GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+            WHILST the value of g_pos IS less than the value of g_lineCount DO
+                CALL getItem WITH the value of g_pos, the value of g_lines;
                 LET the variable bodyLine BE the RESPONSE;
                 CALL trim WITH the value of bodyLine;
                 LET the variable trimmedBody BE the RESPONSE;
@@ -571,20 +535,69 @@ WHILST the value of i IS less than the value of lineCount DO
                 CALL startsWith WITH the value of trimmedBody, the string "END FUNCTION";
                 LET the variable isEndFunc BE the RESPONSE;
                 IF the value of isEndFunc IS equal to the number 1 THEN
-                    SET the variable i TO the value of i plus the number 1;
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
                     BREAK;
                 END IF;
                 
-                LET the variable childNode BE {};
-                SET the key "type" IN the map childNode TO "BodyLine";
-                SET the key "text" IN the map childNode TO the value of trimmedBody;
-                SET the variable body TO the append of the value of childNode to body;
+                ^ Recursively parse this body line
+                CALL parseStatement WITH the number 0;
+                LET the variable childNode BE the value of g_result;
+                CALL mapGet WITH "type", the value of childNode;
+                LET the variable childType BE the RESPONSE;
                 
-                SET the variable i TO the value of i plus the number 1;
+                IF the value of childType IS not equal to the string "Empty" THEN
+                    IF the value of childType IS not equal to the string "Comment" THEN
+                        SET the variable body TO the append of the value of childNode to body;
+                    END IF;
+                END IF;
             END WHILST;
             
             SET the key "body" IN the map funcNode TO the value of body;
             SET the variable node TO the value of funcNode;
+            SET the variable consumed TO the number 1;
+        END IF;
+    END IF;
+    
+    ^ --- FOR statement (recursive body parsing) ---
+    IF the value of consumed IS equal to the number 0 THEN
+        CALL startsWith WITH the value of trimmed, the string "FOR";
+        LET the variable isFor BE the RESPONSE;
+        IF the value of isFor IS equal to the number 1 THEN
+            CALL createNode WITH "ForIn";
+            LET the variable forNode BE the RESPONSE;
+            
+            SET the key "header" IN the map forNode TO the value of trimmed;
+            
+            LET the variable body BE [];
+            GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+            WHILST the value of g_pos IS less than the value of g_lineCount DO
+                CALL getItem WITH the value of g_pos, the value of g_lines;
+                LET the variable bodyLine BE the RESPONSE;
+                CALL trim WITH the value of bodyLine;
+                LET the variable trimmedBody BE the RESPONSE;
+                
+                CALL startsWith WITH the value of trimmedBody, the string "END FOR";
+                LET the variable isEndFor BE the RESPONSE;
+                IF the value of isEndFor IS equal to the number 1 THEN
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+                    BREAK;
+                END IF;
+                
+                ^ Recursively parse this body line
+                CALL parseStatement WITH the number 0;
+                LET the variable childNode BE the value of g_result;
+                CALL mapGet WITH "type", the value of childNode;
+                LET the variable childType BE the RESPONSE;
+                
+                IF the value of childType IS not equal to the string "Empty" THEN
+                    IF the value of childType IS not equal to the string "Comment" THEN
+                        SET the variable body TO the append of the value of childNode to body;
+                    END IF;
+                END IF;
+            END WHILST;
+            
+            SET the key "body" IN the map forNode TO the value of body;
+            SET the variable node TO the value of forNode;
             SET the variable consumed TO the number 1;
         END IF;
     END IF;
@@ -596,11 +609,9 @@ WHILST the value of i IS less than the value of lineCount DO
         IF the value of isCall IS equal to the number 1 THEN
             CALL createNode WITH "Call";
             LET the variable callNode BE the RESPONSE;
-            
             CALL extractCallName WITH the value of trimmed;
             LET the variable callName BE the RESPONSE;
             SET the key "name" IN the map callNode TO the value of callName;
-            
             SET the variable node TO the value of callNode;
             SET the variable consumed TO the number 1;
         END IF;
@@ -613,11 +624,9 @@ WHILST the value of i IS less than the value of lineCount DO
         IF the value of isImport IS equal to the number 1 THEN
             CALL createNode WITH "Import";
             LET the variable importNode BE the RESPONSE;
-            
             CALL extractImportPath WITH the value of trimmed;
             LET the variable importPath BE the RESPONSE;
             SET the key "path" IN the map importNode TO the value of importPath;
-            
             SET the variable node TO the value of importNode;
             SET the variable consumed TO the number 1;
         END IF;
@@ -630,30 +639,9 @@ WHILST the value of i IS less than the value of lineCount DO
         IF the value of isReturn IS equal to the number 1 THEN
             CALL createNode WITH "Return";
             LET the variable returnNode BE the RESPONSE;
-            
-            ^ Extract the return value (everything after RETURN)
-            CALL split WITH the value of trimmed, the string " ";
-            LET the variable words BE the RESPONSE;
-            LET the variable wordCount BE the size of words;
-            LET the variable idx BE the number 1;
-            LET the variable returnExpr BE the string "";
-            
-            WHILST the value of idx IS less than the value of wordCount DO
-                CALL getItem WITH the value of idx, the value of words;
-                LET the variable word BE the RESPONSE;
-                
-                IF the length of returnExpr IS greater than the number 0 THEN
-                    SET the variable returnExpr TO the value of returnExpr plus the string " ";
-                END IF;
-                SET the variable returnExpr TO the value of returnExpr plus the value of word;
-                
-                SET the variable idx TO the value of idx plus the number 1;
-            END WHILST;
-            
-            CALL trim WITH the value of returnExpr;
-            LET the variable trimmedReturn BE the RESPONSE;
-            SET the key "value" IN the map returnNode TO the value of trimmedReturn;
-            
+            CALL extractAfterKeyword WITH the value of trimmed, the string "RETURN";
+            LET the variable returnExpr BE the RESPONSE;
+            SET the key "value" IN the map returnNode TO the value of returnExpr;
             SET the variable node TO the value of returnNode;
             SET the variable consumed TO the number 1;
         END IF;
@@ -668,47 +656,6 @@ WHILST the value of i IS less than the value of lineCount DO
             LET the variable fileWriteNode BE the RESPONSE;
             SET the key "value" IN the map fileWriteNode TO the value of trimmed;
             SET the variable node TO the value of fileWriteNode;
-            SET the variable consumed TO the number 1;
-        END IF;
-    END IF;
-    
-    ^ --- FOR statement (with body collection) ---
-    IF the value of consumed IS equal to the number 0 THEN
-        CALL startsWith WITH the value of trimmed, the string "FOR";
-        LET the variable isFor BE the RESPONSE;
-        IF the value of isFor IS equal to the number 1 THEN
-            CALL createNode WITH "ForIn";
-            LET the variable forNode BE the RESPONSE;
-            
-            ^ Extract variable name and list
-            SET the key "header" IN the map forNode TO the value of trimmed;
-            
-            ^ Collect body lines until END FOR
-            LET the variable body BE [];
-            SET the variable i TO the value of i plus the number 1;
-            WHILST the value of i IS less than the value of lineCount DO
-                CALL getItem WITH the value of i, the value of lines;
-                LET the variable bodyLine BE the RESPONSE;
-                CALL trim WITH the value of bodyLine;
-                LET the variable trimmedBody BE the RESPONSE;
-                
-                CALL startsWith WITH the value of trimmedBody, the string "END FOR";
-                LET the variable isEndFor BE the RESPONSE;
-                IF the value of isEndFor IS equal to the number 1 THEN
-                    SET the variable i TO the value of i plus the number 1;
-                    BREAK;
-                END IF;
-                
-                LET the variable childNode BE {};
-                SET the key "type" IN the map childNode TO "BodyLine";
-                SET the key "text" IN the map childNode TO the value of trimmedBody;
-                SET the variable body TO the append of the value of childNode to body;
-                
-                SET the variable i TO the value of i plus the number 1;
-            END WHILST;
-            
-            SET the key "body" IN the map forNode TO the value of body;
-            SET the variable node TO the value of forNode;
             SET the variable consumed TO the number 1;
         END IF;
     END IF;
@@ -753,24 +700,114 @@ WHILST the value of i IS less than the value of lineCount DO
         SET the variable node TO the value of unknownNode;
     END IF;
     
-    ^ Add the node to the AST
-    SET the variable ast TO the append of the value of node to ast;
+    ^ Advance position
+    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
     
-    SET the variable i TO the value of i plus the number 1;
+    ^ Store result in global variable to avoid RESPONSE conflicts during recursion
+    GLOBAL SET the variable g_result TO the value of node;
+    
+    RETURN the value of node;
+END FUNCTION;
+
+^ ====== Print AST Function ======
+^ Recursively prints an AST node with indentation
+DEFINE function printNode WITH the variable node, the variable indent;
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    
+    PROCLAIM the value of indent;
+    PROCLAIM the string "Node: ";
+    PROCLAIM the value of nodeType;
+    PROCLAIM the string "";
+    
+    ^ Print name if present
+    CALL mapGet WITH "name", the value of node;
+    LET the variable nodeName BE the RESPONSE;
+    IF the length of nodeName IS greater than the number 0 THEN
+        PROCLAIM the value of indent;
+        PROCLAIM the string "  Name: ";
+        PROCLAIM the value of nodeName;
+        PROCLAIM the string "";
+    END IF;
+    
+    ^ Print value if present
+    CALL mapGet WITH "value", the value of node;
+    LET the variable nodeValue BE the RESPONSE;
+    IF the length of nodeValue IS greater than the number 0 THEN
+        PROCLAIM the value of indent;
+        PROCLAIM the string "  Value: ";
+        PROCLAIM the value of nodeValue;
+        PROCLAIM the string "";
+    END IF;
+    
+    ^ Print body
+    CALL mapGet WITH "body", the value of node;
+    LET the variable body BE the RESPONSE;
+    ^ Check if body is a non-empty string (meaning it might be a list representation)
+    IF the value of body IS not equal to the string "" THEN
+        LET the variable bodySize BE the size of body;
+        IF the value of bodySize IS greater than the number 0 THEN
+            PROCLAIM the value of indent;
+            PROCLAIM the string "  Body (";
+            PROCLAIM the number bodySize;
+            PROCLAIM the string " children):";
+            PROCLAIM the string "";
+            
+            LET the variable bIdx BE the number 0;
+            WHILST the value of bIdx IS less than the value of bodySize DO
+                CALL getItem WITH the value of bIdx, the value of body;
+                LET the variable child BE the RESPONSE;
+                CALL printNode WITH the value of child, the value of indent plus the string "    ";
+                SET the variable bIdx TO the value of bIdx plus the number 1;
+            END WHILST;
+        END IF;
+    END IF;
+END FUNCTION;
+
+^ ====== Main Parser ======
+
+LET the variable filePath BE "examples/hello.mish";
+PROCLAIM the string "Parsing: ";
+PROCLAIM the value of filePath;
+PROCLAIM the string "";
+
+LET the variable source BE the content of the file the value of filePath;
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+
+^ Initialize global state
+SET the variable g_lines TO the value of sourceLines;
+SET the variable g_pos TO the number 0;
+SET the variable g_lineCount TO the size of g_lines;
+SET the variable g_ast TO [];
+
+^ Parse all top-level statements
+WHILST the value of g_pos IS less than the value of g_lineCount DO
+    CALL parseStatement WITH the number 0;
+    LET the variable node BE the value of g_result;
+    
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    
+    ^ Only add non-empty, non-comment nodes to the AST
+    IF the value of nodeType IS not equal to the string "Empty" THEN
+        IF the value of nodeType IS not equal to the string "Comment" THEN
+            GLOBAL SET the variable g_ast TO the append of the value of node to g_ast;
+        END IF;
+    END IF;
 END WHILST;
 
 ^ ====== Print the AST ======
 
 PROCLAIM the string "--- AST ---";
 
-LET the variable astSize BE the size of ast;
+LET the variable astSize BE the size of g_ast;
 LET the variable idx BE the number 0;
 WHILST the value of idx IS less than the value of astSize DO
-    CALL getItem WITH the value of idx, the value of ast;
+    CALL getItem WITH the value of idx, the value of g_ast;
     LET the variable node BE the RESPONSE;
     
-    PROCLAIM the string "  Node: ";
-    PROCLAIM the map node;
+    CALL printNode WITH the value of node, the string "";
     PROCLAIM the string "";
     
     SET the variable idx TO the value of idx plus the number 1;

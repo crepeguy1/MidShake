@@ -5,7 +5,7 @@ from midshake_ast import (
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
     Call, FunctionDef, Return, FileWriteStatement, Import,
-    Break, Continue, ForIn, MapSet
+    Break, Continue, ForIn, MapSet, GlobalSet
 )
 
 
@@ -80,6 +80,12 @@ class Parser:
             name, expr = tok.value
             self.advance()
             return Set(name, expr)
+
+        # GLOBAL SET
+        if tok.type == "GLOBAL_SET":
+            name, expr = tok.value
+            self.advance()
+            return GlobalSet(name, expr)
 
         # PROCLAIM
         if tok.type == "PROCLAIM":

@@ -11,7 +11,7 @@ from midshake_ast import (
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
     StringIsDigit, StringIsLetter, StringIsWhitespace,
-    Boolean, MapSet, Break, Continue, ForIn
+    Boolean, MapSet, Break, Continue, ForIn, GlobalSet
 )
 
 
@@ -282,6 +282,11 @@ class CppCompiler:
                 self.emit(f'env.set("{map_name}", map_set({mapping}, {key}, {value}));')
             else:
                 self.emit(f'map_set({mapping}, {key}, {value});')
+
+        # GLOBAL SET: modify a global variable from within a function
+        elif isinstance(stmt, GlobalSet):
+            value = self.compile_expr(stmt.value)
+            self.emit(f'env.set("{stmt.name}", {value});')
 
         # FILE WRITE
         elif isinstance(stmt, (FileWriteNode, FileWriteStatement)):
