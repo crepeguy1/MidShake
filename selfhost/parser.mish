@@ -700,8 +700,22 @@ DEFINE function parseStatement WITH the variable dummy;
         SET the variable node TO the value of unknownNode;
     END IF;
     
-    ^ Advance position
-    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+    ^ Get node type for advance check
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    
+    ^ Advance position only for non-block statements
+    IF the value of consumed IS not equal to the number 0 THEN
+        IF the value of nodeType IS not equal to the string "While" THEN
+            IF the value of nodeType IS not equal to the string "If" THEN
+                IF the value of nodeType IS not equal to the string "FunctionDef" THEN
+                    IF the value of nodeType IS not equal to the string "ForIn" THEN
+                        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
+    END IF;
     
     ^ Store result in global variable to avoid RESPONSE conflicts during recursion
     GLOBAL SET the variable g_result TO the value of node;
@@ -737,6 +751,36 @@ DEFINE function printNode WITH the variable node, the variable indent;
         PROCLAIM the value of indent;
         PROCLAIM the string "  Value: ";
         PROCLAIM the value of nodeValue;
+        PROCLAIM the string "";
+    END IF;
+    
+    ^ Print condition if present (for IF and WHILE nodes)
+    CALL mapGet WITH "condition", the value of node;
+    LET the variable nodeCondition BE the RESPONSE;
+    IF the length of nodeCondition IS greater than the number 0 THEN
+        PROCLAIM the value of indent;
+        PROCLAIM the string "  Condition: ";
+        PROCLAIM the value of nodeCondition;
+        PROCLAIM the string "";
+    END IF;
+    
+    ^ Print params if present (for function nodes)
+    CALL mapGet WITH "params", the value of node;
+    LET the variable nodeParams BE the RESPONSE;
+    IF the value of nodeParams IS not equal to the string "" THEN
+        PROCLAIM the value of indent;
+        PROCLAIM the string "  Params: ";
+        PROCLAIM the value of nodeParams;
+        PROCLAIM the string "";
+    END IF;
+    
+    ^ Print path if present (for import nodes)
+    CALL mapGet WITH "path", the value of node;
+    LET the variable nodePath BE the RESPONSE;
+    IF the length of nodePath IS greater than the number 0 THEN
+        PROCLAIM the value of indent;
+        PROCLAIM the string "  Path: ";
+        PROCLAIM the value of nodePath;
         PROCLAIM the string "";
     END IF;
     

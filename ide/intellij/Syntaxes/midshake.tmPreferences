@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+  <!-- Block keywords: bold blue -->
+  <dict>
+    <key>name</key>
+    <string>Block Keyword</string>
+    <key>scope</key>
+    <string>keyword.control.block.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#569CD6</string>
+      <key>fontStyle</key>
+      <string>bold</string>
+    </dict>
+  </dict>
+  <!-- Statement keywords: bold purple -->
+  <dict>
+    <key>name</key>
+    <string>Statement Keyword</string>
+    <key>scope</key>
+    <string>keyword.control.statement.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#C586C0</string>
+      <key>fontStyle</key>
+      <string>bold</string>
+    </dict>
+  </dict>
+  <!-- Expression prefixes: cyan -->
+  <dict>
+    <key>name</key>
+    <string>Expression Prefix</string>
+    <key>scope</key>
+    <string>keyword.control.expression.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#4EC9B0</string>
+      <key>fontStyle</key>
+      <string>italic</string>
+    </dict>
+  </dict>
+  <!-- Arithmetic operators: bold yellow -->
+  <dict>
+    <key>name</key>
+    <string>Arithmetic Operator</string>
+    <key>scope</key>
+    <string>keyword.operator.arithmetic.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#DCDCAA</string>
+      <key>fontStyle</key>
+      <string>bold</string>
+    </dict>
+  </dict>
+  <!-- Comparison operators: bold yellow -->
+  <dict>
+    <key>name</key>
+    <string>Comparison Operator</string>
+    <key>scope</key>
+    <string>keyword.operator.comparison.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#DCDCAA</string>
+      <key>fontStyle</key>
+      <string>bold</string>
+    </dict>
+  </dict>
+  <!-- Logical operators: bold yellow -->
+  <dict>
+    <key>name</key>
+    <string>Logical Operator</string>
+    <key>scope</key>
+    <string>keyword.operator.logical.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#DCDCAA</string>
+      <key>fontStyle</key>
+      <string>bold</string>
+    </dict>
+  </dict>
+  <!-- Built-in functions: italic yellow -->
+  <dict>
+    <key>name</key>
+    <string>Built-in Function</string>
+    <key>scope</key>
+    <string>support.function.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#DCDCAA</string>
+      <key>fontStyle</key>
+      <string>italic</string>
+    </dict>
+  </dict>
+  <!-- Strings: orange -->
+  <dict>
+    <key>name</key>
+    <string>String</string>
+    <key>scope</key>
+    <string>string.quoted.double.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#CE9178</string>
+    </dict>
+  </dict>
+  <!-- String escapes: orange -->
+  <dict>
+    <key>name</key>
+    <string>String Escape</string>
+    <key>scope</key>
+    <string>constant.character.escape.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#CE9178</string>
+    </dict>
+  </dict>
+  <!-- Numbers: green -->
+  <dict>
+    <key>name</key>
+    <string>Number</string>
+    <key>scope</key>
+    <string>constant.numeric.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#B5CEA8</string>
+    </dict>
+  </dict>
+  <!-- Booleans: blue -->
+  <dict>
+    <key>name</key>
+    <string>Boolean</string>
+    <key>scope</key>
+    <string>constant.language.boolean.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#569CD6</string>
+    </dict>
+  </dict>
+  <!-- Caret comments: gray italic -->
+  <dict>
+    <key>name</key>
+    <string>Caret Comment</string>
+    <key>scope</key>
+    <string>comment.line.caret.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#6A9955</string>
+      <key>fontStyle</key>
+      <string>italic</string>
+    </dict>
+  </dict>
+  <!-- Hash comments: gray italic -->
+  <dict>
+    <key>name</key>
+    <string>Hash Comment</string>
+    <key>scope</key>
+    <string>comment.line.hash.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#6A9955</string>
+      <key>fontStyle</key>
+      <string>italic</string>
+    </dict>
+  </dict>
+  <!-- Variable types: teal -->
+  <dict>
+    <key>name</key>
+    <string>Variable Type</string>
+    <key>scope</key>
+    <string>variable.other.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#4EC9B0</string>
+    </dict>
+  </dict>
+  <!-- Punctuation: white -->
+  <dict>
+    <key>name</key>
+    <string>Punctuation</string>
+    <key>scope</key>
+    <string>punctuation.midshake</string>
+    <key>settings</key>
+    <dict>
+      <key>foreground</key>
+      <string>#D4D4D4</string>
+    </dict>
+  </dict>
+</array>
+</plist>

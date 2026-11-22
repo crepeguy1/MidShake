@@ -10,8 +10,14 @@ ide/
 │   └── midshake.sublime-syntax    # Sublime Text syntax definition
 ├── vim/
 │   └── midshake.vim               # Vim/Neovim syntax file
-└── atom/
-    └── grammar.json               # Atom/TextMate grammar
+├── atom/
+│   └── grammar.json               # Atom/TextMate grammar
+└── intellij/                      # IntelliJ IDEA / JetBrains IDE TextMate bundle
+    ├── README.md                  # Installation guide
+    ├── info.plist                 # Bundle metadata (required)
+    └── Syntaxes/
+        ├── midshake.tmLanguage.json       # TextMate grammar
+        └── midshake.tmPreferences         # Color theme preferences
 ```
 
 ## Installation
@@ -49,6 +55,21 @@ ide/
      }]
    }
    ```
+
+### IntelliJ IDEA / JetBrains IDEs
+
+MidShake syntax highlighting works with all JetBrains IDEs via a **TextMate bundle** — no compilation or Java SDK needed.
+
+**Quick install:**
+
+1. Open your JetBrains IDE
+2. Go to `File` → `Settings` → `Editor` → `TextMate Bundles` (`Ctrl+Alt+S`)
+3. Click **+** (Add) and select the `ide/intellij/` folder
+4. Click **OK** — syntax highlighting activates automatically for `.mish` files
+
+**Alternative:** Use `Settings` → `Editor` → `File Types` to create a user-defined file type with keyword groups.
+
+See `ide/intellij/README.md` for full details and a color scheme reference.
 
 ### VS Code / Cursor / Zed
 

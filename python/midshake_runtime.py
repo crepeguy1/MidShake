@@ -234,12 +234,26 @@ class Runtime:
         # Map get: the value of KEY in MAP
         if isinstance(expr, MapGet):
             mapping = self.eval_expr(expr.map_expr)
-            # Map keys that are bare identifiers are treated as string keys
-            if isinstance(expr.key_expr, Variable):
-                key = expr.key_expr.name
-            elif isinstance(expr.key_expr, String):
+            # Map keys: evaluate the key expression to get the actual key value
+            if isinstance(expr.key_expr, String):
+                # String literal key: use the literal value directly
                 key = expr.key_expr.value
+            elif isinstance(expr.key_expr, Variable):
+                # Bare identifier: first try to evaluate it as a variable
+                # (for cases like mapGet where key is a function parameter)
+                # If the variable doesn't exist, fall back to using the name as the key
+                # (for cases like "the value of name in mymap" where name is a symbol key)
+                try:
+                    key = self.eval_expr(expr.key_expr)
+                    if isinstance(key, (int, float)):
+                        key = str(key)
+                    elif not isinstance(key, str):
+                        key = str(key)
+                except ValueError:
+                    # Variable not declared — use the identifier name as the string key
+                    key = expr.key_expr.name
             else:
+                # Other expression: evaluate it to get the key
                 key = self.eval_expr(expr.key_expr)
                 if isinstance(key, (int, float)):
                     key = str(key)

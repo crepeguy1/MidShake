@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~70%
+## Current Progress: ~75%
 
 ### What's Done ✓
 
@@ -17,16 +17,16 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 - **Control flow**: `FOR...IN...DO` loops, `BREAK`, `CONTINUE`
 - **Booleans**: `true`/`false` literals
 - **Map mutation**: `SET the key K IN the map M TO the value V`
+- **Global state**: `GLOBAL SET` enables functions to modify shared state across recursive calls
 - **Recursion support**: Functions can call themselves (deep copy of variable environment)
 - **Line-based tokenizer**: `tokenizer.mish` reads source code and classifies each line by keyword type
 - **Character-level lexer**: `lexer.mish` walks source code character by character and produces tokens
-- **AST-building parser**: `parser.mish` reads source code and builds AST nodes as nested maps with type, name, value, body, and children properties. Handles all statement types including block statements (IF, WHILST, DEFINE, FOR) with body collection.
+- **Recursive AST-building parser**: `parser.mish` reads source code and builds a full AST with nested maps. Recursively parses body lines into child AST nodes for all block statements (IF, WHILST, DEFINE, FOR). Includes pretty-printer with indentation for visualizing the AST.
 
 ### What's Still Needed
 
-1. **Enhanced parser** — The current parser builds basic AST nodes. It needs to recursively parse body lines into proper child AST nodes instead of storing them as plain text.
-2. **Interpreter in MidShake** — Walk the AST and execute it
-3. **Code generator in MidShake** — Convert AST to C++ code (or another MidShake program)
+1. **Interpreter in MidShake** — Walk the AST and execute it, managing variable scope and function calls
+2. **Code generator in MidShake** — Convert AST to C++ code (or another MidShake program)
 
 ## Folder Structure
 
@@ -71,8 +71,7 @@ python python/midshake_cli.py run selfhost/examples/stringutils.mish
 
 ## Next Steps
 
-The AST-building parser is working. The next milestones are:
+The recursive AST-building parser is complete. The next milestone is:
 
-1. **Recursive AST parsing** — Make the parser recursively parse body lines into proper child AST nodes instead of storing them as plain text.
-2. **Interpreter in MidShake** — Write a MidShake program that walks the AST and executes it, managing variable scope and function calls.
-3. **Code generator in MidShake** — Convert the AST to C++ source code so MidShake can compile itself to native code.
+1. **Interpreter in MidShake** — Write a MidShake program (`interpreter.mish`) that walks the AST produced by `parser.mish` and executes it. This means evaluating expressions, managing variable scope, handling control flow (IF, WHILST, FOR), and supporting function definitions and calls.
+2. **Code generator in MidShake** — Convert the AST to C++ source code so MidShake can compile itself to native code.
