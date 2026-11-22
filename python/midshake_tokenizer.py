@@ -767,6 +767,47 @@ class ExpressionParser:
                 f"  Expected 'with' after 'the join of'."
             )
 
+        if self.text[self.pos:].startswith("the replace of"):
+            self.pos += len("the replace of")
+            self.skip_whitespace()
+            # Parse: the replace of STRING with OLD to NEW
+            if self.text[self.pos:].startswith("the value of"):
+                string_expr = self.parse_variable_phrase()
+            elif not self.is_at_end() and self.current_char() == '"':
+                string_expr = self.parse_string_literal()
+            else:
+                string_expr = self.parse_variable_name()
+            self.skip_whitespace()
+            if self.text[self.pos:].startswith("with"):
+                self.pos += len("with")
+                self.skip_whitespace()
+                if self.text[self.pos:].startswith("the value of"):
+                    old_expr = self.parse_variable_phrase()
+                elif not self.is_at_end() and self.current_char() == '"':
+                    old_expr = self.parse_string_literal()
+                else:
+                    old_expr = self.parse_variable_name()
+                self.skip_whitespace()
+                if self.text[self.pos:].startswith("to"):
+                    self.pos += len("to")
+                    self.skip_whitespace()
+                    if self.text[self.pos:].startswith("the value of"):
+                        new_expr = self.parse_variable_phrase()
+                    elif not self.is_at_end() and self.current_char() == '"':
+                        new_expr = self.parse_string_literal()
+                    else:
+                        new_expr = self.parse_variable_name()
+                    from midshake_ast import StringReplace
+                    return StringReplace(string_expr, old_expr, new_expr)
+                raise ValueError(
+                    f"MidShake Syntax Error (line {self.line_no}):\n"
+                    f"  Expected 'to' after 'the replace of ... with ...'."
+                )
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'with' after 'the replace of'."
+            )
+
         # Math functions — check against self.text[self.pos:] because current_token
         # stops at spaces, so "the minimum of" would be split into just "the".
         if self.text[self.pos:].startswith("the minimum of"):

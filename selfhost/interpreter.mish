@@ -8,9 +8,9 @@ IMPORT the file "selfhost/parser.mish";
 
 ^ ====== Global State ======
 ^ Variables store: a map where keys are variable names and values are their values
-LET the variable vars BE {};
+LET the variable g_vars BE {};
 ^ Functions store: a map where keys are function names and values are function AST nodes
-LET the variable funcs BE {};
+LET the variable g_funcs BE {};
 ^ RESPONSE variable: holds the return value of the last CALL
 LET the variable RESPONSE BE the string "";
 ^ Call stack: tracks whether we are inside a function call for RETURN handling
@@ -20,11 +20,60 @@ LET the variable returnValue BE the string "";
 ^ g_execResult: holds the result of executeNode, shared via GLOBAL SET
 LET the variable g_execResult BE the string "";
 
+^ ====== Helper: Replace all occurrences of a substring ======
+^ Uses the Python-side replace function for efficiency
+DEFINE function replaceAll WITH the variables text, old, new;
+    CALL replace WITH the value of text, the value of old, the value of new;
+    LET the variable result BE the RESPONSE;
+    RETURN the value of result;
+END FUNCTION;
+
+^ ====== Helper: Normalize keyword spacing ======
+^ Inserts spaces between MidShake keywords that may have been concatenated (e.g., "thestring" -> "the string")
+DEFINE function normalizeExpr WITH the variable expr;
+    CALL trim WITH the value of expr;
+    LET the variable result BE the RESPONSE;
+    
+    ^ Replace concatenated keywords with spaced versions (order matters: longest first)
+    CALL replaceAll WITH the value of result, the string "thevalueof", the string "the value of";
+    LET the variable r1 BE the RESPONSE;
+    SET the variable result TO the value of r1;
+    
+    CALL replaceAll WITH the value of result, the string "thelengthof", the string "the length of";
+    LET the variable r2 BE the RESPONSE;
+    SET the variable result TO the value of r2;
+    
+    CALL replaceAll WITH the value of result, the string "thesizeof", the string "the size of";
+    LET the variable r3 BE the RESPONSE;
+    SET the variable result TO the value of r3;
+    
+    CALL replaceAll WITH the value of result, the string "thenumber", the string "the number";
+    LET the variable r4 BE the RESPONSE;
+    SET the variable result TO the value of r4;
+    
+    CALL replaceAll WITH the value of result, the string "thestring", the string "the string";
+    LET the variable r5 BE the RESPONSE;
+    SET the variable result TO the value of r5;
+    
+    CALL replaceAll WITH the value of result, the string "theitematposition", the string "the item at position";
+    LET the variable r6 BE the RESPONSE;
+    SET the variable result TO the value of r6;
+    
+    CALL trim WITH the value of result;
+    LET the variable finalResult BE the RESPONSE;
+    RETURN the value of finalResult;
+END FUNCTION;
+
 ^ ====== Helper: Evaluate an expression string ======
 ^ Parses expression strings like "the value of X", "the number 5", "the string hello", etc.
 DEFINE function evaluateExpr WITH the variable expr;
     CALL trim WITH the value of expr;
     LET the variable trimmed BE the RESPONSE;
+    
+    ^ Normalize keyword spacing (e.g., "thestring" -> "the string")
+    CALL normalizeExpr WITH the value of trimmed;
+    LET the variable normalized BE the RESPONSE;
+    SET the variable trimmed TO the value of normalized;
     
     ^ Strip trailing semicolons using split approach
     CALL split WITH the value of trimmed, the string ";";
@@ -55,10 +104,6 @@ DEFINE function evaluateExpr WITH the variable expr;
         END IF;
     END IF;
     
-    ^ Debug: show trimmed expression
-    PROCLAIM the string "DEBUG trimmed: ";
-    PROCLAIM the value of trimmed;
-    
     ^ Handle "the value of VARIABLE"
     CALL startsWith WITH the value of trimmed, the string "the value of";
     LET the variable isValueOf BE the RESPONSE;
@@ -69,7 +114,7 @@ DEFINE function evaluateExpr WITH the variable expr;
         LET the variable trimmedName BE the RESPONSE;
         
         ^ Look up variable in global vars
-        CALL mapGet WITH the value of trimmedName, the value of vars;
+        CALL mapGet WITH the value of trimmedName, the value of g_vars;
         LET the variable varVal BE the RESPONSE;
         RETURN the value of varVal;
     END IF;
@@ -94,7 +139,7 @@ DEFINE function evaluateExpr WITH the variable expr;
         LET the variable strVal BE the RESPONSE;
         CALL trim WITH the value of strVal;
         LET the variable trimmedStr BE the RESPONSE;
-        ^ Strip surrounding quotes if present
+        ^ Strip surrounding quotes: remove first and last char if they match
         CALL length WITH the value of trimmedStr;
         LET the variable strLen BE the RESPONSE;
         IF the value of strLen IS greater than or equal to the number 2 THEN
@@ -103,7 +148,9 @@ DEFINE function evaluateExpr WITH the variable expr;
             CALL charAt WITH the value of trimmedStr, the value of strLen minus the number 1;
             LET the variable lastChar BE the RESPONSE;
             IF the value of firstChar IS equal to the value of lastChar THEN
-                SET the variable trimmedStr TO the substring of the value of trimmedStr starting at the number 1 ending at the value of strLen;
+                CALL substring WITH the value of trimmedStr, the number 1, the value of strLen minus the number 1;
+                LET the variable unquoted BE the RESPONSE;
+                SET the variable trimmedStr TO the value of unquoted;
             END IF;
         END IF;
         RETURN the value of trimmedStr;
@@ -180,7 +227,7 @@ DEFINE function evaluateExpr WITH the variable expr;
         LET the variable varName BE the RESPONSE;
         CALL trim WITH the value of varName;
         LET the variable trimmedName BE the RESPONSE;
-        CALL mapGet WITH the value of trimmedName, the value of vars;
+        CALL mapGet WITH the value of trimmedName, the value of g_vars;
         LET the variable varVal BE the RESPONSE;
         CALL length WITH the value of varVal;
         LET the variable sizeVal BE the RESPONSE;
@@ -195,7 +242,7 @@ DEFINE function evaluateExpr WITH the variable expr;
         LET the variable varName BE the RESPONSE;
         CALL trim WITH the value of varName;
         LET the variable trimmedName BE the RESPONSE;
-        CALL mapGet WITH the value of trimmedName, the value of vars;
+        CALL mapGet WITH the value of trimmedName, the value of g_vars;
         LET the variable varVal BE the RESPONSE;
         CALL length WITH the value of varVal;
         LET the variable lengthVal BE the RESPONSE;
@@ -204,7 +251,7 @@ DEFINE function evaluateExpr WITH the variable expr;
     
     ^ Handle bare variable names (no prefix)
     ^ Check if it's a simple identifier
-    CALL mapGet WITH the value of trimmed, the value of vars;
+    CALL mapGet WITH the value of trimmed, the value of g_vars;
     LET the variable bareVal BE the RESPONSE;
     IF the value of bareVal IS not equal to the string "" THEN
         RETURN the value of bareVal;
@@ -219,6 +266,11 @@ END FUNCTION;
 DEFINE function evaluateCondition WITH the variable condition;
     CALL trim WITH the value of condition;
     LET the variable trimmed BE the RESPONSE;
+    
+    ^ Normalize keyword spacing
+    CALL normalizeExpr WITH the value of trimmed;
+    LET the variable normalizedCond BE the RESPONSE;
+    SET the variable trimmed TO the value of normalizedCond;
     
     ^ Handle "X IS equal to Y"
     CALL split WITH the value of trimmed, the string " IS equal to ";
@@ -357,10 +409,6 @@ DEFINE function executeNode WITH the variable node;
     LET the variable trimmedType BE the RESPONSE;
     SET the variable nodeType TO the value of trimmedType;
     
-    ^ Debug: print node type
-    PROCLAIM the string "Executing node type: ";
-    PROCLAIM the value of nodeType;
-    
     ^ --- Let statement ---
     IF the value of nodeType IS equal to the string "Let" THEN
         CALL mapGet WITH "name", the value of node;
@@ -369,7 +417,11 @@ DEFINE function executeNode WITH the variable node;
         LET the variable valueExpr BE the RESPONSE;
         CALL evaluateExpr WITH the value of valueExpr;
         LET the variable evaluated BE the RESPONSE;
-        SET the key the value of varName IN the map vars TO the value of evaluated;
+        GLOBAL SET the variable g_vars TO the value of g_vars;
+        CALL mapGet WITH the value of varName, the value of g_vars;
+        LET the variable oldVal BE the RESPONSE;
+        SET the key the value of varName IN the map g_vars TO the value of evaluated;
+        GLOBAL SET the variable g_vars TO the value of g_vars;
         GLOBAL SET the variable g_execResult TO the number 0;
         RETURN the number 0;
     END IF;
@@ -382,21 +434,18 @@ DEFINE function executeNode WITH the variable node;
         LET the variable valueExpr BE the RESPONSE;
         CALL evaluateExpr WITH the value of valueExpr;
         LET the variable evaluated BE the RESPONSE;
-        SET the key the value of varName IN the map vars TO the value of evaluated;
+        SET the key the value of varName IN the map g_vars TO the value of evaluated;
+        GLOBAL SET the variable g_vars TO the value of g_vars;
         GLOBAL SET the variable g_execResult TO the number 0;
         RETURN the number 0;
     END IF;
     
     ^ --- Proclaim statement ---
     IF the value of nodeType IS equal to the string "Proclaim" THEN
-        PROCLAIM the string "MATCHED PROCLAIM";
         CALL mapGet WITH "value", the value of node;
         LET the variable valueExpr BE the RESPONSE;
-        PROCLAIM the string "Expr: ";
-        PROCLAIM the value of valueExpr;
         CALL evaluateExpr WITH the value of valueExpr;
         LET the variable evaluated BE the RESPONSE;
-        PROCLAIM the string "Evaluated: ";
         PROCLAIM the value of evaluated;
         GLOBAL SET the variable g_execResult TO the number 0;
         RETURN the number 0;
@@ -458,7 +507,7 @@ DEFINE function executeNode WITH the variable node;
     IF the value of nodeType IS equal to the string "FunctionDef" THEN
         CALL mapGet WITH "name", the value of node;
         LET the variable funcName BE the RESPONSE;
-        SET the key the value of funcName IN the map funcs TO the value of node;
+        SET the key the value of funcName IN the map g_funcs TO the value of node;
         GLOBAL SET the variable g_execResult TO the number 0;
         RETURN the number 0;
     END IF;
@@ -474,7 +523,7 @@ DEFINE function executeNode WITH the variable node;
         LET the variable callValue BE the RESPONSE;
         
         ^ Look up the function
-        CALL mapGet WITH the value of callName, the value of funcs;
+        CALL mapGet WITH the value of callName, the value of g_funcs;
         LET the variable funcNode BE the RESPONSE;
         
         IF the value of funcNode IS not equal to the string "" THEN
@@ -527,7 +576,7 @@ DEFINE function executeNode WITH the variable node;
                         LET the variable paramNameVal BE the RESPONSE;
                         CALL trim WITH the value of paramNameVal;
                         LET the variable trimmedParam BE the RESPONSE;
-                        SET the key the value of trimmedParam IN the map vars TO the value of argValue;
+                        SET the key the value of trimmedParam IN the map g_vars TO the value of argValue;
                         SET the variable pIdx TO the value of pIdx plus the number 1;
                     END IF;
                     
@@ -707,7 +756,7 @@ DEFINE function executeNode WITH the variable node;
         WHILST the value of i IS less than the value of listSize DO
             CALL getItem WITH the value of i, the value of forList;
             LET the variable item BE the RESPONSE;
-            SET the key the value of forVarName IN the map vars TO the value of item;
+            SET the key the value of forVarName IN the map g_vars TO the value of item;
             
             LET the variable bodySize BE the size of body;
             LET the variable bIdx BE the number 0;
@@ -744,8 +793,8 @@ CALL split WITH the value of source, the string "\n";
 LET the variable sourceLines BE the RESPONSE;
 
 ^ Initialize global state
-GLOBAL SET the variable vars TO {};
-GLOBAL SET the variable funcs TO {};
+GLOBAL SET the variable g_vars TO {};
+GLOBAL SET the variable g_funcs TO {};
 GLOBAL SET the variable callStack TO [];
 
 ^ Initialize parser state

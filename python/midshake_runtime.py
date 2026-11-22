@@ -10,7 +10,7 @@ from midshake_ast import (
     Response, FunctionDef, Call, Return, FileReadExpression,
     FileWriteStatement, Import,
     ListLiteral, MapLiteral, ListGet, MapGet, ListAppend, ListLength,
-    StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
+    StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin, StringReplace,
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
     StringIsDigit, StringIsLetter, StringIsWhitespace,
@@ -333,6 +333,19 @@ class Runtime:
                     f"  Expected a list but got a different type."
                 )
             return str(delim).join(str(item) for item in lst)
+
+        # String replace: the replace of STRING with OLD to NEW
+        if isinstance(expr, StringReplace):
+            s = self.eval_expr(expr.string_expr)
+            old = self.eval_expr(expr.old_expr)
+            new = self.eval_expr(expr.new_expr)
+            if not isinstance(s, str):
+                s = str(s)
+            if not isinstance(old, str):
+                old = str(old)
+            if not isinstance(new, str):
+                new = str(new)
+            return s.replace(old, new)
 
         # Math min: the minimum of A and B
         if isinstance(expr, MathMin):

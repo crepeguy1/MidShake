@@ -6,11 +6,11 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~75%
+## Current Progress: ~80%
 
 ### What's Done ✓
 
-- **Data structures**: Lists, maps, string operations (length, trim, substring, charAt, split, join)
+- **Data structures**: Lists, maps, string operations (length, trim, substring, charAt, split, join, replace)
 - **Math helpers**: min, max, abs, round
 - **Character utilities**: isDigit, isLetter, isWhitespace, toupper, tolower, startsWith, endsWith
 - **File I/O**: Read and write files from MidShake programs
@@ -22,10 +22,11 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 - **Line-based tokenizer**: `tokenizer.mish` reads source code and classifies each line by keyword type
 - **Character-level lexer**: `lexer.mish` walks source code character by character and produces tokens
 - **Recursive AST-building parser**: `parser.mish` reads source code and builds a full AST with nested maps. Recursively parses body lines into child AST nodes for all block statements (IF, WHILST, DEFINE, FOR). Includes pretty-printer with indentation for visualizing the AST.
+- **AST interpreter**: `interpreter.mish` walks the AST produced by `parser.mish` and executes it. Supports LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FileWrite, FOR, BREAK, CONTINUE, TERMINATE, and IMPORT. Includes expression normalization to handle concatenated keywords (e.g., "thestring" → "the string").
 
 ### What's Still Needed
 
-1. **Interpreter in MidShake** — Walk the AST and execute it, managing variable scope and function calls
+1. **Interpreter improvements** — Fix variable scope propagation in nested CALL contexts so WHILE loops and function calls update global variables correctly
 2. **Code generator in MidShake** — Convert AST to C++ code (or another MidShake program)
 
 ## Folder Structure
@@ -37,6 +38,7 @@ selfhost/
 ├── tokenizer.mish         ← Line-based tokenizer written in MidShake
 ├── lexer.mish             ← Character-level lexer written in MidShake
 ├── parser.mish            ← AST-building parser written in MidShake
+├── interpreter.mish       ← AST interpreter written in MidShake
 ├── examples/
 │   ├── fileio.mish        ← File read/write example
 │   ├── lists.mish         ← List operations example
@@ -71,7 +73,7 @@ python python/midshake_cli.py run selfhost/examples/stringutils.mish
 
 ## Next Steps
 
-The recursive AST-building parser is complete. The next milestone is:
+The recursive AST-building parser and interpreter are complete. The interpreter successfully executes simple MidShake programs (like hello.mish) by walking the AST and evaluating expressions. The next milestones are:
 
-1. **Interpreter in MidShake** — Write a MidShake program (`interpreter.mish`) that walks the AST produced by `parser.mish` and executes it. This means evaluating expressions, managing variable scope, handling control flow (IF, WHILST, FOR), and supporting function definitions and calls.
-2. **Code generator in MidShake** — Convert the AST to C++ source code so MidShake can compile itself to native code.
+1. **Fix interpreter variable scope** — Resolve the issue where variable updates inside function CALLs don't propagate to global state, preventing WHILE loops and complex programs from working correctly.
+2. **Code generator in MidShake** — Write a MidShake program (`generator.mish`) that converts the AST to C++ source code, enabling MidShake to compile itself to native code.

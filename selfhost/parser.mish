@@ -263,6 +263,7 @@ DEFINE function extractProclaimExpr WITH the variable line;
     RETURN the value of trimmedExpr;
 END FUNCTION;
 
+
 ^ Extract everything after a keyword (e.g., after "BE", "TO", "RETURN")
 DEFINE function extractAfterKeyword WITH the variable line, the variable keyword;
     CALL split WITH the value of line, the string " ";

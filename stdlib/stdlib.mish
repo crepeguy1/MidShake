@@ -133,6 +133,12 @@ DEFINE function trim WITH the variable s;
     RETURN the value of result;
 END FUNCTION;
 
+^ Replace all occurrences of a substring
+DEFINE function replace WITH the variables s, old, new;
+    LET the variable result BE the replace of the value of s with the value of old to the value of new;
+    RETURN the value of result;
+END FUNCTION;
+
 ^ Get the size of a list
 DEFINE function size WITH the variable list;
     LET the variable result BE the size of the value of list;

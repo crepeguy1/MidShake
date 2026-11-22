@@ -129,6 +129,13 @@ class StringJoin(Expression):
     delimiter_expr: Expression
 
 
+@dataclass
+class StringReplace(Expression):
+    string_expr: Expression
+    old_expr: Expression
+    new_expr: Expression
+
+
 # -----------------------------
 # MATH FUNCTION EXPRESSIONS
 # -----------------------------
