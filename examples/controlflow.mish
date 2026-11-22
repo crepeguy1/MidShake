@@ -1,0 +1,38 @@
+^ Example: Using FOR loops, BREAK, CONTINUE, booleans, and map set
+
+^ Booleans
+LET the variable enabled BE true;
+LET the variable disabled BE false;
+PROCLAIM the value of enabled;
+PROCLAIM the value of disabled;
+
+^ FOR loop over a list
+LET the variable numbers BE [10, 20, 30, 40, 50];
+FOR the variable n IN the value of numbers DO
+    PROCLAIM the value of n;
+END FOR;
+
+^ BREAK - stop early
+LET the variable i BE the number 0;
+WHILST the value of i IS less than the number 100 DO
+    IF the value of i IS equal to the number 5 THEN
+        BREAK;
+    END IF;
+    SET the variable i TO the value of i plus the number 1;
+END WHILST;
+PROCLAIM the string "Stopped at ";
+PROCLAIM the value of i;
+
+^ CONTINUE - skip some values
+FOR the variable x IN [1, 2, 3, 4, 5] DO
+    IF the value of x IS equal to the number 3 THEN
+        CONTINUE;
+    END IF;
+    PROCLAIM the value of x;
+END FOR;
+
+^ Map set - add a new key to a map
+LET the variable config BE {"theme": "dark", "version": 2};
+SET the key "language" IN the map config TO the string "MidShake";
+PROCLAIM the value of theme in config;
+PROCLAIM the value of language in config;

@@ -150,3 +150,9 @@ DEFINE function getItem WITH the variables index, list;
     LET the variable result BE the item at position the value of index in the value of list;
     RETURN the value of result;
 END FUNCTION;
+
+^ Set a key in a map
+DEFINE function mapSet WITH the variables map, key, value;
+    SET the key the value of key IN the map the value of map TO the value of value;
+    RETURN the value of map;
+END FUNCTION;

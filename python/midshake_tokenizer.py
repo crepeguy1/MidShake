@@ -51,7 +51,10 @@ class Tokenizer:
             "END IF",
             "END WHILST",
             "END FUNCTION",
+            "END FOR",
             "TERMINATE the program",
+            "BREAK",
+            "CONTINUE",
         }
 
         while i < len(self.text):
@@ -105,6 +108,14 @@ class Tokenizer:
 
                     # treat DEFINE function as standalone
                     if possible.startswith("DEFINE function"):
+                        statements.append((possible, start_line))
+                        current = []
+                        start_line = line_no
+                        i += 1
+                        continue
+
+                    # treat FOR ... DO header like WHILST ... DO header
+                    if possible.startswith("FOR the variable") and " DO" in possible:
                         statements.append((possible, start_line))
                         current = []
                         start_line = line_no
@@ -238,6 +249,52 @@ class Tokenizer:
         # TERMINATE
         if line.strip() == "TERMINATE" or line.startswith("TERMINATE the program"):
             return Token("TERMINATE", None, line_no)
+
+        # BREAK
+        if line.strip() == "BREAK" or line.strip() == "BREAK;":
+            return Token("BREAK", None, line_no)
+
+        # CONTINUE
+        if line.strip() == "CONTINUE" or line.strip() == "CONTINUE;":
+            return Token("CONTINUE", None, line_no)
+
+        # FOR ... IN ... DO
+        if line.startswith("FOR the variable") and "IN" in line and "DO" in line:
+            # Extract variable name
+            var_part = self.extract_between(line, "FOR the variable", "IN", line_no).strip()
+            # Extract list expression
+            list_part = line[line.index("IN") + 2:line.index("DO")].strip()
+            list_expr = self.parse_expression(list_part, line_no)
+            return Token("FOR_IN", (var_part, list_expr), line_no)
+
+        # END FOR
+        if line.startswith("END FOR"):
+            return Token("END_FOR", None, line_no)
+
+        # SET the key ... IN the map ... TO ...
+        if line.startswith("SET the key") and "IN" in line and "TO" in line:
+            # SET the key "keyName" IN the map myMap TO the value expr
+            key_part = self.extract_between(line, "SET the key", "IN", line_no).strip()
+            rest_after_in = line[line.index("IN") + 2:]
+            # Find "TO" in the rest
+            if "TO" in rest_after_in:
+                map_part = rest_after_in[:rest_after_in.index("TO")].strip()
+                value_part = rest_after_in[rest_after_in.index("TO") + 2:].strip()
+                # Parse map name
+                if map_part.startswith("the map"):
+                    map_name = map_part[len("the map"):].strip()
+                elif map_part.startswith("the value of"):
+                    map_name = map_part[len("the value of"):].strip()
+                else:
+                    map_name = map_part.strip()
+                # Parse key
+                if key_part.startswith("the value of"):
+                    key_expr = self.parse_expression(key_part[len("the value of"):].strip(), line_no)
+                else:
+                    key_expr = self.parse_expression(key_part, line_no)
+                # Parse value
+                value_expr = self.parse_expression(value_part, line_no)
+                return Token("MAP_SET", (map_name, key_expr, value_expr), line_no)
 
         # ------------------------------------------------------------
         # FUNCTION DEFINITIONS
@@ -951,6 +1008,17 @@ class ExpressionParser:
             self.pos += len("the map")
             self.skip_whitespace()
             return self.parse_variable_name()
+
+        # Boolean literals: true / false
+        if token.lower() == "true":
+            self.pos += len(token)
+            from midshake_ast import Boolean
+            return Boolean(True)
+
+        if token.lower() == "false":
+            self.pos += len(token)
+            from midshake_ast import Boolean
+            return Boolean(False)
 
         if token.replace(" ", "").isalpha():
             self.pos += len(token)

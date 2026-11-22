@@ -57,6 +57,7 @@ namespace ms {
     // Map functions
     // -------------------------
     Value map_get(const Value& mp, const Value& key);
+    Value map_set(const Value& mp, const Value& key, const Value& value);
 
     // -------------------------
     // Math functions

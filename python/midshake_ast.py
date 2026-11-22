@@ -188,6 +188,15 @@ class StringIsWhitespace(Expression):
 
 
 # -----------------------------
+# BOOLEAN EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class Boolean(Expression):
+    value: bool
+
+
+# -----------------------------
 # STATEMENTS
 # -----------------------------
 
@@ -233,8 +242,37 @@ class While(Statement):
 
 
 @dataclass
+class ForIn(Statement):
+    var_name: str
+    list_expr: Expression
+    body: List[Statement]
+
+
+@dataclass
+class Break(Statement):
+    pass
+
+
+@dataclass
+class Continue(Statement):
+    pass
+
+
+@dataclass
 class Terminate(Statement):
     pass
+
+
+# -----------------------------
+# MAP STATEMENTS
+# -----------------------------
+
+@dataclass
+class MapSet(Statement):
+    map_expr: Expression
+    key_expr: Expression
+    value_expr: Expression
+
 
 # -----------------------------
 # FILE I/O STATEMENTS

@@ -10,7 +10,8 @@ from midshake_ast import (
     ListLength, ListAppend,
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
-    StringIsDigit, StringIsLetter, StringIsWhitespace
+    StringIsDigit, StringIsLetter, StringIsWhitespace,
+    Boolean, MapSet, Break, Continue, ForIn
 )
 
 
@@ -252,6 +253,36 @@ class CppCompiler:
         elif isinstance(stmt, Terminate):
             self.emit("return Value::from_double(0);")
 
+        # BREAK
+        elif isinstance(stmt, Break):
+            self.emit("break;")
+
+        # CONTINUE
+        elif isinstance(stmt, Continue):
+            self.emit("continue;")
+
+        # FOR ... IN ... DO
+        elif isinstance(stmt, ForIn):
+            lst = self.compile_expr(stmt.list_expr)
+            self.emit(f'for (const auto& {stmt.var_name} : {lst}.lst) {{')
+            self.indent += 1
+            self.emit(f'env.set("{stmt.var_name}", {stmt.var_name});')
+            for s in stmt.body:
+                self.compile_stmt(s)
+            self.indent -= 1
+            self.emit("}")
+
+        # MAP SET: SET the key K IN the map M TO the value V
+        elif isinstance(stmt, MapSet):
+            mapping = self.compile_expr(stmt.map_expr)
+            key = self.compile_expr(stmt.key_expr)
+            value = self.compile_expr(stmt.value_expr)
+            if isinstance(stmt.map_expr, Variable):
+                map_name = stmt.map_expr.name
+                self.emit(f'env.set("{map_name}", map_set({mapping}, {key}, {value}));')
+            else:
+                self.emit(f'map_set({mapping}, {key}, {value});')
+
         # FILE WRITE
         elif isinstance(stmt, (FileWriteNode, FileWriteStatement)):
             value = self.compile_expr(stmt.value if isinstance(stmt, FileWriteStatement) else stmt.expr)
@@ -445,6 +476,10 @@ class CppCompiler:
                 # Dynamic path from a variable
                 path_expr = self.compile_expr(expr.path)
                 return f'file_read({path_expr}.to_string())'
+
+        # Boolean literal
+        if isinstance(expr, Boolean):
+            return f'Value::from_double({1 if expr.value else 0})'
 
         raise ValueError(f"Unknown expression: {expr}")
 

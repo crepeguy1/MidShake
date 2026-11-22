@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~50%
+## Current Progress: ~60%
 
 ### What's Done ✓
 
@@ -14,14 +14,17 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 - **Math helpers**: min, max, abs, round
 - **Character utilities**: isDigit, isLetter, isWhitespace, toupper, tolower, startsWith, endsWith
 - **File I/O**: Read and write files from MidShake programs
+- **Control flow**: `FOR...IN...DO` loops, `BREAK`, `CONTINUE`
+- **Booleans**: `true`/`false` literals
+- **Map mutation**: `SET the key K IN the map M TO the value V`
 - **Line-based tokenizer**: `tokenizer.mish` reads source code and classifies each line by keyword type
+- **Character-level lexer**: `lexer.mish` walks source code character by character and produces tokens
 
 ### What's Still Needed
 
-1. **Character-level tokenizer** — Walk through source code character by character instead of line by line
-2. **Parser in MidShake** — Convert tokens into an AST representation (using nested maps/lists)
-3. **Interpreter in MidShake** — Walk the AST and execute it
-4. **Code generator in MidShake** — Convert AST to C++ code (or another MidShake program)
+1. **Parser in MidShake** — Convert tokens into an AST representation (using nested maps/lists)
+2. **Interpreter in MidShake** — Walk the AST and execute it
+3. **Code generator in MidShake** — Convert AST to C++ code (or another MidShake program)
 
 ## Folder Structure
 
@@ -30,6 +33,7 @@ selfhost/
 ├── README.md              ← This file
 ├── ROADMAP.md             ← Detailed roadmap to self-compilation
 ├── tokenizer.mish         ← Line-based tokenizer written in MidShake
+├── lexer.mish             ← Character-level lexer written in MidShake
 ├── examples/
 │   ├── fileio.mish        ← File read/write example
 │   ├── lists.mish         ← List operations example
@@ -64,4 +68,4 @@ python python/midshake_cli.py run selfhost/examples/stringutils.mish
 
 ## Next Steps
 
-The next milestone is writing a **character-level tokenizer** in MidShake that can produce a proper list of token maps with type, value, and position information — the foundation for a parser.
+The next milestone is writing a **parser in MidShake** that takes the lexer's token output and builds an AST using nested maps and lists. With `FOR` loops, `BREAK`/`CONTINUE`, booleans, and map set now available, writing a parser is much more practical.

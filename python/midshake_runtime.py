@@ -12,7 +12,8 @@ from midshake_ast import (
     StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
-    StringIsDigit, StringIsLetter, StringIsWhitespace
+    StringIsDigit, StringIsLetter, StringIsWhitespace,
+    Boolean, MapSet, Break, Continue, ForIn
 )
 
 
@@ -110,6 +111,9 @@ class Runtime:
             return expr.value
 
         if isinstance(expr, String):
+            return expr.value
+
+        if isinstance(expr, Boolean):
             return expr.value
 
         if isinstance(expr, Variable):
@@ -438,16 +442,87 @@ class Runtime:
         elif isinstance(stmt, If):
             if self.eval_expr(stmt.expr):
                 for s in stmt.body:
-                    self.exec_stmt(s)
+                    result = self.exec_stmt(s)
+                    if result is not None and result in ("__break__", "__continue__"):
+                        return result
             elif stmt.else_body is not None:
                 for s in stmt.else_body:
-                    self.exec_stmt(s)
+                    result = self.exec_stmt(s)
+                    if result is not None and result in ("__break__", "__continue__"):
+                        return result
 
         # WHILST
         elif isinstance(stmt, While):
             while self.eval_expr(stmt.expr) and not self.terminated:
+                should_break = False
                 for s in stmt.body:
-                    self.exec_stmt(s)
+                    result = self.exec_stmt(s)
+                    if result is not None and result == "__break__":
+                        should_break = True
+                        break
+                    if result is not None and result == "__continue__":
+                        break
+                if should_break:
+                    break
+
+        # FOR ... IN ... DO
+        elif isinstance(stmt, ForIn):
+            lst = self.eval_expr(stmt.list_expr)
+            if not isinstance(lst, list):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a list for FOR loop but got a different type."
+                )
+            for item in lst:
+                self.vars[stmt.var_name] = item
+                should_break = False
+                for s in stmt.body:
+                    result = self.exec_stmt(s)
+                    if result is not None and result == "__break__":
+                        should_break = True
+                        break
+                    if result is not None and result == "__continue__":
+                        break
+                if should_break:
+                    break
+
+        # BREAK
+        elif isinstance(stmt, Break):
+            return "__break__"
+
+        # CONTINUE
+        elif isinstance(stmt, Continue):
+            return "__continue__"
+
+        # MAP SET: SET the key K IN the map M TO the value V
+        elif isinstance(stmt, MapSet):
+            # Get the map variable name so we can update it in the environment
+            if isinstance(stmt.map_expr, Variable):
+                map_name = stmt.map_expr.name
+            else:
+                map_name = None
+            mapping = self.eval_expr(stmt.map_expr)
+            # Evaluate key
+            if isinstance(stmt.key_expr, Variable):
+                key = stmt.key_expr.name
+            elif isinstance(stmt.key_expr, String):
+                key = stmt.key_expr.value
+            else:
+                key = self.eval_expr(stmt.key_expr)
+                if isinstance(key, (int, float)):
+                    key = str(key)
+                elif not isinstance(key, str):
+                    key = str(key)
+            if not isinstance(mapping, dict):
+                raise ValueError(
+                    f"MidShake Runtime Error:\n"
+                    f"  Expected a map but got a different type."
+                )
+            value = self.eval_expr(stmt.value_expr)
+            mapping[key] = value
+            # Update the variable in the environment
+            if map_name and map_name in self.vars:
+                self.vars[map_name] = mapping
 
         # INQUIRE
         elif isinstance(stmt, Inquire):

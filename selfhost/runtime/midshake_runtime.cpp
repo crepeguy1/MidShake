@@ -147,6 +147,16 @@ namespace ms {
         return it->second;
     }
 
+    Value map_set(const Value& mp, const Value& key, const Value& value) {
+        if (mp.kind != ValueKind::Map) {
+            throw std::runtime_error("Expected a map");
+        }
+        Map result = mp.mp;
+        std::string keyStr = key.to_string();
+        result[keyStr] = value;
+        return Value::from_map(result);
+    }
+
     // -------------------------
     // Math functions
     // -------------------------
