@@ -1,0 +1,138 @@
+{
+  "name": "MidShake",
+  "scopeName": "source.midshake",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#booleans" },
+    { "include": "#blockKeywords" },
+    { "include": "#statementKeywords" },
+    { "include": "#expressionPrefixes" },
+    { "include": "#builtinFunctions" },
+    { "include": "#operators" },
+    { "include": "#numbers" },
+    { "include": "#variables" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.caret.midshake",
+          "match": "\\^.*$"
+        },
+        {
+          "name": "comment.line.hash.midshake",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.midshake",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.midshake",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "booleans": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.midshake",
+          "match": "\\b(true|false)\\b"
+        }
+      ]
+    },
+    "blockKeywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.block.midshake",
+          "match": "\\b(IF|THEN|WHILST|DO|END\\s+IF|END\\s+WHILST|END\\s+FUNCTION|END\\s+FOR|DEFINE|FUNCTION|WITH|IMPORT|RETURN|TERMINATE|BREAK|CONTINUE)\\b"
+        }
+      ]
+    },
+    "statementKeywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.statement.midshake",
+          "match": "\\b(LET|BE|SET|TO|PROCLAIM|CALL|INQUIRE|FOR|IN)\\b"
+        }
+      ]
+    },
+    "expressionPrefixes": {
+      "patterns": [
+        {
+          "name": "keyword.control.expression.midshake",
+          "match": "\\b(the\\s+(value\\s+of|variable|number|string|length\\s+of|trimmed|size\\s+of|item\\s+at|character\\s+at|substring\\s+of|append\\s+of|join\\s+of|split\\s+of|minimum\\s+of|maximum\\s+of|absolute\\s+of|round\\s+of|upper\\s+case\\s+of|lower\\s+case\\s+of|content\\s+of\\s+the\\s+file|RESPONSE|check\\s+if))\\b"
+        }
+      ]
+    },
+    "builtinFunctions": {
+      "patterns": [
+        {
+          "name": "support.function.midshake",
+          "match": "\\b(startsWith|endsWith|isDigit|isLetter|isWhitespace|min|max|abs|round|toupper|tolower|length|charAt|substring|split|join|trim|size|append|getItem|mapSet|mapGet|readFile)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arithmetic.midshake",
+          "match": "\\b(plus|minus|times|divided\\s+by|modulo)\\b"
+        },
+        {
+          "name": "keyword.operator.comparison.midshake",
+          "match": "\\b(IS\\s+(greater\\s+than|less\\s+than|equal\\s+to|not\\s+equal\\s+to|greater\\s+than\\s+or\\s+equal\\s+to|less\\s+than\\s+or\\s+equal\\s+to))\\b"
+        },
+        {
+          "name": "keyword.operator.logical.midshake",
+          "match": "\\b(AND|OR|NOT)\\b"
+        },
+        {
+          "name": "keyword.operator.symbolic.midshake",
+          "match": "[+\\-*/=<>!]"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.midshake",
+          "match": "\\b\\d+\\.\\d+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.midshake",
+          "match": "\\b\\d+\\b"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.midshake",
+          "match": "\\b(variable|value|number|string|key|map|list)\\b"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.terminator.midshake",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.midshake",
+          "match": "[,\\[\\]{}()]"
+        }
+      ]
+    }
+  }
+}
