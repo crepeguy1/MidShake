@@ -216,9 +216,9 @@ class Tokenizer:
             expr = self.parse_expression(value_text, line_no)
             return Token("PROCLAIM", expr, line_no)
 
-        # IF
-        if line.startswith("IF the value of") and "THEN" in line:
-            condition_text = line[len("IF "):line.index("THEN")].strip()
+        # IF — handle any expression prefix, not just "the value of"
+        if line.startswith("IF ") and " THEN" in line:
+            condition_text = line[len("IF "):line.index(" THEN")].strip()
             expr = self.parse_expression(condition_text, line_no)
             return Token("IF", expr, line_no)
 
@@ -230,9 +230,9 @@ class Tokenizer:
         if line.startswith("END IF"):
             return Token("END_IF", None, line_no)
 
-        # WHILST
-        if line.startswith("WHILST the value of") and "DO" in line:
-            condition_text = line[len("WHILST "):line.index("DO")].strip()
+        # WHILST — handle any expression prefix, not just "the value of"
+        if line.startswith("WHILST ") and " DO" in line:
+            condition_text = line[len("WHILST "):line.index(" DO")].strip()
             expr = self.parse_expression(condition_text, line_no)
             return Token("WHILST", expr, line_no)
 

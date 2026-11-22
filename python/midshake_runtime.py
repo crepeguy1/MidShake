@@ -1,6 +1,7 @@
 # midshake_runtime.py
 
 import os
+import copy
 from typing import Dict, Any
 from midshake_ast import (
     Program, Section,
@@ -566,8 +567,8 @@ class Runtime:
                     f"but got {len(stmt.args)}."
                 )
 
-            # save environment
-            saved_vars = self.vars.copy()
+            # save environment with deep copy for recursion support
+            saved_vars = copy.deepcopy(self.vars)
             saved_return = self.return_value
             saved_flag = self.in_function
 
