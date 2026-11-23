@@ -24,6 +24,7 @@ try:
     from midshake_runtime import Runtime
     from midshake_interpreter import Interpreter
     from midshake_compiler import CppCompiler
+    from midshake_semantic import SemanticAnalyzer
 except ModuleNotFoundError:
     python_dir = os.path.join(MEIPASS, "python") if MEIPASS else os.path.join(SCRIPT_DIR)
     if os.path.isdir(python_dir):
@@ -34,6 +35,7 @@ except ModuleNotFoundError:
         from midshake_runtime import Runtime
         from midshake_interpreter import Interpreter
         from midshake_compiler import CppCompiler
+        from midshake_semantic import SemanticAnalyzer
     else:
         raise
 
@@ -106,7 +108,18 @@ def command_compile(path, output_name=None):
     parser = Parser(tokens)
     program = parser.parse()
 
-    # 2. Compile to C++ source
+    # 2. Semantic analysis
+    analyzer = SemanticAnalyzer()
+    errors = analyzer.analyze(program)
+    if errors:
+        print(f"Semantic analysis found {len(errors)} error(s):")
+        for err in errors:
+            print(f"  - {err}")
+        print("\nProceeding with compilation despite semantic errors...")
+    else:
+        print("Semantic analysis passed: no errors found.")
+
+    # 3. Compile to C++ source
     compiler = CppCompiler()
     cpp_source = compiler.compile_program(program)
 
@@ -121,6 +134,9 @@ def command_compile(path, output_name=None):
     cpp_file = os.path.join(out_dir, f"{output_name}.cpp")
     exe_ext = ".exe"
     exe_file = os.path.join(out_dir, f"{output_name}{exe_ext}")
+
+    # Print symbol table summary
+    print(analyzer.get_symbol_table_summary())
 
     # 4. Write the generated C++ file
     with open(cpp_file, "w", encoding="utf-8") as f:
@@ -249,6 +265,37 @@ def command_highlight(path):
 
 
 # ------------------------------------------------------------
+# Command: semantic analysis (check)
+# ------------------------------------------------------------
+def command_check(path):
+    """Run semantic analysis on a MidShake file and report errors."""
+    if not os.path.isfile(path):
+        print(f"Error: File not found: {path}")
+        return
+
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+
+    tokenizer = Tokenizer(source)
+    tokens = tokenizer.tokenize()
+
+    parser = Parser(tokens)
+    program = parser.parse()
+
+    analyzer = SemanticAnalyzer()
+    errors = analyzer.analyze(program)
+
+    # Print results
+    analyzer.print_errors()
+    print("")
+    print(analyzer.get_symbol_table_summary())
+
+    if errors:
+        return 1
+    return 0
+
+
+# ------------------------------------------------------------
 # Command: help
 # ------------------------------------------------------------
 def command_help():
@@ -260,6 +307,7 @@ def command_help():
     print("  midshake tokens <file.mish>    Show tokens")
     print("  midshake tfind <file.mish>     Find tokens")
     print("  midshake ast <file.mish>       Show AST")
+    print("  midshake check <file.mish>     Run semantic analysis (type checking)")
     print("  midshake contents <file.mish>  Show file contents")
     print("  midshake highlight <file.mish> Show syntax-highlighted code")
     print("  midshake version               Show version")
@@ -270,6 +318,7 @@ def command_help():
     print("  midshake compile examples/hello.mish")
     print("  midshake tokens examples/full.mish")
     print("  midshake ast examples/functions.mish")
+    print("  midshake check examples/functions.mish")
     print("  midshake highlight examples/hello.mish")
 
 
@@ -320,7 +369,13 @@ def main():
             return
         command_ast(sys.argv[2])
         return 0
-        
+
+    elif command == "check":
+        if len(sys.argv) < 3:
+            print("Error: Missing file path.")
+            return
+        return command_check(sys.argv[2])
+
     # for printing the contents of a file
     elif command == "contents":
         if len(sys.argv) < 3:

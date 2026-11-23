@@ -64,6 +64,18 @@ Show help:
 midshake help
 ```
 
+Run semantic analysis (type checking):
+
+```cmd
+midshake check examples/functions.mish
+```
+
+Compile to native executable:
+
+```cmd
+midshake compile examples/functions.mish
+```
+
 ---
 
 ## Example Program
@@ -86,16 +98,21 @@ PROCLAIM "Hello, " + name;
 
 - Custom tokenizer  
 - AST‑based parser  
+- Semantic analysis (symbol table, type inference, scope resolution)  
 - C++ runtime  
 - Standard library (`stdlib.mish`)  
-- CLI commands: run, tokens, ast, version  
+- CLI commands: run, tokens, ast, check, compile, version  
 - Simple, readable syntax  
 - Cross‑platform source code (Windows executable provided)
 
 More details:  
-- [Syntax Guide](ca://s?q=Show_MidShake_Syntax_Guide)  
-- [Examples](ca://s?q=Show_MidShake_Examples)  
-- [Standard Library Reference](ca://s?q=Show_MidShake_Stdlib_Reference)
+- [Syntax Guide](docs/syntax.md)  
+- [Formal Grammar](docs/grammar.md)  
+- [Type System](docs/types.md)  
+- [Language Reference](docs/language-reference.md)  
+- [Semantic Analysis](docs/semantic-analysis.md)  
+- [Examples](examples/)  
+- [Standard Library Reference](stdlib/stdlib.mish)
 
 ---
 
@@ -103,11 +120,13 @@ More details:
 
 ```text
 MidShake/
-    python/        # Interpreter, tokenizer, parser, runtime
+    python/        # Interpreter, tokenizer, parser, semantic analyzer, compiler
     cpp/           # C++ runtime implementation
     stdlib/        # Standard library files
     examples/      # Example MidShake programs
-    docs/          # Documentation
+    selfhost/      # Self-hosted compiler components (parser, codegen, etc.)
+    docs/          # Documentation (grammar, types, semantic analysis, etc.)
+    tests/         # Test files
     bindings/      # pybind11 bindings
     tools/         # Developer utilities
 ```

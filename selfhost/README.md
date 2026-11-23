@@ -24,6 +24,7 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 - **Recursive AST-building parser**: `parser.mish` reads source code and builds a full AST with nested maps. Recursively parses body lines into child AST nodes for all block statements (IF, WHILST, DEFINE, FOR). Includes pretty-printer with indentation for visualizing the AST.
 - **AST interpreter**: `interpreter.mish` walks the AST produced by `parser.mish` and executes it. Supports LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FileWrite, FOR, BREAK, CONTINUE, TERMINATE, and IMPORT.
 - **C++ code generator**: `codegen.mish` converts the AST produced by `parser.mish` into C++ source code. Handles LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FOR, BREAK, CONTINUE, TERMINATE, FileWrite, and Import. Generates `#include`, function definitions, and a `main()` function that links against the C++ runtime.
+- **Semantic analyzer**: `python/midshake_semantic.py` performs semantic analysis on the AST — symbol table construction, type inference, variable declaration checking, scope resolution, and error detection. Integrated into the compile pipeline and available as `midshake check` CLI command.
 
 ### What's Still Needed
 
