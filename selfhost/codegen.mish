@@ -573,7 +573,7 @@ DEFINE function compileFunctionDef WITH the variable funcNode;
         WHILST the value of g_bIdx IS less than the value of paramSize DO
             CALL getItem WITH the value of g_bIdx, the value of params;
             LET the variable paramName BE the RESPONSE;
-            CALL trim WITH the variable paramName;
+            CALL trim WITH the value of paramName;
             LET the variable trimmedParam BE the RESPONSE;
             CALL buildEnvSet WITH the value of trimmedParam, the string "args[" plus the value of g_bIdx plus the string "]";
             LET the variable paramLine BE the RESPONSE;
@@ -613,54 +613,24 @@ SET the variable g_lines TO the value of sourceLines;
 SET the variable g_pos TO the number 0;
 SET the variable g_lineCount TO the size of g_lines;
 SET the variable g_myAst TO [];
-PROCLAIM the string "Debug: g_myAst initialized";
 
 GLOBAL SET the variable g_lines TO the value of sourceLines;
 GLOBAL SET the variable g_pos TO the number 0;
 GLOBAL SET the variable g_lineCount TO the size of g_lines;
-PROCLAIM the string "Debug: g_lineCount = ";
-PROCLAIM the number g_lineCount;
-PROCLAIM the string "Debug: about to start WHILE loop";
 
 WHILST the value of g_pos IS less than the value of g_lineCount DO
-    PROCLAIM the string "Debug: parsing line ";
-    PROCLAIM the number g_pos;
-    PROCLAIM the string "Debug: calling parseStatement";
     CALL parseStatement WITH the number 0;
     LET the variable node BE the value of g_result;
     CALL mapGet WITH "type", the value of node;
     LET the variable nodeType BE the RESPONSE;
-    PROCLAIM the string "Debug: nodeType = ";
-    PROCLAIM the value of nodeType;
     IF the value of nodeType IS not equal to the string "Empty" THEN
         IF the value of nodeType IS not equal to the string "Comment" THEN
-            PROCLAIM the string "Debug: appending to g_myAst";
             CALL append WITH the value of node, the value of g_myAst;
             LET the variable newAst BE the RESPONSE;
-            PROCLAIM the string "Debug: append result type check";
             SET the variable g_myAst TO the value of newAst;
         END IF;
     END IF;
 END WHILST;
-
-PROCLAIM the string "Debug: parsing done";
-PROCLAIM the string "--- AST ---";
-PROCLAIM the string "Debug: about to get size of g_myAst";
-LET the variable astSize BE the size of g_myAst;
-GLOBAL SET the variable g_idx TO the number 0;
-WHILST the value of g_idx IS less than the value of astSize DO
-    CALL getItem WITH the value of g_idx, the value of g_myAst;
-    LET the variable node BE the RESPONSE;
-    CALL printNode WITH the value of node, the string "";
-    PROCLAIM the string "";
-    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
-END WHILST;
-
-PROCLAIM the string "";
-PROCLAIM the string "AST building complete!";
-PROCLAIM the string "Total nodes: ";
-PROCLAIM the number astSize;
-PROCLAIM the string "";
 
 SET the variable g_output TO [];
 SET the variable g_indent TO the number 0;

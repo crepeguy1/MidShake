@@ -137,6 +137,10 @@ class Runtime:
             right = self.eval_expr(expr.right)
 
             if expr.op == "+":
+                if isinstance(left, str) and isinstance(right, (int, float)):
+                    return left + str(right)
+                if isinstance(right, str) and isinstance(left, (int, float)):
+                    return str(left) + right
                 return left + right
             if expr.op == "-":
                 return left - right

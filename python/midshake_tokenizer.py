@@ -123,6 +123,14 @@ class Tokenizer:
                         i += 1
                         continue
 
+                    # treat IF ... THEN as standalone so the body on the next line isn't joined
+                    if possible.strip().endswith("THEN"):
+                        statements.append((possible, start_line))
+                        current = []
+                        start_line = line_no
+                        i += 1
+                        continue
+
                     # Check if the accumulated text starts a new statement type
                     # that should be separated from the previous line
                     stmt_keywords = [

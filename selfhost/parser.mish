@@ -166,12 +166,21 @@ DEFINE function extractFuncParams WITH the variable line;
             IF the value of g_word IS equal to the string ";" THEN
                 GLOBAL SET the variable g_found TO the number 2;
             ELSE
-                IF the value of g_word IS not equal to the string "variable" THEN
-                    IF the value of g_word IS not equal to the string "variables" THEN
+                CALL endsWith WITH the value of g_word, the string ";";
+                LET the variable hasSemi BE the RESPONSE;
+                LET the variable cleanWord BE the value of g_word;
+                IF the value of hasSemi IS equal to the number 1 THEN
+                    CALL length WITH the value of g_word;
+                    LET the variable wLen BE the RESPONSE;
+                    CALL substring WITH the value of g_word, the number 0, the value of wLen minus the number 1;
+                    SET the variable cleanWord TO the RESPONSE;
+                END IF;
+                IF the value of cleanWord IS not equal to the string "variable" THEN
+                    IF the value of cleanWord IS not equal to the string "variables" THEN
                         IF the length of g_paramStr IS greater than the number 0 THEN
                             GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the string ",";
                         END IF;
-                        GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the value of g_word;
+                        GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the value of cleanWord;
                     END IF;
                 END IF;
             END IF;
@@ -365,8 +374,6 @@ DEFINE function parseStatement WITH the variable dummy;
     ^ Skip empty lines and comments
     CALL getItem WITH the value of g_pos, the value of g_lines;
     LET the variable line BE the RESPONSE;
-    PROCLAIM the string "  [parser] got line: ";
-    PROCLAIM the value of line;
     CALL trim WITH the value of line;
     LET the variable trimmed BE the RESPONSE;
     
@@ -390,7 +397,6 @@ DEFINE function parseStatement WITH the variable dummy;
     END IF;
     
     ^ --- LET statement ---
-    PROCLAIM the string "  [parser] checking LET";
     CALL startsWith WITH the value of trimmed, the string "LET";
     LET the variable isLet BE the RESPONSE;
     IF the value of isLet IS equal to the number 1 THEN

@@ -10,7 +10,7 @@ from midshake_ast import (
     ListLength, ListAppend,
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
-    StringIsDigit, StringIsLetter, StringIsWhitespace,
+    StringIsDigit, StringIsLetter, StringIsWhitespace, StringReplace,
     Boolean, MapSet, Break, Continue, ForIn, GlobalSet
 )
 
@@ -19,6 +19,7 @@ class CppCompiler:
     def __init__(self):
         self.lines = []
         self.indent = 0
+        self._param_names = set()
 
     def emit(self, line: str = ""):
         self.lines.append("    " * self.indent + line)
@@ -240,7 +241,7 @@ class CppCompiler:
             self.emit("std::vector<Value> args;")
             for arg in stmt.args:
                 self.emit(f"args.push_back({self.compile_expr(arg)});")
-            self.emit(f'{stmt.name}(env, args);')
+            self.emit(f'env.set("RESPONSE", {stmt.name}(env, args));')
             self.indent -= 1
             self.emit("}")
 
@@ -323,7 +324,7 @@ class CppCompiler:
             right = self.compile_expr(expr.right)
 
             if expr.op == "+":
-                return f'Value(Number({left}.num.value + {right}.num.value))'
+                return f'({left} + {right})'
             if expr.op == "-":
                 return f'Value(Number({left}.num.value - {right}.num.value))'
             if expr.op == "*":
@@ -331,7 +332,12 @@ class CppCompiler:
             if expr.op == "/":
                 return f'Value(Number({left}.num.value / {right}.num.value))'
 
-            # comparisons: return 1 or 0 as Number
+            # comparisons: use value_equals for == and !=, to_string() for ordering
+            if expr.op == "==":
+                return f'Value(Number(value_equals({left}, {right}) ? 1 : 0))'
+            if expr.op == "!=":
+                return f'Value(Number(!value_equals({left}, {right}) ? 1 : 0))'
+            # For ordering, use numeric comparison (MidShake uses numbers for comparisons)
             return (
                 f'Value(Number(({left}.num.value {expr.op} '
                 f'{right}.num.value) ? 1 : 0))'
@@ -364,7 +370,14 @@ class CppCompiler:
         # Map get: the value of KEY in MAP
         if isinstance(expr, MapGet):
             mapping = self.compile_expr(expr.map_expr)
-            key = self.compile_expr(expr.key_expr)
+            # Treat bare variable keys as string literals unless they are function params
+            if isinstance(expr.key_expr, Variable):
+                if expr.key_expr.name in self._param_names:
+                    key = self.compile_expr(expr.key_expr)
+                else:
+                    key = f'Value::from_string("{expr.key_expr.name}")'
+            else:
+                key = self.compile_expr(expr.key_expr)
             return f'map_get({mapping}, {key})'
 
         # String length: the length of STRING
@@ -486,12 +499,20 @@ class CppCompiler:
         if isinstance(expr, Boolean):
             return f'Value::from_double({1 if expr.value else 0})'
 
+        # String replace: the replace of STRING with OLD to NEW
+        if isinstance(expr, StringReplace):
+            s = self.compile_expr(expr.string_expr)
+            old = self.compile_expr(expr.old_expr)
+            new = self.compile_expr(expr.new_expr)
+            return f'string_replace({s}, {old}, {new})'
+
         raise ValueError(f"Unknown expression: {expr}")
 
     # ------------------------------------------------------------
     # FUNCTION DEF
     # ------------------------------------------------------------
     def compile_function_def(self, func: FunctionDef):
+        self._param_names = set(func.param_names)
         self.emit(
             f"Value {func.name}(Environment& env, "
             f"const std::vector<Value>& args) {{"
@@ -512,4 +533,5 @@ class CppCompiler:
         self.indent -= 1
         self.emit("}")
         self.emit("")
+        self._param_names = set()
 

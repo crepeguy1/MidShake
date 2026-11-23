@@ -223,6 +223,28 @@ namespace ms {
         return Value::from_double(result ? 1.0 : 0.0);
     }
 
+    Value string_replace(const Value& s, const Value& old, const Value& new_) {
+        std::string str = s.to_string();
+        std::string oldStr = old.to_string();
+        std::string newStr = new_.to_string();
+        size_t pos = 0;
+        while ((pos = str.find(oldStr, pos)) != std::string::npos) {
+            str.replace(pos, oldStr.length(), newStr);
+            pos += newStr.length();
+        }
+        return Value::from_string(str);
+    }
+
+    bool value_equals(const Value& a, const Value& b) {
+        if (a.kind == b.kind) {
+            if (a.kind == ValueKind::Number) return a.num.value == b.num.value;
+            if (a.kind == ValueKind::String) return a.str.value == b.str.value;
+            if (a.kind == ValueKind::List) return a.lst == b.lst;
+            if (a.kind == ValueKind::Map) return a.mp == b.mp;
+        }
+        return false;
+    }
+
     // -------------------------
     // File I/O functions
     // -------------------------

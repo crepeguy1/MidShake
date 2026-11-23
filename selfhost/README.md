@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~90%
+## Current Progress: ~95% (Compiler Binary Working)
 
 ### What's Done ✓
 
@@ -27,9 +27,9 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 
 ### What's Still Needed
 
-1. **Complete code generator** — Handle FileWrite and CALL argument expression compilation, add more expression types (arithmetic, list/map ops)
-2. **Compile the generated C++** — Pipe the generated `.cpp` through `g++` to produce a native binary
-3. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
+1. **~ Self-hosted compiler binary** ✓ — `codegen.mish` has been compiled to a standalone C++ binary (`cpp/output/codegen.exe`) that compiles MidShake → C++ without Python
+2. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
+3. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
 
 ## Folder Structure
 
@@ -76,10 +76,17 @@ python python/midshake_cli.py run selfhost/examples/stringutils.mish
 
 ## Next Steps
 
-The C++ code generator (`codegen.mish`) is now functional. It parses MidShake source code using the self-hosted parser, walks the AST, and generates C++ code that links against the existing C++ runtime. It correctly handles LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FOR, BREAK, CONTINUE, TERMINATE, FileWrite, and Import. Key techniques include GLOBAL SET for sharing state across CALL boundaries, expression normalization to handle concatenated keywords (e.g., "thestring" → "the string"), and substring-based extraction instead of word-boundary matching.
+The C++ code generator (`codegen.mish`) is now fully functional and verified end-to-end. It parses MidShake source code using the self-hosted parser, walks the AST, and generates C++ code that compiles and runs correctly. It correctly handles LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FOR, BREAK, CONTINUE, TERMINATE, FileWrite, and Import. The generated C++ has been compiled with `g++` and executed successfully, producing correct output.
+
+Key fixes that enabled this:
+- **Tokenizer line joining fix** — `IF ... THEN` lines are now treated as standalone statements so the body on the next line isn't joined with the header, preventing CALL statements inside IF bodies from being swallowed
+- **Scope propagation** — GLOBAL SET properly shares state (g_lines, g_pos, g_ast, g_params) across CALL boundaries between codegen.mish and parser.mish
+- **Parameter name cleaning** — Trailing semicolons are stripped from function parameter names during parsing
+- **String/int concatenation** — The `+` operator now auto-converts integers to strings when concatenating with strings
+- **Compiler fixes** — Python compiler now handles string concatenation (`Value::operator+`), proper comparisons (`value_equals`), CALL RESPONSE storage, and map key literals
 
 The next milestones are:
 
-1. **Complete code generator** — Add FileWrite expression compilation, CALL argument expression compilation, and more expression types (arithmetic, list/map operations)
-2. **Compile the generated C++** — Pipe the generated `.cpp` through `g++` to produce a native binary
-3. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
+1. **~ Compile the self-hosted codegen** ✓ — `codegen.mish` has been compiled to `cpp/output/codegen.exe` via the Python compiler
+2. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
+3. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++

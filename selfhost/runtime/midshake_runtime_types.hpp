@@ -88,6 +88,26 @@ namespace ms {
         static Value from_list(const List& l) { return Value(l); }
         static Value from_map(const Map& m) { return Value(m); }
 
+        // Helper: add two values (string concat or numeric add)
+        Value operator+(const Value& other) const {
+            if (kind == ValueKind::String || other.kind == ValueKind::String) {
+                return Value::from_string(to_string() + other.to_string());
+            }
+            return Value::from_double(num.value + other.num.value);
+        }
+
+        // Helper: equality comparison
+        bool operator==(const Value& other) const {
+            if (kind != other.kind) return false;
+            if (kind == ValueKind::Number) return num.value == other.num.value;
+            if (kind == ValueKind::String) return str.value == other.str.value;
+            return false;
+        }
+
+        bool operator!=(const Value& other) const {
+            return !(*this == other);
+        }
+
         // Helper: convert value to string for printing
         std::string to_string() const {
             switch (kind) {

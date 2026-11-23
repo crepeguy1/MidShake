@@ -10,6 +10,11 @@ namespace ms {
     public:
         std::unordered_map<std::string, Value> vars;
 
+        Environment() {
+            // Initialize RESPONSE to empty string by default
+            vars["RESPONSE"] = Value::from_string("");
+        }
+
         void set(const std::string& name, const Value& v) {
             vars[name] = v;
         }
@@ -77,6 +82,8 @@ namespace ms {
     Value string_isdigit(const Value& s);
     Value string_isletter(const Value& s);
     Value string_iswhitespace(const Value& s);
+    Value string_replace(const Value& s, const Value& old, const Value& new_);
+    bool value_equals(const Value& a, const Value& b);
 
     // -------------------------
     // File I/O functions
