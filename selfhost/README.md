@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~80%
+## Current Progress: ~85%
 
 ### What's Done ✓
 
@@ -26,8 +26,8 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 
 ### What's Still Needed
 
-1. **Interpreter improvements** — Fix variable scope propagation in nested CALL contexts so WHILE loops and function calls update global variables correctly
-2. **Code generator in MidShake** — Convert AST to C++ code (or another MidShake program)
+1. **Interpreter CALL argument handling** — The parser needs to store CALL arguments in the AST so the interpreter can properly bind them to function parameters
+2. **Code generator in MidShake** — Write a MidShake program (`generator.mish`) that converts the AST to C++ source code
 
 ## Folder Structure
 
@@ -73,7 +73,7 @@ python python/midshake_cli.py run selfhost/examples/stringutils.mish
 
 ## Next Steps
 
-The recursive AST-building parser and interpreter are complete. The interpreter successfully executes simple MidShake programs (like hello.mish) by walking the AST and evaluating expressions. The next milestones are:
+The recursive AST-building parser and interpreter are complete. The parser correctly builds ASTs with proper node types, names, and values. The interpreter successfully executes simple MidShake programs (like hello.mish) by walking the AST and evaluating expressions. Key improvements include global state variables (GLOBAL SET) for surviving deep-copy scope restoration, inline map access for reading AST node fields, and expression normalization. The next milestones are:
 
-1. **Fix interpreter variable scope** — Resolve the issue where variable updates inside function CALLs don't propagate to global state, preventing WHILE loops and complex programs from working correctly.
+1. **Fix interpreter CALL argument handling** — The parser now stores CALL arguments in the AST, but the interpreter needs to properly parse and bind them to function parameters so function calls work correctly.
 2. **Code generator in MidShake** — Write a MidShake program (`generator.mish`) that converts the AST to C++ source code, enabling MidShake to compile itself to native code.

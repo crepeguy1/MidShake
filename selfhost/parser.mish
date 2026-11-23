@@ -15,6 +15,20 @@ LET the variable g_lineCount BE the number 0;
 LET the variable g_ast BE [];
 ^ g_result holds the return value of parseStatement, shared via GLOBAL SET
 LET the variable g_result BE {};
+^ Global loop counters to survive deep-copy scope restoration across CALL boundaries
+LET the variable g_idx BE the number 0;
+LET the variable g_pIdx BE the number 0;
+LET the variable g_bIdx BE the number 0;
+^ Global state for extraction functions to survive deep-copy across CALL boundaries
+LET the variable g_found BE the number 0;
+LET the variable g_name BE the string "";
+LET the variable g_paramStr BE the string "";
+LET the variable g_resultStr BE the string "";
+LET the variable g_conditionStr BE the string "";
+LET the variable g_exprStr BE the string "";
+LET the variable g_pathStr BE the string "";
+LET the variable g_word BE the string "";
+LET the variable g_node BE {};
 
 ^ ====== Helper Functions ======
 
@@ -28,145 +42,142 @@ DEFINE function createNode WITH the variable nodeType;
 END FUNCTION;
 
 ^ Extract the variable name from a LET statement
+^ Uses global state to survive deep-copy across CALL boundaries
+^ Saves word in global before any CALL that would reset local scope
 DEFINE function extractLetName WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 0;
-    LET the variable found BE the number 0;
-    LET the variable name BE the string "";
+    GLOBAL SET the variable g_idx TO the number 0;
+    GLOBAL SET the variable g_found TO the number 0;
+    GLOBAL SET the variable g_name TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
         
-        IF the value of found IS equal to the number 1 THEN
-            CALL trim WITH the value of word;
-            LET the variable trimmedWord BE the RESPONSE;
-            IF the length of trimmedWord IS greater than the number 0 THEN
-                SET the variable name TO the value of trimmedWord;
-                SET the variable found TO the number 2;
-            END IF;
+        ^ Save word in global before any CALL that would reset local scope
+        GLOBAL SET the variable g_word TO the value of word;
+        
+        IF the value of g_found IS equal to the number 1 THEN
+            GLOBAL SET the variable g_name TO the value of g_word;
+            GLOBAL SET the variable g_found TO the number 2;
         END IF;
         
-        IF the value of word IS equal to the string "variable" THEN
-            SET the variable found TO the number 1;
+        IF the value of g_word IS equal to the string "variable" THEN
+            GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    RETURN the value of name;
+    RETURN the value of g_name;
 END FUNCTION;
 
 ^ Extract the variable name from a SET statement
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractSetName WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 0;
-    LET the variable found BE the number 0;
-    LET the variable name BE the string "";
+    GLOBAL SET the variable g_idx TO the number 0;
+    GLOBAL SET the variable g_found TO the number 0;
+    GLOBAL SET the variable g_name TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of word;
         
-        IF the value of found IS equal to the number 1 THEN
-            CALL trim WITH the value of word;
-            LET the variable trimmedWord BE the RESPONSE;
-            IF the length of trimmedWord IS greater than the number 0 THEN
-                SET the variable name TO the value of trimmedWord;
-                SET the variable found TO the number 2;
-            END IF;
+        IF the value of g_found IS equal to the number 1 THEN
+            GLOBAL SET the variable g_name TO the value of g_word;
+            GLOBAL SET the variable g_found TO the number 2;
         END IF;
         
-        IF the value of word IS equal to the string "variable" THEN
-            SET the variable found TO the number 1;
+        IF the value of g_word IS equal to the string "variable" THEN
+            GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    RETURN the value of name;
+    RETURN the value of g_name;
 END FUNCTION;
 
 ^ Extract the function name from a DEFINE statement
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractFuncName WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 0;
-    LET the variable found BE the number 0;
-    LET the variable name BE the string "";
+    GLOBAL SET the variable g_idx TO the number 0;
+    GLOBAL SET the variable g_found TO the number 0;
+    GLOBAL SET the variable g_name TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of word;
         
-        IF the value of found IS equal to the number 1 THEN
-            CALL trim WITH the value of word;
-            LET the variable trimmedWord BE the RESPONSE;
-            IF the length of trimmedWord IS greater than the number 0 THEN
-                SET the variable name TO the value of trimmedWord;
-                SET the variable found TO the number 2;
-            END IF;
+        IF the value of g_found IS equal to the number 1 THEN
+            GLOBAL SET the variable g_name TO the value of g_word;
+            GLOBAL SET the variable g_found TO the number 2;
         END IF;
         
-        IF the value of word IS equal to the string "function" THEN
-            SET the variable found TO the number 1;
+        IF the value of g_word IS equal to the string "function" THEN
+            GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    RETURN the value of name;
+    RETURN the value of g_name;
 END FUNCTION;
 
 ^ Extract the function parameters from a DEFINE statement
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractFuncParams WITH the variable line;
     LET the variable params BE [];
     
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 0;
-    LET the variable found BE the number 0;
-    LET the variable paramStr BE the string "";
+    GLOBAL SET the variable g_idx TO the number 0;
+    GLOBAL SET the variable g_found TO the number 0;
+    GLOBAL SET the variable g_paramStr TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of word;
         
-        IF the value of found IS equal to the number 1 THEN
-            IF the length of paramStr IS greater than the number 0 THEN
-                SET the variable paramStr TO the value of paramStr plus the string " ";
+        IF the value of g_found IS equal to the number 1 THEN
+            IF the length of g_paramStr IS greater than the number 0 THEN
+                GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the string " ";
             END IF;
-            SET the variable paramStr TO the value of paramStr plus the value of word;
+            GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the value of g_word;
         END IF;
         
-        IF the value of word IS equal to the string "variables" THEN
-            SET the variable found TO the number 1;
+        IF the value of g_word IS equal to the string "variables" THEN
+            GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    IF the length of paramStr IS greater than the number 0 THEN
-        CALL split WITH the value of paramStr, the string ",";
+    IF the length of g_paramStr IS greater than the number 0 THEN
+        CALL split WITH the value of g_paramStr, the string ",";
         LET the variable paramList BE the RESPONSE;
         LET the variable pCount BE the size of paramList;
-        LET the variable pIdx BE the number 0;
+        GLOBAL SET the variable g_pIdx TO the number 0;
         
-        WHILST the value of pIdx IS less than the value of pCount DO
-            CALL getItem WITH the value of pIdx, the value of paramList;
+        WHILST the value of g_pIdx IS less than the value of pCount DO
+            CALL getItem WITH the value of g_pIdx, the value of paramList;
             LET the variable param BE the RESPONSE;
-            CALL trim WITH the value of param;
-            LET the variable trimmedParam BE the RESPONSE;
-            IF the length of trimmedParam IS greater than the number 0 THEN
-                SET the variable params TO the append of the value of trimmedParam to params;
+            IF the length of param IS greater than the number 0 THEN
+                SET the variable params TO the append of the value of param to params;
             END IF;
-            SET the variable pIdx TO the value of pIdx plus the number 1;
+            GLOBAL SET the variable g_pIdx TO the value of g_pIdx plus the number 1;
         END WHILST;
     END IF;
     
@@ -174,153 +185,151 @@ DEFINE function extractFuncParams WITH the variable line;
 END FUNCTION;
 
 ^ Extract the CALL function name
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractCallName WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 0;
-    LET the variable found BE the number 0;
-    LET the variable name BE the string "";
+    GLOBAL SET the variable g_idx TO the number 0;
+    GLOBAL SET the variable g_found TO the number 0;
+    GLOBAL SET the variable g_name TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of word;
         
-        IF the value of found IS equal to the number 1 THEN
-            CALL trim WITH the value of word;
-            LET the variable trimmedWord BE the RESPONSE;
-            IF the length of trimmedWord IS greater than the number 0 THEN
-                SET the variable name TO the value of trimmedWord;
-                SET the variable found TO the number 2;
-            END IF;
+        IF the value of g_found IS equal to the number 1 THEN
+            GLOBAL SET the variable g_name TO the value of g_word;
+            GLOBAL SET the variable g_found TO the number 2;
         END IF;
         
-        IF the value of word IS equal to the string "CALL" THEN
-            SET the variable found TO the number 1;
+        IF the value of g_word IS equal to the string "CALL" THEN
+            GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    RETURN the value of name;
+    RETURN the value of g_name;
 END FUNCTION;
 
 ^ Extract the IMPORT path
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractImportPath WITH the variable line;
-    LET the variable path BE the string "";
     
     CALL split WITH the value of line, the string " ";
     LET the variable parts BE the RESPONSE;
     LET the variable partCount BE the size of parts;
-    LET the variable idx BE the number 0;
-    LET the variable found BE the number 0;
+    GLOBAL SET the variable g_idx TO the number 0;
+    GLOBAL SET the variable g_found TO the number 0;
+    GLOBAL SET the variable g_pathStr TO the string "";
     
-    WHILST the value of idx IS less than the value of partCount DO
-        CALL getItem WITH the value of idx, the value of parts;
+    WHILST the value of g_idx IS less than the value of partCount DO
+        CALL getItem WITH the value of g_idx, the value of parts;
         LET the variable part BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of part;
         
-        IF the value of found IS equal to the number 1 THEN
-            SET the variable path TO the value of part;
+        IF the value of g_found IS equal to the number 1 THEN
+            GLOBAL SET the variable g_pathStr TO the value of g_word;
             BREAK;
         END IF;
         
-        IF the value of part IS equal to the string "file" THEN
-            SET the variable found TO the number 1;
+        IF the value of g_word IS equal to the string "file" THEN
+            GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    CALL trim WITH the value of path;
-    LET the variable trimmedPath BE the RESPONSE;
-    SET the variable path TO the value of trimmedPath;
-    
-    RETURN the value of path;
+    RETURN the value of g_pathStr;
 END FUNCTION;
 
 ^ Extract the PROCLAIM expression (everything after PROCLAIM)
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractProclaimExpr WITH the variable line;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 1;
-    LET the variable expr BE the string "";
+    GLOBAL SET the variable g_idx TO the number 1;
+    GLOBAL SET the variable g_exprStr TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of word;
         
-        IF the length of expr IS greater than the number 0 THEN
-            SET the variable expr TO the value of expr plus the string " ";
+        IF the length of g_exprStr IS greater than the number 0 THEN
+            GLOBAL SET the variable g_exprStr TO the value of g_exprStr plus the string " ";
         END IF;
-        SET the variable expr TO the value of expr plus the value of word;
+        GLOBAL SET the variable g_exprStr TO the value of g_exprStr plus the value of g_word;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    CALL trim WITH the value of expr;
-    LET the variable trimmedExpr BE the RESPONSE;
-    RETURN the value of trimmedExpr;
+    RETURN the value of g_exprStr;
 END FUNCTION;
 
 
 ^ Extract everything after a keyword (e.g., after "BE", "TO", "RETURN")
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractAfterKeyword WITH the variable line, the variable keyword;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 0;
-    LET the variable found BE the number 0;
-    LET the variable result BE the string "";
+    GLOBAL SET the variable g_idx TO the number 0;
+    GLOBAL SET the variable g_found TO the number 0;
+    GLOBAL SET the variable g_resultStr TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of word;
         
-        IF the value of found IS equal to the number 1 THEN
-            IF the length of result IS greater than the number 0 THEN
-                SET the variable result TO the value of result plus the string " ";
+        IF the value of g_found IS equal to the number 1 THEN
+            IF the length of g_resultStr IS greater than the number 0 THEN
+                GLOBAL SET the variable g_resultStr TO the value of g_resultStr plus the string " ";
             END IF;
-            SET the variable result TO the value of result plus the value of word;
+            GLOBAL SET the variable g_resultStr TO the value of g_resultStr plus the value of g_word;
         END IF;
         
-        IF the value of word IS equal to the value of keyword THEN
-            SET the variable found TO the number 1;
+        IF the value of g_word IS equal to the value of keyword THEN
+            GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    CALL trim WITH the value of result;
-    LET the variable trimmedResult BE the RESPONSE;
-    RETURN the value of trimmedResult;
+    RETURN the value of g_resultStr;
 END FUNCTION;
 
 ^ Extract condition (everything between start keyword and end keyword)
+^ Uses global state to survive deep-copy across CALL boundaries
 DEFINE function extractCondition WITH the variable line, the variable endKeyword;
     CALL split WITH the value of line, the string " ";
     LET the variable words BE the RESPONSE;
     LET the variable wordCount BE the size of words;
-    LET the variable idx BE the number 1;
-    LET the variable condition BE the string "";
+    GLOBAL SET the variable g_idx TO the number 1;
+    GLOBAL SET the variable g_conditionStr TO the string "";
     
-    WHILST the value of idx IS less than the value of wordCount DO
-        CALL getItem WITH the value of idx, the value of words;
+    WHILST the value of g_idx IS less than the value of wordCount DO
+        CALL getItem WITH the value of g_idx, the value of words;
         LET the variable word BE the RESPONSE;
+        GLOBAL SET the variable g_word TO the value of word;
         
-        IF the value of word IS equal to the value of endKeyword THEN
+        IF the value of g_word IS equal to the value of endKeyword THEN
             BREAK;
         END IF;
         
-        IF the length of condition IS greater than the number 0 THEN
-            SET the variable condition TO the value of condition plus the string " ";
+        IF the length of g_conditionStr IS greater than the number 0 THEN
+            GLOBAL SET the variable g_conditionStr TO the value of g_conditionStr plus the string " ";
         END IF;
-        SET the variable condition TO the value of condition plus the value of word;
+        GLOBAL SET the variable g_conditionStr TO the value of g_conditionStr plus the value of g_word;
         
-        SET the variable idx TO the value of idx plus the number 1;
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
-    RETURN the value of condition;
+    RETURN the value of g_conditionStr;
 END FUNCTION;
 
 ^ ====== Recursive Parse Statement Function ======
@@ -363,15 +372,16 @@ DEFINE function parseStatement WITH the variable dummy;
     IF the value of isLet IS equal to the number 1 THEN
         CALL createNode WITH "Let";
         LET the variable letNode BE the RESPONSE;
+        GLOBAL SET the variable g_node TO the value of letNode;
         CALL extractLetName WITH the value of trimmed;
         LET the variable varName BE the RESPONSE;
-        SET the key "name" IN the map letNode TO the value of varName;
+        SET the key "name" IN the map g_node TO the value of varName;
         
         CALL extractAfterKeyword WITH the value of trimmed, the string "BE";
         LET the variable valueExpr BE the RESPONSE;
-        SET the key "value" IN the map letNode TO the value of valueExpr;
+        SET the key "value" IN the map g_node TO the value of valueExpr;
         
-        SET the variable node TO the value of letNode;
+        SET the variable node TO the value of g_node;
         SET the variable consumed TO the number 1;
     END IF;
     
@@ -384,13 +394,13 @@ DEFINE function parseStatement WITH the variable dummy;
             LET the variable setNode BE the RESPONSE;
             CALL extractSetName WITH the value of trimmed;
             LET the variable varName BE the RESPONSE;
-            SET the key "name" IN the map setNode TO the value of varName;
+            SET the key "name" IN the map g_node TO the value of varName;
             
             CALL extractAfterKeyword WITH the value of trimmed, the string "TO";
             LET the variable valueExpr BE the RESPONSE;
-            SET the key "value" IN the map setNode TO the value of valueExpr;
+            SET the key "value" IN the map g_node TO the value of valueExpr;
             
-            SET the variable node TO the value of setNode;
+            SET the variable node TO the value of g_node;
             SET the variable consumed TO the number 1;
         END IF;
     END IF;
@@ -402,10 +412,11 @@ DEFINE function parseStatement WITH the variable dummy;
         IF the value of isProclaim IS equal to the number 1 THEN
             CALL createNode WITH "Proclaim";
             LET the variable proclaimNode BE the RESPONSE;
+            GLOBAL SET the variable g_node TO the value of proclaimNode;
             CALL extractProclaimExpr WITH the value of trimmed;
             LET the variable expr BE the RESPONSE;
-            SET the key "value" IN the map proclaimNode TO the value of expr;
-            SET the variable node TO the value of proclaimNode;
+            SET the key "value" IN the map g_node TO the value of expr;
+            SET the variable node TO the value of g_node;
             SET the variable consumed TO the number 1;
         END IF;
     END IF;
@@ -609,11 +620,17 @@ DEFINE function parseStatement WITH the variable dummy;
         LET the variable isCall BE the RESPONSE;
         IF the value of isCall IS equal to the number 1 THEN
             CALL createNode WITH "Call";
-            LET the variable callNode BE the RESPONSE;
+            GLOBAL SET the variable g_node TO the value of RESPONSE;
             CALL extractCallName WITH the value of trimmed;
             LET the variable callName BE the RESPONSE;
-            SET the key "name" IN the map callNode TO the value of callName;
-            SET the variable node TO the value of callNode;
+            SET the key "name" IN the map g_node TO the value of callName;
+            
+            ^ Store the full call expression (arguments) for the interpreter
+            CALL extractAfterKeyword WITH the value of trimmed, the string "WITH";
+            LET the variable callArgs BE the RESPONSE;
+            SET the key "value" IN the map g_node TO the value of callArgs;
+            
+            SET the variable node TO the value of g_node;
             SET the variable consumed TO the number 1;
         END IF;
     END IF;
@@ -798,12 +815,12 @@ DEFINE function printNode WITH the variable node, the variable indent;
             PROCLAIM the string " children):";
             PROCLAIM the string "";
             
-            LET the variable bIdx BE the number 0;
-            WHILST the value of bIdx IS less than the value of bodySize DO
-                CALL getItem WITH the value of bIdx, the value of body;
+            GLOBAL SET the variable g_bIdx TO the number 0;
+            WHILST the value of g_bIdx IS less than the value of bodySize DO
+                CALL getItem WITH the value of g_bIdx, the value of body;
                 LET the variable child BE the RESPONSE;
                 CALL printNode WITH the value of child, the value of indent plus the string "    ";
-                SET the variable bIdx TO the value of bIdx plus the number 1;
+                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
             END WHILST;
         END IF;
     END IF;
@@ -846,16 +863,17 @@ END WHILST;
 
 PROCLAIM the string "--- AST ---";
 
-LET the variable astSize BE the size of g_ast;
-LET the variable idx BE the number 0;
-WHILST the value of idx IS less than the value of astSize DO
-    CALL getItem WITH the value of idx, the value of g_ast;
+GLOBAL SET the variable g_idx TO the size of g_ast;
+LET the variable astSize BE the value of g_idx;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of astSize DO
+    CALL getItem WITH the value of g_idx, the value of g_ast;
     LET the variable node BE the RESPONSE;
     
     CALL printNode WITH the value of node, the string "";
     PROCLAIM the string "";
     
-    SET the variable idx TO the value of idx plus the number 1;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
 END WHILST;
 
 PROCLAIM the string "";

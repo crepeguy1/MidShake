@@ -2,6 +2,7 @@
 ^ An AST interpreter written in MidShake.
 ^ It takes the AST produced by parser.mish and executes it.
 ^ Uses GLOBAL SET to share state (variables, functions, response) across recursive calls.
+^ ALL loop counters use global variables to survive deep-copy scope restoration across CALL boundaries.
 
 IMPORT the file "stdlib/stdlib.mish";
 IMPORT the file "selfhost/parser.mish";
@@ -19,6 +20,12 @@ LET the variable callStack BE [];
 LET the variable returnValue BE the string "";
 ^ g_execResult: holds the result of executeNode, shared via GLOBAL SET
 LET the variable g_execResult BE the string "";
+^ Global loop counters to survive deep-copy scope restoration
+LET the variable g_bIdx BE the number 0;
+LET the variable g_i BE the number 0;
+LET the variable g_idx BE the number 0;
+^ Global node reference to survive deep-copy across CALL boundaries
+LET the variable g_node BE {};
 
 ^ ====== Helper: Replace all occurrences of a substring ======
 ^ Uses the Python-side replace function for efficiency
@@ -110,7 +117,7 @@ DEFINE function evaluateExpr WITH the variable expr;
     IF the value of isValueOf IS equal to the number 1 THEN
         CALL extractAfterKeyword WITH the value of trimmed, the string "of";
         LET the variable varName BE the RESPONSE;
-        CALL trim WITH the value of varName;
+        CALL trim WITH the variable varName;
         LET the variable trimmedName BE the RESPONSE;
         
         ^ Look up variable in global vars
@@ -157,7 +164,6 @@ DEFINE function evaluateExpr WITH the variable expr;
     END IF;
     
     ^ Handle arithmetic: "X plus Y", "X minus Y", "X times Y", "X divided by Y"
-    ^ We need to split by the operator and evaluate both sides
     CALL split WITH the value of trimmed, the string " plus ";
     LET the variable plusParts BE the RESPONSE;
     LET the variable plusCount BE the size of plusParts;
@@ -170,7 +176,6 @@ DEFINE function evaluateExpr WITH the variable expr;
         LET the variable left BE the RESPONSE;
         CALL evaluateExpr WITH the value of rightExpr;
         LET the variable right BE the RESPONSE;
-        ^ For string concatenation, use "plus" syntax
         RETURN the value of left plus the value of right;
     END IF;
     
@@ -250,7 +255,6 @@ DEFINE function evaluateExpr WITH the variable expr;
     END IF;
     
     ^ Handle bare variable names (no prefix)
-    ^ Check if it's a simple identifier
     CALL mapGet WITH the value of trimmed, the value of g_vars;
     LET the variable bareVal BE the RESPONSE;
     IF the value of bareVal IS not equal to the string "" THEN
@@ -400,9 +404,14 @@ END FUNCTION;
 
 ^ ====== Execute a single AST node ======
 ^ This is the core interpreter function — it dispatches based on node type.
+^ Uses global loop counters (g_bIdx) to survive deep-copy scope restoration.
+^ Saves node to g_node before any CALL that would reset local scope.
+^ Uses inline map access instead of mapGet to avoid deep-copy key loss.
 DEFINE function executeNode WITH the variable node;
-    CALL mapGet WITH "type", the value of node;
-    LET the variable nodeType BE the RESPONSE;
+    GLOBAL SET the variable g_node TO the value of node;
+    
+    ^ Read node type directly from g_node using inline map access
+    LET the variable nodeType BE the value of type in g_node;
     
     ^ Trim node type to handle any whitespace
     CALL trim WITH the value of nodeType;
@@ -411,15 +420,10 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- Let statement ---
     IF the value of nodeType IS equal to the string "Let" THEN
-        CALL mapGet WITH "name", the value of node;
-        LET the variable varName BE the RESPONSE;
-        CALL mapGet WITH "value", the value of node;
-        LET the variable valueExpr BE the RESPONSE;
+        LET the variable varName BE the value of name in g_node;
+        LET the variable valueExpr BE the value of value in g_node;
         CALL evaluateExpr WITH the value of valueExpr;
         LET the variable evaluated BE the RESPONSE;
-        GLOBAL SET the variable g_vars TO the value of g_vars;
-        CALL mapGet WITH the value of varName, the value of g_vars;
-        LET the variable oldVal BE the RESPONSE;
         SET the key the value of varName IN the map g_vars TO the value of evaluated;
         GLOBAL SET the variable g_vars TO the value of g_vars;
         GLOBAL SET the variable g_execResult TO the number 0;
@@ -428,10 +432,8 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- Set statement ---
     IF the value of nodeType IS equal to the string "Set" THEN
-        CALL mapGet WITH "name", the value of node;
-        LET the variable varName BE the RESPONSE;
-        CALL mapGet WITH "value", the value of node;
-        LET the variable valueExpr BE the RESPONSE;
+        LET the variable varName BE the value of name in g_node;
+        LET the variable valueExpr BE the value of value in g_node;
         CALL evaluateExpr WITH the value of valueExpr;
         LET the variable evaluated BE the RESPONSE;
         SET the key the value of varName IN the map g_vars TO the value of evaluated;
@@ -442,8 +444,7 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- Proclaim statement ---
     IF the value of nodeType IS equal to the string "Proclaim" THEN
-        CALL mapGet WITH "value", the value of node;
-        LET the variable valueExpr BE the RESPONSE;
+        LET the variable valueExpr BE the value of value in g_node;
         CALL evaluateExpr WITH the value of valueExpr;
         LET the variable evaluated BE the RESPONSE;
         PROCLAIM the value of evaluated;
@@ -453,21 +454,19 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- If statement ---
     IF the value of nodeType IS equal to the string "If" THEN
-        CALL mapGet WITH "condition", the value of node;
-        LET the variable condition BE the RESPONSE;
+        LET the variable condition BE the value of condition in g_node;
         CALL evaluateCondition WITH the value of condition;
         LET the variable condResult BE the RESPONSE;
         
         IF the value of condResult IS equal to the number 1 THEN
-            CALL mapGet WITH "body", the value of node;
-            LET the variable body BE the RESPONSE;
+            LET the variable body BE the value of body in g_node;
             LET the variable bodySize BE the size of body;
-            LET the variable bIdx BE the number 0;
-            WHILST the value of bIdx IS less than the value of bodySize DO
-                CALL getItem WITH the value of bIdx, the value of body;
+            GLOBAL SET the variable g_bIdx TO the number 0;
+            WHILST the value of g_bIdx IS less than the value of bodySize DO
+                CALL getItem WITH the value of g_bIdx, the value of body;
                 LET the variable child BE the RESPONSE;
                 CALL executeNode WITH the value of child;
-                SET the variable bIdx TO the value of bIdx plus the number 1;
+                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
             END WHILST;
         END IF;
         
@@ -477,10 +476,8 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- While statement ---
     IF the value of nodeType IS equal to the string "While" THEN
-        CALL mapGet WITH "condition", the value of node;
-        LET the variable condition BE the RESPONSE;
-        CALL mapGet WITH "body", the value of node;
-        LET the variable body BE the RESPONSE;
+        LET the variable condition BE the value of condition in g_node;
+        LET the variable body BE the value of body in g_node;
         
         WHILST the value of the number 1 IS equal to the number 1 DO
             CALL evaluateCondition WITH the value of condition;
@@ -490,12 +487,12 @@ DEFINE function executeNode WITH the variable node;
             END IF;
             
             LET the variable bodySize BE the size of body;
-            LET the variable bIdx BE the number 0;
-            WHILST the value of bIdx IS less than the value of bodySize DO
-                CALL getItem WITH the value of bIdx, the value of body;
+            GLOBAL SET the variable g_bIdx TO the number 0;
+            WHILST the value of g_bIdx IS less than the value of bodySize DO
+                CALL getItem WITH the value of g_bIdx, the value of body;
                 LET the variable child BE the RESPONSE;
                 CALL executeNode WITH the value of child;
-                SET the variable bIdx TO the value of bIdx plus the number 1;
+                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
             END WHILST;
         END WHILST;
         
@@ -505,22 +502,16 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- Function definition ---
     IF the value of nodeType IS equal to the string "FunctionDef" THEN
-        CALL mapGet WITH "name", the value of node;
-        LET the variable funcName BE the RESPONSE;
-        SET the key the value of funcName IN the map g_funcs TO the value of node;
+        LET the variable funcName BE the value of name in g_node;
+        SET the key the value of funcName IN the map g_funcs TO the value of g_node;
         GLOBAL SET the variable g_execResult TO the number 0;
         RETURN the number 0;
     END IF;
     
     ^ --- Call statement ---
     IF the value of nodeType IS equal to the string "Call" THEN
-        CALL mapGet WITH "name", the value of node;
-        LET the variable callName BE the RESPONSE;
-        
-        ^ Parse the call expression to extract arguments
-        ^ The call node may have a "value" field with the full call expression
-        CALL mapGet WITH "value", the value of node;
-        LET the variable callValue BE the RESPONSE;
+        LET the variable callName BE the value of name in g_node;
+        LET the variable callValue BE the value of value in g_node;
         
         ^ Look up the function
         CALL mapGet WITH the value of callName, the value of g_funcs;
@@ -537,16 +528,15 @@ DEFINE function executeNode WITH the variable node;
             LET the variable funcBody BE the RESPONSE;
             
             ^ Parse arguments from the call value expression
-            ^ For now, handle simple cases where args are in "WITH the value of X, the value of Y" format
             IF the length of callValue IS greater than the number 0 THEN
                 CALL split WITH the value of callValue, the string ",";
                 LET the variable argParts BE the RESPONSE;
                 LET the variable argCount BE the size of argParts;
-                LET the variable aIdx BE the number 0;
+                GLOBAL SET the variable g_bIdx TO the number 0;
                 LET the variable pIdx BE the number 0;
                 
-                WHILST the value of aIdx IS less than the value of argCount DO
-                    CALL getItem WITH the value of aIdx, the value of argParts;
+                WHILST the value of g_bIdx IS less than the value of argCount DO
+                    CALL getItem WITH the value of g_bIdx, the value of argParts;
                     LET the variable argPart BE the RESPONSE;
                     CALL trim WITH the value of argPart;
                     LET the variable trimmedArg BE the RESPONSE;
@@ -577,21 +567,22 @@ DEFINE function executeNode WITH the variable node;
                         CALL trim WITH the value of paramNameVal;
                         LET the variable trimmedParam BE the RESPONSE;
                         SET the key the value of trimmedParam IN the map g_vars TO the value of argValue;
+                        GLOBAL SET the variable g_vars TO the value of g_vars;
                         SET the variable pIdx TO the value of pIdx plus the number 1;
                     END IF;
                     
-                    SET the variable aIdx TO the value of aIdx plus the number 1;
+                    GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
                 END WHILST;
             END IF;
             
             ^ Execute function body
             LET the variable bodySize BE the size of funcBody;
-            LET the variable bIdx BE the number 0;
-            WHILST the value of bIdx IS less than the value of bodySize DO
-                CALL getItem WITH the value of bIdx, the value of funcBody;
+            GLOBAL SET the variable g_bIdx TO the number 0;
+            WHILST the value of g_bIdx IS less than the value of bodySize DO
+                CALL getItem WITH the value of g_bIdx, the value of funcBody;
                 LET the variable child BE the RESPONSE;
                 CALL executeNode WITH the value of child;
-                SET the variable bIdx TO the value of bIdx plus the number 1;
+                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
             END WHILST;
             
             ^ Pop call frame
@@ -607,8 +598,7 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- Return statement ---
     IF the value of nodeType IS equal to the string "Return" THEN
-        CALL mapGet WITH "value", the value of node;
-        LET the variable returnExpr BE the RESPONSE;
+        LET the variable returnExpr BE the value of value in g_node;
         CALL evaluateExpr WITH the value of returnExpr;
         LET the variable evaluated BE the RESPONSE;
         SET the variable returnValue TO the value of evaluated;
@@ -619,10 +609,8 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- FileWrite statement ---
     IF the value of nodeType IS equal to the string "FileWrite" THEN
-        CALL mapGet WITH "value", the value of node;
-        LET the variable fileWriteExpr BE the RESPONSE;
+        LET the variable fileWriteExpr BE the value of value in g_node;
         ^ Parse "IN the file "output.txt" WRITE the value of text"
-        ^ Extract the file path and content
         CALL split WITH the value of fileWriteExpr, the string "WRITE";
         LET the variable writeParts BE the RESPONSE;
         LET the variable writeCount BE the size of writeParts;
@@ -634,7 +622,7 @@ DEFINE function executeNode WITH the variable node;
             CALL evaluateExpr WITH the value of trimmedContent;
             LET the variable content BE the RESPONSE;
             
-            ^ Extract file path: everything between "file " and " WRITE"
+            ^ Extract file path
             CALL getItem WITH the number 0, the value of writeParts;
             LET the variable filePart BE the RESPONSE;
             CALL split WITH the value of filePart, the string "file";
@@ -686,32 +674,27 @@ DEFINE function executeNode WITH the variable node;
     
     ^ --- Import statement ---
     IF the value of nodeType IS equal to the string "Import" THEN
-        CALL mapGet WITH "path", the value of node;
-        LET the variable importPath BE the RESPONSE;
-        ^ Imports are handled at parse time by the runtime, so we just skip
+        LET the variable importPath BE the value of path in g_node;
         GLOBAL SET the variable g_execResult TO the number 0;
         RETURN the number 0;
     END IF;
     
     ^ --- ForIn statement ---
     IF the value of nodeType IS equal to the string "ForIn" THEN
-        CALL mapGet WITH "header", the value of node;
-        LET the variable header BE the RESPONSE;
-        CALL mapGet WITH "body", the value of node;
-        LET the variable body BE the RESPONSE;
+        LET the variable header BE the value of header in g_node;
+        LET the variable body BE the value of body in g_node;
         
         ^ Parse header: "FOR the variable X IN the value of list DO"
-        ^ Extract variable name
         CALL split WITH the value of header, the string " ";
         LET the variable headerParts BE the RESPONSE;
         LET the variable headerCount BE the size of headerParts;
-        LET the variable hIdx BE the number 0;
+        GLOBAL SET the variable g_bIdx TO the number 0;
         LET the variable foundVar BE the number 0;
         LET the variable forVarName BE the string "";
         LET the variable forListExpr BE the string "";
         
-        WHILST the value of hIdx IS less than the value of headerCount DO
-            CALL getItem WITH the value of hIdx, the value of headerParts;
+        WHILST the value of g_bIdx IS less than the value of headerCount DO
+            CALL getItem WITH the value of g_bIdx, the value of headerParts;
             LET the variable part BE the RESPONSE;
             
             IF the value of foundVar IS equal to the number 1 THEN
@@ -723,14 +706,14 @@ DEFINE function executeNode WITH the variable node;
                 SET the variable foundVar TO the number 1;
             END IF;
             
-            SET the variable hIdx TO the value of hIdx plus the number 1;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
         END WHILST;
         
         ^ Extract the list expression (after "IN")
         LET the variable foundIn BE the number 0;
-        SET the variable hIdx TO the number 0;
-        WHILST the value of hIdx IS less than the value of headerCount DO
-            CALL getItem WITH the value of hIdx, the value of headerParts;
+        GLOBAL SET the variable g_bIdx TO the number 0;
+        WHILST the value of g_bIdx IS less than the value of headerCount DO
+            CALL getItem WITH the value of g_bIdx, the value of headerParts;
             LET the variable part BE the RESPONSE;
             
             IF the value of foundIn IS equal to the number 1 THEN
@@ -744,30 +727,31 @@ DEFINE function executeNode WITH the variable node;
                 SET the variable foundIn TO the number 1;
             END IF;
             
-            SET the variable hIdx TO the value of hIdx plus the number 1;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
         END WHILST;
         
         ^ Evaluate the list expression
         CALL evaluateExpr WITH the value of forListExpr;
         LET the variable forList BE the RESPONSE;
         LET the variable listSize BE the size of forList;
-        LET the variable i BE the number 0;
+        GLOBAL SET the variable g_i TO the number 0;
         
-        WHILST the value of i IS less than the value of listSize DO
-            CALL getItem WITH the value of i, the value of forList;
+        WHILST the value of g_i IS less than the value of listSize DO
+            CALL getItem WITH the value of g_i, the value of forList;
             LET the variable item BE the RESPONSE;
             SET the key the value of forVarName IN the map g_vars TO the value of item;
+            GLOBAL SET the variable g_vars TO the value of g_vars;
             
             LET the variable bodySize BE the size of body;
-            LET the variable bIdx BE the number 0;
-            WHILST the value of bIdx IS less than the value of bodySize DO
-                CALL getItem WITH the value of bIdx, the value of body;
+            GLOBAL SET the variable g_bIdx TO the number 0;
+            WHILST the value of g_bIdx IS less than the value of bodySize DO
+                CALL getItem WITH the value of g_bIdx, the value of body;
                 LET the variable child BE the RESPONSE;
                 CALL executeNode WITH the value of child;
-                SET the variable bIdx TO the value of bIdx plus the number 1;
+                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
             END WHILST;
             
-            SET the variable i TO the value of i plus the number 1;
+            GLOBAL SET the variable g_i TO the value of g_i plus the number 1;
         END WHILST;
         
         GLOBAL SET the variable g_execResult TO the number 0;
@@ -803,12 +787,12 @@ SET the variable g_pos TO the number 0;
 SET the variable g_lineCount TO the size of g_lines;
 SET the variable g_ast TO [];
 
-^ Parse all top-level statements (same as parser.mish)
+^ Parse all top-level statements
 WHILST the value of g_pos IS less than the value of g_lineCount DO
     CALL parseStatement WITH the number 0;
     LET the variable node BE the value of g_result;
     
-    CALL mapGet WITH "type", the value of node;
+    CALL mapGet WITH "type", the value of g_node;
     LET the variable nodeType BE the RESPONSE;
     
     IF the value of nodeType IS not equal to the string "Empty" THEN
@@ -821,15 +805,16 @@ END WHILST;
 ^ Execute the AST
 PROCLAIM the string "--- Executing ---";
 
-LET the variable astSize BE the size of g_ast;
-LET the variable idx BE the number 0;
-WHILST the value of idx IS less than the value of astSize DO
-    CALL getItem WITH the value of idx, the value of g_ast;
+GLOBAL SET the variable g_idx TO the size of g_ast;
+LET the variable astSize BE the value of g_idx;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of astSize DO
+    CALL getItem WITH the value of g_idx, the value of g_ast;
     LET the variable node BE the RESPONSE;
     
     CALL executeNode WITH the value of node;
     
-    SET the variable idx TO the value of idx plus the number 1;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
 END WHILST;
 
 PROCLAIM the string "";

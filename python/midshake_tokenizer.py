@@ -1200,6 +1200,7 @@ class ExpressionParser:
             " with ", " with\n", " with;", " with",
             " starting at", " ending at",
             " of ", " of\n", " of;", " of",
+            " variable ", " variable\n", " variable;", " variable",
         ]
         while not self.is_at_end():
             if self.current_char() in "+-*/()":

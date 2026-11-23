@@ -53,7 +53,7 @@ class Runtime:
     # UTILITIES
     # ------------------------------------------------------------
     def require_declared(self, name: str):
-        if name not in self.vars:
+        if name not in self.vars and name not in self.globals:
             raise ValueError(
                 f"MidShake Runtime Error:\n"
                 f"  The variable '{name}' was never declared with LET."
@@ -124,7 +124,7 @@ class Runtime:
             # Check globals first (for GLOBAL SET variables), then local vars
             if expr.name in self.globals:
                 return self.globals[expr.name]
-            return self.vars[expr.name]
+            return self.vars.get(expr.name, "")
 
         if isinstance(expr, Call):
             return self.exec_stmt(expr)
@@ -234,26 +234,27 @@ class Runtime:
         # Map get: the value of KEY in MAP
         if isinstance(expr, MapGet):
             mapping = self.eval_expr(expr.map_expr)
-            # Map keys: evaluate the key expression to get the actual key value
+            # Map keys: for bare identifiers, use the identifier name as the key directly
+            # without requiring it to be declared as a variable
             if isinstance(expr.key_expr, String):
-                # String literal key: use the literal value directly
                 key = expr.key_expr.value
             elif isinstance(expr.key_expr, Variable):
-                # Bare identifier: first try to evaluate it as a variable
-                # (for cases like mapGet where key is a function parameter)
-                # If the variable doesn't exist, fall back to using the name as the key
-                # (for cases like "the value of name in mymap" where name is a symbol key)
-                try:
-                    key = self.eval_expr(expr.key_expr)
-                    if isinstance(key, (int, float)):
-                        key = str(key)
-                    elif not isinstance(key, str):
-                        key = str(key)
-                except ValueError:
-                    # Variable not declared — use the identifier name as the string key
-                    key = expr.key_expr.name
+                # Use the variable name as the map key directly (symbol key)
+                # Only try to evaluate as a variable if the key doesn't exist in the map
+                key = expr.key_expr.name
+                if key not in mapping:
+                    # Try evaluating as a variable reference
+                    try:
+                        evaluated = self.eval_expr(expr.key_expr)
+                        if isinstance(evaluated, (int, float)):
+                            key = str(evaluated)
+                        elif isinstance(evaluated, str):
+                            key = evaluated
+                        else:
+                            key = str(evaluated)
+                    except ValueError:
+                        pass  # Keep the original key name
             else:
-                # Other expression: evaluate it to get the key
                 key = self.eval_expr(expr.key_expr)
                 if isinstance(key, (int, float)):
                     key = str(key)
