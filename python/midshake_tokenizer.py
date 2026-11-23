@@ -61,9 +61,10 @@ class Tokenizer:
             c = self.text[i]
             nxt = self.text[i + 1] if i + 1 < len(self.text) else ""
 
-            # toggle string mode
+            # toggle string mode (skip escaped quotes)
             if c == '"':
-                in_string = not in_string
+                if not (i > 0 and self.text[i - 1] == '\\'):
+                    in_string = not in_string
                 current.append(c)
                 i += 1
                 continue
@@ -356,8 +357,24 @@ class Tokenizer:
                 func_name = name_part.strip().rstrip(";")
                 args_text = args_part.strip().rstrip(";")
 
-                for piece in args_text.split(","):
-                    piece = piece.strip()
+                # Split args by comma, but not inside strings
+                arg_pieces = []
+                current_piece = []
+                in_str = False
+                for ch in args_text:
+                    if ch == '"':
+                        in_str = not in_str
+                        current_piece.append(ch)
+                    elif ch == ',' and not in_str:
+                        arg_pieces.append(''.join(current_piece).strip())
+                        current_piece = []
+                    else:
+                        current_piece.append(ch)
+                remaining = ''.join(current_piece).strip()
+                if remaining:
+                    arg_pieces.append(remaining)
+
+                for piece in arg_pieces:
                     if piece:
                         arg_expr = self.parse_expression(piece, line_no)
                         args.append(arg_expr)
@@ -1245,7 +1262,12 @@ class ExpressionParser:
         self.pos += 1
         start = self.pos
         while not self.is_at_end() and self.current_char() != '"':
-            self.pos += 1
+            if self.current_char() == '\\':
+                self.pos += 1  # skip the backslash
+                if not self.is_at_end():
+                    self.pos += 1  # skip the escaped character
+            else:
+                self.pos += 1
         if self.is_at_end():
             raise ValueError(
                 f"MidShake Syntax Error (line {self.line_no}):\n"

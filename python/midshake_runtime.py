@@ -617,6 +617,9 @@ class Runtime:
 
             # restore environment
             self.vars = saved_vars
+            # Re-apply globals so GLOBAL SET changes survive across CALL boundaries
+            for gname, gval in self.globals.items():
+                self.vars[gname] = gval
             self.return_value = saved_return
             self.in_function = saved_flag
 

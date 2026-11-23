@@ -521,11 +521,12 @@ DEFINE function executeNode WITH the variable node;
             ^ Push call frame
             SET the variable callStack TO the append of the value of callName to callStack;
             
-            ^ Get function params and body
-            CALL mapGet WITH "params", the value of funcNode;
-            LET the variable params BE the RESPONSE;
-            CALL mapGet WITH "body", the value of funcNode;
-            LET the variable funcBody BE the RESPONSE;
+            ^ Save funcNode to global before any CALL that would reset local scope
+            GLOBAL SET the variable g_node TO the value of funcNode;
+            
+            ^ Get function params and body using inline map access
+            LET the variable params BE the value of params in g_node;
+            LET the variable funcBody BE the value of body in g_node;
             
             ^ Parse arguments from the call value expression
             IF the length of callValue IS greater than the number 0 THEN
@@ -766,7 +767,7 @@ END FUNCTION;
 ^ ====== Main: Parse and Execute ======
 ^ Load the source file, parse it, then execute the AST
 
-LET the variable filePath BE "examples/hello.mish";
+LET the variable filePath BE "tests/test_simple_call.mish";
 PROCLAIM the string "Interpreting: ";
 PROCLAIM the value of filePath;
 PROCLAIM the string "";

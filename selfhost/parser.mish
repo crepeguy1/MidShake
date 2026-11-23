@@ -29,6 +29,7 @@ LET the variable g_exprStr BE the string "";
 LET the variable g_pathStr BE the string "";
 LET the variable g_word BE the string "";
 LET the variable g_node BE {};
+LET the variable g_params BE [];
 
 ^ ====== Helper Functions ======
 
@@ -151,37 +152,57 @@ DEFINE function extractFuncParams WITH the variable line;
         LET the variable word BE the RESPONSE;
         GLOBAL SET the variable g_word TO the value of word;
         
-        IF the value of g_found IS equal to the number 1 THEN
-            IF the length of g_paramStr IS greater than the number 0 THEN
-                GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the string " ";
+        IF the value of g_word IS equal to the string "variable" THEN
+            IF the value of g_found IS equal to the number 0 THEN
+                GLOBAL SET the variable g_found TO the number 1;
             END IF;
-            GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the value of g_word;
         END IF;
         
         IF the value of g_word IS equal to the string "variables" THEN
             GLOBAL SET the variable g_found TO the number 1;
         END IF;
         
+        IF the value of g_found IS equal to the number 1 THEN
+            IF the value of g_word IS equal to the string ";" THEN
+                GLOBAL SET the variable g_found TO the number 2;
+            ELSE
+                IF the value of g_word IS not equal to the string "variable" THEN
+                    IF the value of g_word IS not equal to the string "variables" THEN
+                        IF the length of g_paramStr IS greater than the number 0 THEN
+                            GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the string ",";
+                        END IF;
+                        GLOBAL SET the variable g_paramStr TO the value of g_paramStr plus the value of g_word;
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
+        
         GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
     END WHILST;
     
+    ^ Use GLOBAL SET to store the param string, then split it without nested CALLs
     IF the length of g_paramStr IS greater than the number 0 THEN
         CALL split WITH the value of g_paramStr, the string ",";
         LET the variable paramList BE the RESPONSE;
         LET the variable pCount BE the size of paramList;
         GLOBAL SET the variable g_pIdx TO the number 0;
+        GLOBAL SET the variable g_params TO [];
         
         WHILST the value of g_pIdx IS less than the value of pCount DO
             CALL getItem WITH the value of g_pIdx, the value of paramList;
             LET the variable param BE the RESPONSE;
-            IF the length of param IS greater than the number 0 THEN
-                SET the variable params TO the append of the value of param to params;
+            CALL trim WITH the value of param;
+            LET the variable trimmedParam BE the RESPONSE;
+            IF the length of trimmedParam IS greater than the number 0 THEN
+                GLOBAL SET the variable g_params TO the append of the value of trimmedParam to g_params;
             END IF;
             GLOBAL SET the variable g_pIdx TO the value of g_pIdx plus the number 1;
         END WHILST;
+        
+        RETURN the value of g_params;
     END IF;
     
-    RETURN the value of params;
+    RETURN [];
 END FUNCTION;
 
 ^ Extract the CALL function name
@@ -344,6 +365,8 @@ DEFINE function parseStatement WITH the variable dummy;
     ^ Skip empty lines and comments
     CALL getItem WITH the value of g_pos, the value of g_lines;
     LET the variable line BE the RESPONSE;
+    PROCLAIM the string "  [parser] got line: ";
+    PROCLAIM the value of line;
     CALL trim WITH the value of line;
     LET the variable trimmed BE the RESPONSE;
     
@@ -367,6 +390,7 @@ DEFINE function parseStatement WITH the variable dummy;
     END IF;
     
     ^ --- LET statement ---
+    PROCLAIM the string "  [parser] checking LET";
     CALL startsWith WITH the value of trimmed, the string "LET";
     LET the variable isLet BE the RESPONSE;
     IF the value of isLet IS equal to the number 1 THEN
@@ -620,7 +644,8 @@ DEFINE function parseStatement WITH the variable dummy;
         LET the variable isCall BE the RESPONSE;
         IF the value of isCall IS equal to the number 1 THEN
             CALL createNode WITH "Call";
-            GLOBAL SET the variable g_node TO the value of RESPONSE;
+            LET the variable callNode BE the RESPONSE;
+            GLOBAL SET the variable g_node TO the value of callNode;
             CALL extractCallName WITH the value of trimmed;
             LET the variable callName BE the RESPONSE;
             SET the key "name" IN the map g_node TO the value of callName;
@@ -826,57 +851,50 @@ DEFINE function printNode WITH the variable node, the variable indent;
     END IF;
 END FUNCTION;
 
-^ ====== Main Parser ======
-
-LET the variable filePath BE "examples/hello.mish";
-PROCLAIM the string "Parsing: ";
-PROCLAIM the value of filePath;
-PROCLAIM the string "";
-
-LET the variable source BE the content of the file the value of filePath;
-CALL split WITH the value of source, the string "\n";
-LET the variable sourceLines BE the RESPONSE;
-
-^ Initialize global state
-SET the variable g_lines TO the value of sourceLines;
-SET the variable g_pos TO the number 0;
-SET the variable g_lineCount TO the size of g_lines;
-SET the variable g_ast TO [];
-
-^ Parse all top-level statements
-WHILST the value of g_pos IS less than the value of g_lineCount DO
-    CALL parseStatement WITH the number 0;
-    LET the variable node BE the value of g_result;
+^ ====== Parse a file into AST ======
+^ This function parses source code lines into an AST and stores the result in g_ast.
+^ Call this after setting g_lines, g_pos, and g_lineCount.
+DEFINE function parseFile WITH the variable dummy;
+    GLOBAL SET the variable g_ast TO [];
+    GLOBAL SET the variable g_pos TO the number 0;
+    GLOBAL SET the variable g_lineCount TO the size of g_lines;
     
-    CALL mapGet WITH "type", the value of node;
-    LET the variable nodeType BE the RESPONSE;
-    
-    ^ Only add non-empty, non-comment nodes to the AST
-    IF the value of nodeType IS not equal to the string "Empty" THEN
-        IF the value of nodeType IS not equal to the string "Comment" THEN
-            GLOBAL SET the variable g_ast TO the append of the value of node to g_ast;
+    WHILST the value of g_pos IS less than the value of g_lineCount DO
+        CALL parseStatement WITH the number 0;
+        LET the variable node BE the value of g_result;
+        
+        CALL mapGet WITH "type", the value of node;
+        LET the variable nodeType BE the RESPONSE;
+        
+        IF the value of nodeType IS not equal to the string "Empty" THEN
+            IF the value of nodeType IS not equal to the string "Comment" THEN
+                GLOBAL SET the variable g_ast TO the append of the value of node to g_ast;
+            END IF;
         END IF;
-    END IF;
-END WHILST;
+    END WHILST;
+    
+    RETURN the value of g_ast;
+END FUNCTION;
 
 ^ ====== Print the AST ======
-
-PROCLAIM the string "--- AST ---";
-
-GLOBAL SET the variable g_idx TO the size of g_ast;
-LET the variable astSize BE the value of g_idx;
-GLOBAL SET the variable g_idx TO the number 0;
-WHILST the value of g_idx IS less than the value of astSize DO
-    CALL getItem WITH the value of g_idx, the value of g_ast;
-    LET the variable node BE the RESPONSE;
+DEFINE function printAst WITH the variable dummy;
+    PROCLAIM the string "--- AST ---";
     
-    CALL printNode WITH the value of node, the string "";
+    LET the variable astSize BE the size of g_ast;
+    GLOBAL SET the variable g_idx TO the number 0;
+    WHILST the value of g_idx IS less than the value of astSize DO
+        CALL getItem WITH the value of g_idx, the value of g_ast;
+        LET the variable node BE the RESPONSE;
+        
+        CALL printNode WITH the value of node, the string "";
+        PROCLAIM the string "";
+        
+        GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+    END WHILST;
+    
     PROCLAIM the string "";
-    
-    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
-END WHILST;
-
-PROCLAIM the string "";
-PROCLAIM the string "AST building complete!";
-PROCLAIM the string "Total nodes: ";
-PROCLAIM the number astSize;
+    PROCLAIM the string "AST building complete!";
+    PROCLAIM the string "Total nodes: ";
+    PROCLAIM the number astSize;
+    RETURN the number 0;
+END FUNCTION;

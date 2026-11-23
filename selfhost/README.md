@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~85%
+## Current Progress: ~90%
 
 ### What's Done ✓
 
@@ -22,12 +22,14 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 - **Line-based tokenizer**: `tokenizer.mish` reads source code and classifies each line by keyword type
 - **Character-level lexer**: `lexer.mish` walks source code character by character and produces tokens
 - **Recursive AST-building parser**: `parser.mish` reads source code and builds a full AST with nested maps. Recursively parses body lines into child AST nodes for all block statements (IF, WHILST, DEFINE, FOR). Includes pretty-printer with indentation for visualizing the AST.
-- **AST interpreter**: `interpreter.mish` walks the AST produced by `parser.mish` and executes it. Supports LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FileWrite, FOR, BREAK, CONTINUE, TERMINATE, and IMPORT. Includes expression normalization to handle concatenated keywords (e.g., "thestring" → "the string").
+- **AST interpreter**: `interpreter.mish` walks the AST produced by `parser.mish` and executes it. Supports LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FileWrite, FOR, BREAK, CONTINUE, TERMINATE, and IMPORT.
+- **C++ code generator**: `codegen.mish` converts the AST produced by `parser.mish` into C++ source code. Handles LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FOR, BREAK, CONTINUE, TERMINATE, FileWrite, and Import. Generates `#include`, function definitions, and a `main()` function that links against the C++ runtime.
 
 ### What's Still Needed
 
-1. **Interpreter CALL argument handling** — The parser needs to store CALL arguments in the AST so the interpreter can properly bind them to function parameters
-2. **Code generator in MidShake** — Write a MidShake program (`generator.mish`) that converts the AST to C++ source code
+1. **Complete code generator** — Handle FileWrite and CALL argument expression compilation, add more expression types (arithmetic, list/map ops)
+2. **Compile the generated C++** — Pipe the generated `.cpp` through `g++` to produce a native binary
+3. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
 
 ## Folder Structure
 
@@ -39,6 +41,7 @@ selfhost/
 ├── lexer.mish             ← Character-level lexer written in MidShake
 ├── parser.mish            ← AST-building parser written in MidShake
 ├── interpreter.mish       ← AST interpreter written in MidShake
+├── codegen.mish           ← C++ code generator written in MidShake
 ├── examples/
 │   ├── fileio.mish        ← File read/write example
 │   ├── lists.mish         ← List operations example
@@ -73,7 +76,10 @@ python python/midshake_cli.py run selfhost/examples/stringutils.mish
 
 ## Next Steps
 
-The recursive AST-building parser and interpreter are complete. The parser correctly builds ASTs with proper node types, names, and values. The interpreter successfully executes simple MidShake programs (like hello.mish) by walking the AST and evaluating expressions. Key improvements include global state variables (GLOBAL SET) for surviving deep-copy scope restoration, inline map access for reading AST node fields, and expression normalization. The next milestones are:
+The C++ code generator (`codegen.mish`) is now functional. It parses MidShake source code using the self-hosted parser, walks the AST, and generates C++ code that links against the existing C++ runtime. It correctly handles LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FOR, BREAK, CONTINUE, TERMINATE, FileWrite, and Import. Key techniques include GLOBAL SET for sharing state across CALL boundaries, expression normalization to handle concatenated keywords (e.g., "thestring" → "the string"), and substring-based extraction instead of word-boundary matching.
 
-1. **Fix interpreter CALL argument handling** — The parser now stores CALL arguments in the AST, but the interpreter needs to properly parse and bind them to function parameters so function calls work correctly.
-2. **Code generator in MidShake** — Write a MidShake program (`generator.mish`) that converts the AST to C++ source code, enabling MidShake to compile itself to native code.
+The next milestones are:
+
+1. **Complete code generator** — Add FileWrite expression compilation, CALL argument expression compilation, and more expression types (arithmetic, list/map operations)
+2. **Compile the generated C++** — Pipe the generated `.cpp` through `g++` to produce a native binary
+3. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
