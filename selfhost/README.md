@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~95% (Compiler Binary Working)
+## Current Progress: ~95% (Self-Compilation Pipeline Working)
 
 ### What's Done ✓
 
@@ -28,8 +28,9 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 ### What's Still Needed
 
 1. **~ Self-hosted compiler binary** ✓ — `codegen.mish` has been compiled to a standalone C++ binary (`cpp/output/codegen.exe`) that compiles MidShake → C++ without Python
-2. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
-3. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
+2. **~ End-to-end self-compilation** ✓ — The self-hosted compiler successfully compiled itself: `codegen.mish` parsed its own 717 lines, built 76 AST nodes, and generated 277 lines of C++ code
+3. **Refine self-compiled output** — Fix the code generator so the self-compiled C++ compiles and runs correctly
+4. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
 
 ## Folder Structure
 
@@ -84,9 +85,12 @@ Key fixes that enabled this:
 - **Parameter name cleaning** — Trailing semicolons are stripped from function parameter names during parsing
 - **String/int concatenation** — The `+` operator now auto-converts integers to strings when concatenating with strings
 - **Compiler fixes** — Python compiler now handles string concatenation (`Value::operator+`), proper comparisons (`value_equals`), CALL RESPONSE storage, and map key literals
+- **Parser g_pos fix** — parseStatement now always advances g_pos for non-block statements, preventing infinite loops on unrecognized lines
+- **GLOBAL SET for g_myAst** — The AST accumulation in the parse loop uses GLOBAL SET so nodes persist across CALL boundaries
 
 The next milestones are:
 
 1. **~ Compile the self-hosted codegen** ✓ — `codegen.mish` has been compiled to `cpp/output/codegen.exe` via the Python compiler
-2. **End-to-end self-compilation** — Run the self-hosted compiler on itself to produce a self-compiled MidShake
-3. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
+2. **~ End-to-end self-compilation** ✓ — `codegen.mish` successfully compiled itself: 717 lines → 76 AST nodes → 277 lines of C++
+3. **Refine self-compiled output** — Fix the code generator so the self-compiled C++ compiles and runs correctly
+4. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++

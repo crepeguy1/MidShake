@@ -609,14 +609,10 @@ LET the variable source BE the content of the file the value of filePath;
 CALL split WITH the value of source, the string "\n";
 LET the variable sourceLines BE the RESPONSE;
 
-SET the variable g_lines TO the value of sourceLines;
-SET the variable g_pos TO the number 0;
-SET the variable g_lineCount TO the size of g_lines;
-SET the variable g_myAst TO [];
-
 GLOBAL SET the variable g_lines TO the value of sourceLines;
 GLOBAL SET the variable g_pos TO the number 0;
 GLOBAL SET the variable g_lineCount TO the size of g_lines;
+GLOBAL SET the variable g_myAst TO [];
 
 WHILST the value of g_pos IS less than the value of g_lineCount DO
     CALL parseStatement WITH the number 0;
@@ -627,7 +623,7 @@ WHILST the value of g_pos IS less than the value of g_lineCount DO
         IF the value of nodeType IS not equal to the string "Comment" THEN
             CALL append WITH the value of node, the value of g_myAst;
             LET the variable newAst BE the RESPONSE;
-            SET the variable g_myAst TO the value of newAst;
+            GLOBAL SET the variable g_myAst TO the value of newAst;
         END IF;
     END IF;
 END WHILST;

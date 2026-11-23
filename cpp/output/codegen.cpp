@@ -1,4 +1,5 @@
 #include "midshake_runtime.hpp"
+using namespace ms;
 
 Value println(Environment& env, const std::vector<Value>& args) {
     env.set("x", args[0]);
@@ -1220,13 +1221,11 @@ Value parseStatement(Environment& env, const std::vector<Value>& args) {
         env.set("RESPONSE", mapGet(env, args));
     }
     env.set("nodeType", env.get("RESPONSE"));
-    if (Value(Number(!value_equals(env.get("consumed"), Value::from_double(0)) ? 1 : 0)).num.value != 0) {
-        if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("While")) ? 1 : 0)).num.value != 0) {
-            if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("If")) ? 1 : 0)).num.value != 0) {
-                if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("FunctionDef")) ? 1 : 0)).num.value != 0) {
-                    if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("ForIn")) ? 1 : 0)).num.value != 0) {
-                        env.set("g_pos", (env.get("g_pos") + Value::from_double(1)));
-                    }
+    if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("While")) ? 1 : 0)).num.value != 0) {
+        if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("If")) ? 1 : 0)).num.value != 0) {
+            if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("FunctionDef")) ? 1 : 0)).num.value != 0) {
+                if (Value(Number(!value_equals(env.get("nodeType"), Value::from_string("ForIn")) ? 1 : 0)).num.value != 0) {
+                    env.set("g_pos", (env.get("g_pos") + Value::from_double(1)));
                 }
             }
         }
@@ -2535,9 +2534,6 @@ int main() {
     env.set("g_pos", Value::from_double(0));
     env.set("g_lineCount", list_length(env.get("g_lines")));
     env.set("g_myAst", Value::from_list({}));
-    env.set("g_lines", env.get("sourceLines"));
-    env.set("g_pos", Value::from_double(0));
-    env.set("g_lineCount", list_length(env.get("g_lines")));
     while (Value(Number((env.get("g_pos").num.value < env.get("g_lineCount").num.value) ? 1 : 0)).num.value != 0) {
         {
             std::vector<Value> args;

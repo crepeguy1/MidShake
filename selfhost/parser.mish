@@ -753,14 +753,12 @@ DEFINE function parseStatement WITH the variable dummy;
     CALL mapGet WITH "type", the value of node;
     LET the variable nodeType BE the RESPONSE;
     
-    ^ Advance position only for non-block statements
-    IF the value of consumed IS not equal to the number 0 THEN
-        IF the value of nodeType IS not equal to the string "While" THEN
-            IF the value of nodeType IS not equal to the string "If" THEN
-                IF the value of nodeType IS not equal to the string "FunctionDef" THEN
-                    IF the value of nodeType IS not equal to the string "ForIn" THEN
-                        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
-                    END IF;
+    ^ Advance position: always advance for non-block statements
+    IF the value of nodeType IS not equal to the string "While" THEN
+        IF the value of nodeType IS not equal to the string "If" THEN
+            IF the value of nodeType IS not equal to the string "FunctionDef" THEN
+                IF the value of nodeType IS not equal to the string "ForIn" THEN
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
                 END IF;
             END IF;
         END IF;
