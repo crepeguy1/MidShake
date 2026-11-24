@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~95% (Bootstrap Chain + Test Suite Working)
+## Current Progress: ~95% (Bootstrap Chain + Full Test Suite Working)
 
 ### What's Done ✓
 

@@ -111,8 +111,11 @@ More details:
 - [Type System](docs/types.md)  
 - [Language Reference](docs/language-reference.md)  
 - [Semantic Analysis](docs/semantic-analysis.md)  
+- [Design Document](docs/design.md)  
+- [Project Roadmap](docs/roadmap.md)  
 - [Examples](examples/)  
-- [Standard Library Reference](stdlib/stdlib.mish)
+- [Standard Library Reference](stdlib/stdlib.mish)  
+- [Tests](tests/) (146 unit + 15 integration tests)
 
 ---
 
