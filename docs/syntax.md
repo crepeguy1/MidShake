@@ -4,7 +4,7 @@ MidShake is a small, statement-based language with English-like keywords. Its go
 
 ## Program structure
 
-- MidShake programs are written as plain text files with the `.ms` extension.
+- MidShake programs are written as plain text files with the `.mish` extension.
 - Statements usually end with a semicolon `;`.
 - Comments begin with `^` or `#`.
 - Indentation is optional, but it improves readability.
@@ -102,7 +102,7 @@ MidShake currently supports a small set of value forms:
 
 ## Standard library
 
-The standard library is currently small and intentionally focused on basic helper functions. It is defined in `stdlib/stdlib.ms` and loaded automatically for programs that use it.
+The standard library is currently small and intentionally focused on basic helper functions. It is defined in `stdlib/stdlib.mish` and loaded automatically for programs that use it.
 
 Common helpers include:
 

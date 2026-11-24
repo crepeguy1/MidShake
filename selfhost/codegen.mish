@@ -1,0 +1,827 @@
+^ codegen.mish
+^ A C++ code generator written in MidShake.
+^ It takes the AST produced by parser.mish and generates C++ source code.
+^ IMPORTANT: No double quotes inside MidShake string literals — uses QUOTE variable instead.
+
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+^ ====== Global State ======
+LET the variable g_output BE [];
+LET the variable g_indent BE the number 0;
+LET the variable g_idx BE the number 0;
+LET the variable g_i BE the number 0;
+LET the variable g_bIdx BE the number 0;
+LET the variable g_node BE {};
+LET the variable g_compiled BE the string "";
+LET the variable g_functions BE [];
+LET the variable g_mainStmts BE [];
+LET the variable g_myAst BE [];
+^ Double quote character — extracted from a known string containing one
+LET the variable quoteSource BE the string "a\"b";
+LET the variable QUOTE BE the character at the number 1 in the value of quoteSource;
+
+^ ====== Helper: Emit a line of C++ code ======
+DEFINE function emit WITH the variable line;
+    LET the variable padding BE the string "";
+    LET the variable padIdx BE the number 0;
+    WHILST the value of padIdx IS less than the value of g_indent DO
+        SET the variable padding TO the value of padding plus the string "    ";
+        SET the variable padIdx TO the value of padIdx plus the number 1;
+    END WHILST;
+    LET the variable fullLine BE the value of padding plus the value of line;
+    CALL append WITH the value of fullLine, the value of g_output;
+    LET the variable newOutput BE the RESPONSE;
+    GLOBAL SET the variable g_output TO the value of newOutput;
+    RETURN the value of g_output;
+END FUNCTION;
+
+DEFINE function indent WITH the variable dummy;
+    GLOBAL SET the variable g_indent TO the value of g_indent plus the number 1;
+    RETURN the number 0;
+END FUNCTION;
+
+DEFINE function dedent WITH the variable dummy;
+    IF the value of g_indent IS greater than the number 0 THEN
+        GLOBAL SET the variable g_indent TO the value of g_indent minus the number 1;
+    END IF;
+    RETURN the number 0;
+END FUNCTION;
+
+^ ====== Helper: Strip surrounding quotes ======
+DEFINE function stripQuotes WITH the variable str;
+    CALL trim WITH the value of str;
+    LET the variable trimmed BE the RESPONSE;
+    CALL length WITH the value of trimmed;
+    LET the variable len BE the RESPONSE;
+    IF the value of len IS greater than or equal to the number 2 THEN
+        CALL charAt WITH the value of trimmed, the number 0;
+        LET the variable first BE the RESPONSE;
+        CALL charAt WITH the value of trimmed, the value of len minus the number 1;
+        LET the variable last BE the RESPONSE;
+        IF the value of first IS equal to the value of last THEN
+            CALL substring WITH the value of trimmed, the number 1, the value of len minus the number 1;
+            LET the variable unquoted BE the RESPONSE;
+            RETURN the value of unquoted;
+        END IF;
+    END IF;
+    RETURN the value of trimmed;
+END FUNCTION;
+
+^ ====== Helper: Build env.set call ======
+DEFINE function buildEnvSet WITH the variable name, the variable value;
+    LET the variable result BE the string "env.set(" plus the value of QUOTE plus the value of name plus the value of QUOTE plus the string ", " plus the value of value plus the string ");";
+    RETURN the value of result;
+END FUNCTION;
+
+^ ====== Helper: Build env.get call ======
+DEFINE function buildEnvGet WITH the variable name;
+    LET the variable result BE the string "env.get(" plus the value of QUOTE plus the value of name plus the value of QUOTE plus the string ")";
+    RETURN the value of result;
+END FUNCTION;
+
+^ ====== Helper: Build Value::from_string("...") ======
+DEFINE function buildStringLit WITH the variable content;
+    LET the variable result BE the string "Value::from_string(" plus the value of QUOTE plus the value of content plus the value of QUOTE plus the string ")";
+    RETURN the value of result;
+END FUNCTION;
+
+^ ====== Compile an expression string to C++ ======
+^ Stores result in g_compiled global to survive deep-copy across CALL boundaries
+DEFINE function compileExpr WITH the variable expr;
+    CALL trim WITH the value of expr;
+    LET the variable trimmed BE the RESPONSE;
+    CALL replace WITH the value of trimmed, the string ";", the string "";
+    GLOBAL SET the variable g_compiled TO the RESPONSE;
+    LET the variable cleaned BE the value of g_compiled;
+    CALL replace WITH the value of cleaned, the string "thestring", the string "the string";
+    GLOBAL SET the variable g_compiled TO the RESPONSE;
+    LET the variable normalized BE the value of g_compiled;
+    
+    ^ "the string ..."
+    CALL startsWith WITH the value of normalized, the string "the string";
+    LET the variable isString BE the RESPONSE;
+    IF the value of isString IS equal to the number 1 THEN
+        CALL length WITH the string "the string";
+        LET the variable prefixLen BE the RESPONSE;
+        CALL substring WITH the value of normalized, the value of prefixLen, the length of normalized;
+        LET the variable strContent BE the RESPONSE;
+        CALL trim WITH the value of strContent;
+        LET the variable trimmedStr BE the RESPONSE;
+        CALL stripQuotes WITH the value of trimmedStr;
+        LET the variable unquoted BE the RESPONSE;
+        CALL buildStringLit WITH the value of unquoted;
+        LET the variable result BE the RESPONSE;
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ "the number N"
+    CALL startsWith WITH the value of normalized, the string "the number";
+    LET the variable isNumber BE the RESPONSE;
+    IF the value of isNumber IS equal to the number 1 THEN
+        CALL length WITH the string "the number";
+        LET the variable numPrefixLen BE the RESPONSE;
+        CALL substring WITH the value of normalized, the value of numPrefixLen, the length of normalized;
+        LET the variable numStr BE the RESPONSE;
+        CALL trim WITH the value of numStr;
+        LET the variable trimmedNum BE the RESPONSE;
+        LET the variable result BE the string "Value::from_double(" plus the value of trimmedNum plus the string ")";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ "the value of VARIABLE"
+    CALL startsWith WITH the value of normalized, the string "the value of";
+    LET the variable isValueOf BE the RESPONSE;
+    IF the value of isValueOf IS equal to the number 1 THEN
+        CALL length WITH the string "the value of";
+        LET the variable valPrefixLen BE the RESPONSE;
+        CALL substring WITH the value of normalized, the value of valPrefixLen, the length of normalized;
+        LET the variable varName BE the RESPONSE;
+        CALL trim WITH the value of varName;
+        LET the variable trimmedVar BE the RESPONSE;
+        CALL buildEnvGet WITH the value of trimmedVar;
+        LET the variable result BE the RESPONSE;
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ "the RESPONSE"
+    CALL startsWith WITH the value of normalized, the string "the RESPONSE";
+    LET the variable isResponse BE the RESPONSE;
+    IF the value of isResponse IS equal to the number 1 THEN
+        CALL buildEnvGet WITH "RESPONSE";
+        LET the variable result BE the RESPONSE;
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ "the length of X"
+    CALL startsWith WITH the value of normalized, the string "the length of";
+    LET the variable isLength BE the RESPONSE;
+    IF the value of isLength IS equal to the number 1 THEN
+        CALL length WITH the string "the length of";
+        LET the variable lenPrefixLen BE the RESPONSE;
+        CALL substring WITH the value of normalized, the value of lenPrefixLen, the length of normalized;
+        LET the variable arg BE the RESPONSE;
+        CALL trim WITH the value of arg;
+        LET the variable trimmedArg BE the RESPONSE;
+        LET the variable result BE the string "string_length(" plus the value of trimmedArg plus the string ")";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ "the size of X"
+    CALL startsWith WITH the value of normalized, the string "the size of";
+    LET the variable isSize BE the RESPONSE;
+    IF the value of isSize IS equal to the number 1 THEN
+        CALL length WITH the string "the size of";
+        LET the variable sizePrefixLen BE the RESPONSE;
+        CALL substring WITH the value of normalized, the value of sizePrefixLen, the length of normalized;
+        LET the variable arg BE the RESPONSE;
+        CALL trim WITH the value of arg;
+        LET the variable trimmedArg BE the RESPONSE;
+        LET the variable result BE the string "list_length(" plus the value of trimmedArg plus the string ")";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ "the contents of FILE"
+    CALL startsWith WITH the value of normalized, the string "the contents of";
+    LET the variable isFileRead BE the RESPONSE;
+    IF the value of isFileRead IS equal to the number 1 THEN
+        CALL length WITH the string "the contents of";
+        LET the variable filePrefixLen BE the RESPONSE;
+        CALL substring WITH the value of normalized, the value of filePrefixLen, the length of normalized;
+        LET the variable pathExpr BE the RESPONSE;
+        CALL trim WITH the value of pathExpr;
+        LET the variable trimmedPath BE the RESPONSE;
+        CALL stripQuotes WITH the value of trimmedPath;
+        LET the variable unquotedPath BE the RESPONSE;
+        LET the variable result BE the string "file_read(" plus the value of QUOTE plus the value of unquotedPath plus the value of QUOTE plus the string ")";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ "true" / "false"
+    IF the value of normalized IS equal to the string "true" THEN
+        GLOBAL SET the variable g_compiled TO "Value::from_double(1)";
+        RETURN "Value::from_double(1)";
+    END IF;
+    IF the value of normalized IS equal to the string "false" THEN
+        GLOBAL SET the variable g_compiled TO "Value::from_double(0)";
+        RETURN "Value::from_double(0)";
+    END IF;
+    
+    ^ Binary: "X plus Y" — split on " plus " to handle nested expressions
+    CALL split WITH the value of normalized, the string " plus ";
+    LET the variable plusParts BE the RESPONSE;
+    LET the variable plusCount BE the size of plusParts;
+    IF the value of plusCount IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of plusParts;
+        LET the variable plusLeft BE the RESPONSE;
+        CALL trim WITH the value of plusLeft;
+        LET the variable plusLeftTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of plusLeftTrimmed;
+        LET the variable compiledLeft BE the value of g_compiled;
+        CALL getItem WITH the value of plusCount minus the number 1, the value of plusParts;
+        LET the variable plusRight BE the RESPONSE;
+        CALL trim WITH the value of plusRight;
+        LET the variable plusRightTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of plusRightTrimmed;
+        LET the variable compiledRight BE the value of g_compiled;
+        LET the variable result BE the string "(" plus the value of compiledLeft plus the string " + " plus the value of compiledRight plus the string ")";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ Binary: "X minus Y" — split on " minus "
+    CALL split WITH the value of normalized, the string " minus ";
+    LET the variable minusParts BE the RESPONSE;
+    LET the variable minusCount BE the size of minusParts;
+    IF the value of minusCount IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of minusParts;
+        LET the variable minusLeft BE the RESPONSE;
+        CALL trim WITH the value of minusLeft;
+        LET the variable minusLeftTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of minusLeftTrimmed;
+        LET the variable compiledLeft BE the value of g_compiled;
+        CALL getItem WITH the value of minusCount minus the number 1, the value of minusParts;
+        LET the variable minusRight BE the RESPONSE;
+        CALL trim WITH the value of minusRight;
+        LET the variable minusRightTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of minusRightTrimmed;
+        LET the variable compiledRight BE the value of g_compiled;
+        LET the variable result BE the string "Value(Number(" plus the value of compiledLeft plus the string ".num.value - " plus the value of compiledRight plus the string ".num.value))";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ Fallback: bare variable
+    CALL buildEnvGet WITH the value of normalized;
+    LET the variable fallback BE the RESPONSE;
+    GLOBAL SET the variable g_compiled TO the value of fallback;
+    RETURN the value of fallback;
+END FUNCTION;
+
+^ ====== Compile a condition to C++ ======
+DEFINE function compileCondition WITH the variable condition;
+    CALL trim WITH the value of condition;
+    LET the variable trimmed BE the RESPONSE;
+    CALL replace WITH the value of trimmed, the string " THEN", the string "";
+    GLOBAL SET the variable g_compiled TO the RESPONSE;
+    LET the variable cleaned BE the value of g_compiled;
+    CALL replace WITH the value of cleaned, the string " THEN;", the string "";
+    GLOBAL SET the variable g_compiled TO the RESPONSE;
+    LET the variable cleaned2 BE the value of g_compiled;
+    CALL trim WITH the value of cleaned2;
+    LET the variable trimmedCond BE the RESPONSE;
+
+    ^ "X IS equal to Y"
+    CALL split WITH the value of trimmed, the string " IS equal to ";
+    LET the variable parts BE the RESPONSE;
+    LET the variable count BE the size of parts;
+    IF the value of count IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of parts;
+        LET the variable left BE the RESPONSE;
+        CALL trim WITH the value of left;
+        LET the variable leftTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of leftTrimmed;
+        LET the variable compiledLeft BE the value of g_compiled;
+        CALL getItem WITH the number 1, the value of parts;
+        LET the variable right BE the RESPONSE;
+        CALL trim WITH the value of right;
+        LET the variable rightTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of rightTrimmed;
+        LET the variable compiledRight BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft plus the string ".num.value == " plus the value of compiledRight plus the string ".num.value)";
+    END IF;
+
+    ^ "X IS not equal to Y"
+    CALL split WITH the value of trimmed, the string " IS not equal to ";
+    LET the variable parts2 BE the RESPONSE;
+    LET the variable count2 BE the size of parts2;
+    IF the value of count2 IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of parts2;
+        LET the variable left2 BE the RESPONSE;
+        CALL trim WITH the value of left2;
+        LET the variable left2Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of left2Trimmed;
+        LET the variable compiledLeft2 BE the value of g_compiled;
+        CALL getItem WITH the number 1, the value of parts2;
+        LET the variable right2 BE the RESPONSE;
+        CALL trim WITH the value of right2;
+        LET the variable right2Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of right2Trimmed;
+        LET the variable compiledRight2 BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft2 plus the string ".num.value != " plus the value of compiledRight2 plus the string ".num.value)";
+    END IF;
+
+    ^ "X IS less than Y"
+    CALL split WITH the value of trimmed, the string " IS less than ";
+    LET the variable parts3 BE the RESPONSE;
+    LET the variable count3 BE the size of parts3;
+    IF the value of count3 IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of parts3;
+        LET the variable left3 BE the RESPONSE;
+        CALL trim WITH the value of left3;
+        LET the variable left3Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of left3Trimmed;
+        LET the variable compiledLeft3 BE the value of g_compiled;
+        CALL getItem WITH the number 1, the value of parts3;
+        LET the variable right3 BE the RESPONSE;
+        CALL trim WITH the value of right3;
+        LET the variable right3Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of right3Trimmed;
+        LET the variable compiledRight3 BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft3 plus the string ".num.value < " plus the value of compiledRight3 plus the string ".num.value)";
+    END IF;
+
+    ^ "X IS greater than Y"
+    CALL split WITH the value of trimmed, the string " IS greater than ";
+    LET the variable parts4 BE the RESPONSE;
+    LET the variable count4 BE the size of parts4;
+    IF the value of count4 IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of parts4;
+        LET the variable left4 BE the RESPONSE;
+        CALL trim WITH the value of left4;
+        LET the variable left4Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of left4Trimmed;
+        LET the variable compiledLeft4 BE the value of g_compiled;
+        CALL getItem WITH the number 1, the value of parts4;
+        LET the variable right4 BE the RESPONSE;
+        CALL trim WITH the value of right4;
+        LET the variable right4Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of right4Trimmed;
+        LET the variable compiledRight4 BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft4 plus the string ".num.value > " plus the value of compiledRight4 plus the string ".num.value)";
+    END IF;
+
+    ^ Fallback
+    CALL compileExpr WITH the value of trimmed;
+    LET the variable compiledFallback BE the value of g_compiled;
+    RETURN the string "(" plus the value of compiledFallback plus the string ".num.value != 0)";
+END FUNCTION;
+
+^ ====== Compile a single AST node to C++ ======
+DEFINE function compileNode WITH the variable node;
+    GLOBAL SET the variable g_node TO the value of node;
+    
+    LET the variable nodeType BE the value of type in g_node;
+    CALL trim WITH the value of nodeType;
+    LET the variable trimmedType BE the RESPONSE;
+    SET the variable nodeType TO the value of trimmedType;
+    
+    ^ --- Let ---
+    IF the value of nodeType IS equal to the string "Let" THEN
+        LET the variable varName BE the value of name in g_node;
+        LET the variable valueExpr BE the value of value in g_node;
+        IF the length of valueExpr IS greater than the number 0 THEN
+            PROCLAIM the string "";
+            CALL compileExpr WITH the value of valueExpr;
+        ELSE
+            GLOBAL SET the variable g_compiled TO the string "";
+        END IF;
+        LET the variable compiled BE the value of g_compiled;
+        CALL buildEnvSet WITH the value of varName, the value of compiled;
+        LET the variable setLine BE the RESPONSE;
+        CALL emit WITH the value of setLine;
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Set ---
+    IF the value of nodeType IS equal to the string "Set" THEN
+        LET the variable varName BE the value of name in g_node;
+        LET the variable valueExpr BE the value of value in g_node;
+        IF the length of valueExpr IS greater than the number 0 THEN
+            PROCLAIM the string "";
+            CALL compileExpr WITH the value of valueExpr;
+        ELSE
+            GLOBAL SET the variable g_compiled TO the string "";
+        END IF;
+        LET the variable compiled BE the value of g_compiled;
+        CALL buildEnvSet WITH the value of varName, the value of compiled;
+        LET the variable setLine BE the RESPONSE;
+        CALL emit WITH the value of setLine;
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Proclaim ---
+    IF the value of nodeType IS equal to the string "Proclaim" THEN
+        LET the variable valueExpr BE the value of value in g_node;
+        IF the length of valueExpr IS greater than the number 0 THEN
+            PROCLAIM the string "";
+            CALL compileExpr WITH the value of valueExpr;
+        ELSE
+            GLOBAL SET the variable g_compiled TO the string "";
+        END IF;
+        LET the variable compiled BE the value of g_compiled;
+        CALL emit WITH the string "print(" plus the value of compiled plus the string ");";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- If ---
+    IF the value of nodeType IS equal to the string "If" THEN
+        LET the variable condition BE the value of condition in g_node;
+        LET the variable body BE the value of body in g_node;
+        LET the variable condCompiled BE the string "";
+        IF the length of condition IS greater than the number 0 THEN
+            CALL compileCondition WITH the value of condition;
+            LET the variable condResult BE the RESPONSE;
+            SET the variable condCompiled TO the value of condResult;
+        END IF;
+        CALL emit WITH the string "if (" plus the value of condCompiled plus the string ") {";
+        CALL indent WITH the number 0;
+        LET the variable bodySize BE the size of body;
+        GLOBAL SET the variable g_bIdx TO the number 0;
+        WHILST the value of g_bIdx IS less than the value of bodySize DO
+            CALL getItem WITH the value of g_bIdx, the value of body;
+            LET the variable child BE the RESPONSE;
+            CALL compileNode WITH the value of child;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+        END WHILST;
+        CALL dedent WITH the number 0;
+        ^ Check for else body — only if the key exists
+        CALL mapGet WITH "elseBody", the value of g_node;
+        LET the variable elseBody BE the RESPONSE;
+        IF the value of elseBody IS not equal to the string "" THEN
+            CALL startsWith WITH the value of elseBody, the string "[]";
+            LET the variable isEmpty BE the RESPONSE;
+            IF the value of isEmpty IS not equal to the number 1 THEN
+                CALL emit WITH "} else {";
+                CALL indent WITH the number 0;
+                LET the variable elseSize BE the size of elseBody;
+                GLOBAL SET the variable g_bIdx TO the number 0;
+                WHILST the value of g_bIdx IS less than the value of elseSize DO
+                    CALL getItem WITH the value of g_bIdx, the value of elseBody;
+                    LET the variable elseChild BE the RESPONSE;
+                    CALL compileNode WITH the value of elseChild;
+                    GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+                END WHILST;
+                CALL dedent WITH the number 0;
+                CALL emit WITH "}";
+            ELSE
+                CALL emit WITH "}";
+            END IF;
+        ELSE
+            CALL emit WITH "}";
+        END IF;
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- While ---
+    IF the value of nodeType IS equal to the string "While" THEN
+        LET the variable condition BE the value of condition in g_node;
+        LET the variable body BE the value of body in g_node;
+        LET the variable condCompiled BE the string "";
+        IF the length of condition IS greater than the number 0 THEN
+            CALL compileCondition WITH the value of condition;
+            LET the variable condResult BE the RESPONSE;
+            SET the variable condCompiled TO the value of condResult;
+        END IF;
+        CALL emit WITH the string "while (" plus the value of condCompiled plus the string ") {";
+        CALL indent WITH the number 0;
+        LET the variable bodySize BE the size of body;
+        GLOBAL SET the variable g_bIdx TO the number 0;
+        WHILST the value of g_bIdx IS less than the value of bodySize DO
+            CALL getItem WITH the value of g_bIdx, the value of body;
+            LET the variable child BE the RESPONSE;
+            CALL compileNode WITH the value of child;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+        END WHILST;
+        CALL dedent WITH the number 0;
+        CALL emit WITH "}";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- FunctionDef (collect, don't emit yet) ---
+    IF the value of nodeType IS equal to the string "FunctionDef" THEN
+        CALL append WITH the value of g_node, the value of g_functions;
+        LET the variable newFuncs BE the RESPONSE;
+        GLOBAL SET the variable g_functions TO the value of newFuncs;
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Call ---
+    IF the value of nodeType IS equal to the string "Call" THEN
+        LET the variable callName BE the value of name in g_node;
+        LET the variable callArgs BE the value of value in g_node;
+        CALL emit WITH "{";
+        CALL indent WITH the number 0;
+        CALL emit WITH "std::vector<Value> args;";
+        IF the length of callArgs IS greater than the number 0 THEN
+            CALL split WITH the value of callArgs, the string ",";
+            LET the variable argParts BE the RESPONSE;
+            LET the variable argCount BE the size of argParts;
+            GLOBAL SET the variable g_bIdx TO the number 0;
+            WHILST the value of g_bIdx IS less than the value of argCount DO
+                CALL getItem WITH the value of g_bIdx, the value of argParts;
+                LET the variable argPart BE the RESPONSE;
+                CALL trim WITH the value of argPart;
+                LET the variable trimmedArg BE the RESPONSE;
+                IF the length of trimmedArg IS greater than the number 0 THEN
+                    PROCLAIM the string "";
+                    CALL compileExpr WITH the value of trimmedArg;
+                    LET the variable compiledArg BE the value of g_compiled;
+                    CALL emit WITH the string "args.push_back(" plus the value of compiledArg plus the string ");";
+                END IF;
+                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+            END WHILST;
+        END IF;
+        CALL emit WITH the string callName plus the string "(env, args);";
+        CALL dedent WITH the number 0;
+        CALL emit WITH "}";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Return ---
+    IF the value of nodeType IS equal to the string "Return" THEN
+        LET the variable returnExpr BE the value of value in g_node;
+        IF the length of returnExpr IS greater than the number 0 THEN
+            PROCLAIM the string "";
+            CALL compileExpr WITH the value of returnExpr;
+        ELSE
+            GLOBAL SET the variable g_compiled TO the string "";
+        END IF;
+        LET the variable compiled BE the value of g_compiled;
+        CALL emit WITH the string "return " plus the value of compiled plus the string ";";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Break ---
+    IF the value of nodeType IS equal to the string "Break" THEN
+        CALL emit WITH "break;";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Continue ---
+    IF the value of nodeType IS equal to the string "Continue" THEN
+        CALL emit WITH "continue;";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Terminate ---
+    IF the value of nodeType IS equal to the string "Terminate" THEN
+        CALL emit WITH "return Value::from_double(0);";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- ForIn ---
+    IF the value of nodeType IS equal to the string "ForIn" THEN
+        LET the variable header BE the value of header in g_node;
+        LET the variable body BE the value of body in g_node;
+        CALL split WITH the value of header, the string " ";
+        LET the variable headerParts BE the RESPONSE;
+        LET the variable headerCount BE the size of headerParts;
+        GLOBAL SET the variable g_bIdx TO the number 0;
+        LET the variable foundVar BE the number 0;
+        LET the variable forVarName BE the string "";
+        WHILST the value of g_bIdx IS less than the value of headerCount DO
+            CALL getItem WITH the value of g_bIdx, the value of headerParts;
+            LET the variable part BE the RESPONSE;
+            IF the value of foundVar IS equal to the number 1 THEN
+                SET the variable forVarName TO the value of part;
+                SET the variable foundVar TO the number 2;
+            END IF;
+            IF the value of part IS equal to the string "variable" THEN
+                SET the variable foundVar TO the number 1;
+            END IF;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+        END WHILST;
+        LET the variable foundIn BE the number 0;
+        LET the variable forListExpr BE the string "";
+        GLOBAL SET the variable g_bIdx TO the number 0;
+        WHILST the value of g_bIdx IS less than the value of headerCount DO
+            CALL getItem WITH the value of g_bIdx, the value of headerParts;
+            LET the variable part BE the RESPONSE;
+            IF the value of foundIn IS equal to the number 1 THEN
+                IF the length of forListExpr IS greater than the number 0 THEN
+                    SET the variable forListExpr TO the value of forListExpr plus the string " ";
+                END IF;
+                SET the variable forListExpr TO the value of forListExpr plus the value of part;
+            END IF;
+            IF the value of part IS equal to the string "IN" THEN
+                SET the variable foundIn TO the number 1;
+            END IF;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+        END WHILST;
+        CALL emit WITH the string "for (const auto& " plus the value of forVarName plus the string " : " plus the value of forListExpr plus the string ".lst) {";
+        CALL indent WITH the number 0;
+        CALL buildEnvSet WITH the value of forVarName, the value of forVarName;
+        LET the variable setVar BE the RESPONSE;
+        CALL emit WITH the value of setVar;
+        LET the variable bodySize BE the size of body;
+        GLOBAL SET the variable g_bIdx TO the number 0;
+        WHILST the value of g_bIdx IS less than the value of bodySize DO
+            CALL getItem WITH the value of g_bIdx, the value of body;
+            LET the variable child BE the RESPONSE;
+            CALL compileNode WITH the value of child;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+        END WHILST;
+        CALL dedent WITH the number 0;
+        CALL emit WITH "}";
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- FileWrite ---
+    IF the value of nodeType IS equal to the string "FileWrite" THEN
+        LET the variable fileWriteExpr BE the value of value in g_node;
+        CALL split WITH the value of fileWriteExpr, the string "WRITE";
+        LET the variable writeParts BE the RESPONSE;
+        LET the variable writeCount BE the size of writeParts;
+        IF the value of writeCount IS greater than the number 1 THEN
+            CALL getItem WITH the number 1, the value of writeParts;
+            LET the variable writeContentExpr BE the RESPONSE;
+            CALL trim WITH the value of writeContentExpr;
+            LET the variable trimmedContent BE the RESPONSE;
+            ^ Compile the content expression to C++
+            PROCLAIM the string "";
+            CALL compileExpr WITH the value of trimmedContent;
+            LET the variable compiledContent BE the value of g_compiled;
+            CALL getItem WITH the number 0, the value of writeParts;
+            LET the variable filePart BE the RESPONSE;
+            CALL split WITH the value of filePart, the string "file";
+            LET the variable fileSplitParts BE the RESPONSE;
+            LET the variable fileSplitCount BE the size of fileSplitParts;
+            IF the value of fileSplitCount IS greater than the number 1 THEN
+                CALL getItem WITH the value of fileSplitCount minus the number 1, the value of fileSplitParts;
+                LET the variable filePathRaw BE the RESPONSE;
+                CALL trim WITH the value of filePathRaw;
+                LET the variable trimmedPath BE the RESPONSE;
+                CALL stripQuotes WITH the value of trimmedPath;
+                LET the variable unquotedPath BE the RESPONSE;
+                LET the variable fwLine BE the string "file_write(" plus the value of QUOTE plus the value of unquotedPath plus the value of QUOTE plus the string ", " plus the value of compiledContent plus the string ");";
+                CALL emit WITH the value of fwLine;
+            END IF;
+        END IF;
+        RETURN the number 0;
+    END IF;
+    
+    ^ --- Import (skip) ---
+    IF the value of nodeType IS equal to the string "Import" THEN
+        RETURN the number 0;
+    END IF;
+    
+    RETURN the number 0;
+END FUNCTION;
+
+^ ====== Compile a function definition to C++ ======
+DEFINE function compileFunctionDef WITH the variable funcNode;
+    GLOBAL SET the variable g_node TO the value of funcNode;
+    
+    LET the variable funcName BE the value of name in g_node;
+    LET the variable params BE the value of params in g_node;
+    LET the variable body BE the value of body in g_node;
+    
+    CALL emit WITH the string "Value " plus the value of funcName plus the string "(Environment& env, const std::vector<Value>& args) {";
+    CALL indent WITH the number 0;
+    
+    IF the value of params IS not equal to the string "" THEN
+        LET the variable paramSize BE the size of params;
+        GLOBAL SET the variable g_bIdx TO the number 0;
+        WHILST the value of g_bIdx IS less than the value of paramSize DO
+            CALL getItem WITH the value of g_bIdx, the value of params;
+            LET the variable paramName BE the RESPONSE;
+            CALL trim WITH the value of paramName;
+            LET the variable trimmedParam BE the RESPONSE;
+            CALL buildEnvSet WITH the value of trimmedParam, the string "args[" plus the value of g_bIdx plus the string "]";
+            LET the variable paramLine BE the RESPONSE;
+            CALL emit WITH the value of paramLine;
+            GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+        END WHILST;
+    END IF;
+    
+    LET the variable bodySize BE the size of body;
+    GLOBAL SET the variable g_bIdx TO the number 0;
+    WHILST the value of g_bIdx IS less than the value of bodySize DO
+        CALL getItem WITH the value of g_bIdx, the value of body;
+        LET the variable child BE the RESPONSE;
+        CALL compileNode WITH the value of child;
+        GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+    END WHILST;
+    
+    CALL emit WITH "return Value::from_double(0);";
+    CALL dedent WITH the number 0;
+    CALL emit WITH "}";
+    CALL emit WITH "";
+    RETURN the number 0;
+END FUNCTION;
+
+^ ====== Main: Parse source, generate C++ ======
+^ Check command-line arguments for file path, otherwise use default
+LET the variable argCount BE the size of ARGV;
+LET the variable filePath BE "examples/hello.mish";
+IF the value of argCount IS greater than the number 0 THEN
+    CALL getItem WITH the number 0, the value of ARGV;
+    SET the variable filePath TO the RESPONSE;
+END IF;
+PROCLAIM the string "Compiling: ";
+PROCLAIM the value of filePath;
+PROCLAIM the string "";
+
+LET the variable source BE the content of the file the value of filePath;
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+
+GLOBAL SET the variable g_lines TO the value of sourceLines;
+GLOBAL SET the variable g_pos TO the number 0;
+GLOBAL SET the variable g_lineCount TO the size of g_lines;
+GLOBAL SET the variable g_myAst TO [];
+
+WHILST the value of g_pos IS less than the value of g_lineCount DO
+    CALL parseStatement WITH the number 0;
+    LET the variable node BE the value of g_result;
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    IF the value of nodeType IS not equal to the string "Empty" THEN
+        IF the value of nodeType IS not equal to the string "Comment" THEN
+            CALL append WITH the value of node, the value of g_myAst;
+            LET the variable newAst BE the RESPONSE;
+            GLOBAL SET the variable g_myAst TO the value of newAst;
+        END IF;
+    END IF;
+END WHILST;
+
+SET the variable g_output TO [];
+SET the variable g_indent TO the number 0;
+SET the variable g_functions TO [];
+SET the variable g_mainStmts TO [];
+
+LET the variable astSize BE the size of g_myAst;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of astSize DO
+    CALL getItem WITH the value of g_idx, the value of g_myAst;
+    LET the variable node BE the RESPONSE;
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    IF the value of nodeType IS equal to the string "FunctionDef" THEN
+        CALL append WITH the value of node, the value of g_functions;
+        LET the variable newFuncs2 BE the RESPONSE;
+        GLOBAL SET the variable g_functions TO the value of newFuncs2;
+    ELSE
+        CALL append WITH the value of node, the value of g_mainStmts;
+        LET the variable newMain2 BE the RESPONSE;
+        GLOBAL SET the variable g_mainStmts TO the value of newMain2;
+    END IF;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+END WHILST;
+
+^ Generate C++ header
+CALL emit WITH the string "#include " plus the value of QUOTE plus the string "midshake_runtime.hpp" plus the value of QUOTE;
+CALL emit WITH "using namespace ms;";
+CALL emit WITH "";
+
+^ Generate function definitions
+LET the variable funcCount BE the size of g_functions;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of funcCount DO
+    CALL getItem WITH the value of g_idx, the value of g_functions;
+    LET the variable funcNode BE the RESPONSE;
+    CALL compileFunctionDef WITH the value of funcNode;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+END WHILST;
+
+^ Generate main function with command-line argument support
+CALL emit WITH "int main(int argc, char* argv[]) {";
+CALL indent WITH the number 0;
+CALL emit WITH "Environment env(argc, argv);";
+
+LET the variable mainCount BE the size of g_mainStmts;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of mainCount DO
+    CALL getItem WITH the value of g_idx, the value of g_mainStmts;
+    LET the variable stmt BE the RESPONSE;
+    CALL compileNode WITH the value of stmt;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+END WHILST;
+
+CALL emit WITH "return 0;";
+CALL dedent WITH the number 0;
+CALL emit WITH "}";
+
+^ Join output lines
+LET the variable cppOutput BE "";
+LET the variable outCount BE the size of g_output;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of outCount DO
+    CALL getItem WITH the value of g_idx, the value of g_output;
+    LET the variable line BE the RESPONSE;
+    IF the value of g_idx IS greater than the number 0 THEN
+        SET the variable cppOutput TO the value of cppOutput plus the string "\n";
+    END IF;
+    SET the variable cppOutput TO the value of cppOutput plus the value of line;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+END WHILST;
+
+IN the file "output/generated.cpp" WRITE the value of cppOutput;
+
+PROCLAIM the string "";
+PROCLAIM the string "Generated C++ code written to output/generated.cpp";
+PROCLAIM the string "Total lines: ";
+PROCLAIM the number outCount;
+PROCLAIM the string "";
+PROCLAIM the string "--- Generated C++ ---";
+PROCLAIM the value of cppOutput;
+PROCLAIM the string "";
+PROCLAIM the string "Compilation complete!";

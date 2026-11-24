@@ -1,0 +1,176 @@
+^ stdlib.mish
+
+^ Print a value (simple wrapper, but nice for semantics)
+DEFINE function println WITH the variable x;
+    PROCLAIM the value of x;
+END FUNCTION;
+
+^ Greet a person by name
+DEFINE function greet WITH the variable name;
+    PROCLAIM the string "Hello, ";
+    PROCLAIM the value of name;
+END FUNCTION;
+
+^ Add two numbers and print the result
+DEFINE function add_and_print WITH the variables a, b;
+    PROCLAIM the value of a plus the value of b;
+END FUNCTION;
+
+^ Repeat a message N times
+DEFINE function repeat WITH the variables count, message;
+    LET the variable i BE the number 0;
+    WHILST the value of i IS less than the value of count DO
+        PROCLAIM the value of message;
+        SET the variable i TO the value of i plus the number 1;
+    END WHILST;
+END FUNCTION;
+
+^ Get the minimum of two numbers
+DEFINE function min WITH the variables a, b;
+    LET the variable result BE the minimum of the value of a and the value of b;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the maximum of two numbers
+DEFINE function max WITH the variables a, b;
+    LET the variable result BE the maximum of the value of a and the value of b;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the absolute value of a number
+DEFINE function abs WITH the variable a;
+    LET the variable result BE the absolute value of the value of a;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Round a number to the nearest integer
+DEFINE function round WITH the variable a;
+    LET the variable result BE the rounded value of the value of a;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Convert a string to uppercase
+DEFINE function toupper WITH the variable s;
+    LET the variable result BE the uppercase of the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Convert a string to lowercase
+DEFINE function tolower WITH the variable s;
+    LET the variable result BE the lowercase of the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a string starts with a prefix
+DEFINE function startsWith WITH the variables s, prefix;
+    LET the variable result BE the check if the value of s starts with the value of prefix;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a string ends with a suffix
+DEFINE function endsWith WITH the variables s, suffix;
+    LET the variable result BE the check if the value of s ends with the value of suffix;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a character is a digit
+DEFINE function isDigit WITH the variable c;
+    LET the variable result BE the check if the value of c is a digit;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a character is a letter
+DEFINE function isLetter WITH the variable c;
+    LET the variable result BE the check if the value of c is a letter;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Check if a character is whitespace
+DEFINE function isWhitespace WITH the variable c;
+    LET the variable result BE the check if the value of c is whitespace;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Read the contents of a file
+DEFINE function readFile WITH the variable path;
+    LET the variable result BE the content of the file the value of path;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the length of a string
+DEFINE function length WITH the variable s;
+    LET the variable result BE the length of the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the character at a position in a string
+DEFINE function charAt WITH the variables s, index;
+    LET the variable result BE the character at the value of index in the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get a substring from a string
+DEFINE function substring WITH the variables s, start, end;
+    LET the variable result BE the substring of the value of s starting at the value of start ending at the value of end;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Split a string by a delimiter
+DEFINE function split WITH the variables s, delimiter;
+    LET the variable result BE the split of the value of s by the value of delimiter;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Join a list with a delimiter
+DEFINE function join WITH the variables list, delimiter;
+    LET the variable result BE the join of the value of list with the value of delimiter;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Trim whitespace from a string
+DEFINE function trim WITH the variable s;
+    LET the variable result BE the trimmed the value of s;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Replace all occurrences of a substring
+DEFINE function replace WITH the variables s, old, new;
+    LET the variable result BE the replace of the value of s with the value of old to the value of new;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get the size of a list
+DEFINE function size WITH the variable list;
+    LET the variable result BE the size of the value of list;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Append an element to a list
+DEFINE function append WITH the variables element, list;
+    LET the variable result BE the append of the value of element to the value of list;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Get an item at a position in a list
+DEFINE function getItem WITH the variables index, list;
+    LET the variable result BE the item at position the value of index in the value of list;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Set a key in a map
+DEFINE function mapSet WITH the variables map, key, value;
+    SET the key the value of key IN the map the value of map TO the value of value;
+    RETURN the value of map;
+END FUNCTION;
+
+^ Get a value from a map by key
+DEFINE function mapGet WITH the variables key, map;
+    LET the variable result BE the value of key in map;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Find the index of a substring in a string
+DEFINE function indexOf WITH the variables s, substr;
+    LET the variable result BE the index of the value of substr in the value of s;
+    RETURN the value of result;
+END FUNCTION;

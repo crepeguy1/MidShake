@@ -77,6 +77,7 @@ def publish_diagnostics(uri, text):
 def run_server():
     open_docs = {}
 
+
     while True:
         msg = read_message()
         if msg is None:

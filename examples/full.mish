@@ -1,4 +1,4 @@
-^ full.ms
+^ full.mish
 
 ^ Ask the user for their name
 LET the variable name BE the string "example name";

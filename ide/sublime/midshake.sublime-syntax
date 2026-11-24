@@ -1,0 +1,88 @@
+%YAML 1.2
+---
+# Sublime Text syntax definition for MidShake
+# Place this file in: Packages/User/midshake.sublime-syntax
+# Or install via Package Control
+
+name: MidShake
+file_extensions:
+  - mish
+  - ms
+scope: source.midshake
+contexts:
+  main:
+    - include: comments
+    - include: strings
+    - include: booleans
+    - include: block_keywords
+    - include: statement_keywords
+    - include: expression_prefixes
+    - include: builtin_functions
+    - include: operators
+    - include: numbers
+    - include: variables
+    - include: punctuation
+
+  comments:
+    - match: '\^.*$'
+      scope: comment.line.caret.midshake
+    - match: '#.*$'
+      scope: comment.line.hash.midshake
+
+  strings:
+    - match: '"'
+      scope: string.quoted.double.midshake.begin
+      push: string_content
+
+  string_content:
+    - match: '"'
+      scope: string.quoted.double.midshake.end
+      pop: true
+    - match: '\\.'
+      scope: constant.character.escape.midshake
+
+  booleans:
+    - match: '\b(true|false)\b'
+      scope: constant.language.boolean.midshake
+
+  block_keywords:
+    - match: '\b(IF|THEN|WHILST|DO|END\s+IF|END\s+WHILST|END\s+FUNCTION|END\s+FOR|DEFINE|FUNCTION|WITH|IMPORT|RETURN|TERMINATE|BREAK|CONTINUE)\b'
+      scope: keyword.control.block.midshake
+
+  statement_keywords:
+    - match: '\b(LET|BE|SET|TO|PROCLAIM|CALL|INQUIRE|FOR|IN)\b'
+      scope: keyword.control.statement.midshake
+
+  expression_prefixes:
+    - match: '\b(the\s+(value\s+of|variable|number|string|length\s+of|trimmed|size\s+of|item\s+at|character\s+at|substring\s+of|append\s+of|join\s+of|split\s+of|minimum\s+of|maximum\s+of|absolute\s+of|round\s+of|upper\s+case\s+of|lower\s+case\s+of|content\s+of\s+the\s+file|RESPONSE|check\s+if))\b'
+      scope: keyword.control.expression.midshake
+
+  builtin_functions:
+    - match: '\b(startsWith|endsWith|isDigit|isLetter|isWhitespace|min|max|abs|round|toupper|tolower|length|charAt|substring|split|join|trim|size|append|getItem|mapSet|mapGet|readFile)\b'
+      scope: support.function.midshake
+
+  operators:
+    - match: '\b(plus|minus|times|divided\s+by|modulo)\b'
+      scope: keyword.operator.arithmetic.midshake
+    - match: '\b(IS\s+(greater\s+than|less\s+than|equal\s+to|not\s+equal\s+to|greater\s+than\s+or\s+equal\s+to|less\s+than\s+or\s+equal\s+to))\b'
+      scope: keyword.operator.comparison.midshake
+    - match: '\b(AND|OR|NOT)\b'
+      scope: keyword.operator.logical.midshake
+    - match: '[+\-*/=<>!]'
+      scope: keyword.operator.symbolic.midshake
+
+  numbers:
+    - match: '\b\d+\.\d+\b'
+      scope: constant.numeric.float.midshake
+    - match: '\b\d+\b'
+      scope: constant.numeric.integer.midshake
+
+  variables:
+    - match: '\b(variable|value|number|string|key|map|list)\b'
+      scope: variable.other.midshake
+
+  punctuation:
+    - match: ';'
+      scope: punctuation.terminator.midshake
+    - match: '[,\[\]{}()]'
+      scope: punctuation.separator.midshake

@@ -1,0 +1,30 @@
+^ File I/O examples demonstrating reading and writing files
+
+^ Write a string to a file
+IN the file "tests/output_test.txt" WRITE "Hello from MidShake!";
+
+^ Read the file back and proclaim the contents
+LET the variable contents BE the content of the file "tests/output_test.txt"
+PROCLAIM the string contents
+
+^ Read a data file
+LET the variable data BE the content of the file "tests/test_fileio_data.txt"
+PROCLAIM the string data
+
+^ Write a number to a file
+LET the variable number BE the number 42
+IN the file "tests/number_output.txt" WRITE the value of number;
+
+^ Read the number file back
+LET the variable numback BE the content of the file "tests/number_output.txt"
+PROCLAIM the string numback
+
+^ Write and read combined
+IN the file "tests/combined_test.txt" WRITE "Line oneLine two";
+LET the variable combined BE the content of the file "tests/combined_test.txt"
+PROCLAIM the string combined
+
+^ Get the length of file contents
+LET the variable filedata BE the content of the file "tests/test_fileio_data.txt"
+LET the variable filelen BE the length of filedata
+PROCLAIM the number filelen

@@ -4,7 +4,8 @@ from midshake_ast import (
     Program, Section,
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
-    Call, FunctionDef, Return, FileWriteStatement
+    Call, FunctionDef, Return, FileWriteStatement, Import,
+    Break, Continue, ForIn, MapSet, GlobalSet
 )
 
 
@@ -80,6 +81,12 @@ class Parser:
             self.advance()
             return Set(name, expr)
 
+        # GLOBAL SET
+        if tok.type == "GLOBAL_SET":
+            name, expr = tok.value
+            self.advance()
+            return GlobalSet(name, expr)
+
         # PROCLAIM
         if tok.type == "PROCLAIM":
             self.advance()
@@ -117,6 +124,11 @@ class Parser:
             self.advance()
             return FileWriteStatement(path, expr)
 
+        # IMPORT
+        if tok.type == "IMPORT":
+            path = tok.value
+            self.advance()
+            return Import(path)
 
         # RETURN
         if tok.type == "RETURN":
@@ -128,6 +140,28 @@ class Parser:
         if tok.type == "TERMINATE":
             self.advance()
             return Terminate()
+
+        # BREAK
+        if tok.type == "BREAK":
+            self.advance()
+            return Break()
+
+        # CONTINUE
+        if tok.type == "CONTINUE":
+            self.advance()
+            return Continue()
+
+        # FOR_IN
+        if tok.type == "FOR_IN":
+            var_name, list_expr = tok.value
+            return self.parse_for_in(var_name, list_expr, tok.line_no)
+
+        # MAP_SET
+        if tok.type == "MAP_SET":
+            map_name, key_expr, value_expr = tok.value
+            self.advance()
+            from midshake_ast import Variable
+            return MapSet(Variable(map_name), key_expr, value_expr)
 
         raise ValueError(
             f"MidShake Syntax Error (line {tok.line_no}):\n"
@@ -186,3 +220,25 @@ class Parser:
 
         self.advance()  # consume END_WHILST
         return While(expr, body)
+
+    # -----------------------------
+    # FOR ... IN ... DO / END FOR
+    # -----------------------------
+    def parse_for_in(self, var_name, list_expr, line_no):
+        body = []
+
+        self.advance()  # move past FOR_IN
+
+        while self.current() and self.current().type != "END_FOR":
+            stmt = self.parse_statement()
+            if stmt:
+                body.append(stmt)
+
+        if not self.current() or self.current().type != "END_FOR":
+            raise ValueError(
+                f"MidShake Syntax Error (around line {line_no}):\n"
+                f"  FOR block was never closed with 'END FOR'."
+            )
+
+        self.advance()  # consume END_FOR
+        return ForIn(var_name, list_expr, body)

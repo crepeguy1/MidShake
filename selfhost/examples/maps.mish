@@ -1,0 +1,19 @@
+^ Map examples demonstrating creation and key access
+
+LET the variable person BE {name: "Alice", age: 30, city: "Wonderland"}
+PROCLAIM the map person
+
+LET the variable name BE the value of name in person
+PROCLAIM the string name
+
+LET the variable age BE the value of age in person
+PROCLAIM the number age
+
+LET the variable city BE the value of city in person
+PROCLAIM the string city
+
+LET the variable scores BE {math: 95, english: 88, science: 92}
+PROCLAIM the map scores
+
+LET the variable math_score BE the value of math in scores
+PROCLAIM the number math_score

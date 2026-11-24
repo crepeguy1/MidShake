@@ -1,0 +1,28 @@
+^ String function examples demonstrating length, trim, substring, charAt, split, and join
+
+LET the variable greeting BE "  Hello, World!  "
+LET the variable len BE the length of greeting
+PROCLAIM the number len
+
+LET the variable trimmed BE the trimmed greeting
+PROCLAIM the string trimmed
+
+LET the variable trimmed_len BE the length of trimmed
+PROCLAIM the number trimmed_len
+
+LET the variable substring BE the substring of trimmed starting at 0 ending at 5
+PROCLAIM the string substring
+
+LET the variable char BE the character at 0 in trimmed
+PROCLAIM the string char
+
+LET the variable sentence BE "one,two,three,four"
+LET the variable words BE the split of sentence by ","
+PROCLAIM the list words
+
+LET the variable parts BE ["hello", "world", "midshake"]
+LET the variable joined BE the join of parts with " "
+PROCLAIM the string joined
+
+LET the variable joined_comma BE the join of parts with ", "
+PROCLAIM the string joined_comma

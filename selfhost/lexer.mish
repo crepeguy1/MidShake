@@ -1,0 +1,431 @@
+^ lexer.mish
+^ A character-level lexer written in MidShake.
+^ Reads source code, walks character by character, and produces a list of tokens.
+^ Uses a state machine to avoid nested loop issues.
+
+IMPORT the file "stdlib/stdlib.mish";
+
+^ The list of all MidShake keywords
+LET the variable keywords BE ["LET", "SET", "PROCLAIM", "IF", "THEN", "ELSE", "WHILST", "DO", "END", "FUNCTION", "DEFINE", "CALL", "WITH", "RETURN", "IMPORT", "INQUIRE", "TERMINATE", "IN", "THE", "VALUE", "OF", "STRING", "NUMBER", "LIST", "MAP", "ITEM", "AT", "POSITION", "BE", "TO", "IS", "PLUS", "MINUS", "TIMES", "MULTIPLIED", "DIVIDED", "GREATER", "LESS", "THAN", "EQUAL", "NOT", "AND", "OR", "LENGTH", "SUBSTRING", "CHARACTER", "SPLIT", "JOIN", "TRIMMED", "APPEND", "SIZE", "CONTENT", "FILE", "WRITE", "READ", "RESPONSE", "STARTING", "ENDING", "BY", "STARTS", "ENDS", "DIGIT", "LETTER", "WHITESPACE", "UPPERCASE", "LOWERCASE", "CHECK", "MINIMUM", "MAXIMUM", "ABSOLUTE", "ROUNDED"];
+
+^ Check if a word is a keyword (exact match)
+DEFINE function isKeyword WITH the variable word;
+    LET the variable upperWord BE the uppercase of the value of word;
+    LET the variable i BE the number 0;
+    LET the variable count BE the size of keywords;
+    LET the variable found BE the number 0;
+    WHILST the value of i IS less than the value of count DO
+        LET the variable kw BE the item at position the value of i in keywords;
+        IF the value of upperWord IS equal to the value of kw THEN
+            SET the variable found TO the number 1;
+        END IF;
+        SET the variable i TO the value of i plus the number 1;
+    END WHILST;
+    RETURN the value of found;
+END FUNCTION;
+
+^ Check if a character is an operator/punctuation (used in string collection)
+DEFINE function isOperatorChar WITH the variable c;
+    LET the variable result BE the number 0;
+    IF the value of c IS equal to the string "+" THEN SET the variable result TO the number 1; END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "-" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "*" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "/" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "=" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string ";" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "," THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string ":" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "(" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string ")" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "[" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "]" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "{" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "}" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    IF the value of result IS equal to the number 0 THEN
+        IF the value of c IS equal to the string "^" THEN SET the variable result TO the number 1; END IF;
+    END IF;
+    RETURN the value of result;
+END FUNCTION;
+
+^ ====== Main execution ======
+
+^ Tokenize a file and print the results
+LET the variable filePath BE "examples/hello.mish";
+
+PROCLAIM the string "Lexing: ";
+PROCLAIM the value of filePath;
+PROCLAIM the string "";
+
+^ Read the source file
+LET the variable source BE the content of the file the value of filePath;
+LET the variable srcLen BE the length of source;
+LET the variable pos BE the number 0;
+LET the variable tokenTypes BE [];
+LET the variable tokenValues BE [];
+
+^ State machine: 0=scan, 1=collectNumber, 2=collectIdent, 3=skipComment, 4=collectString
+LET the variable state BE the number 0;
+LET the variable collectBuffer BE the string "";
+
+WHILST the value of pos IS less than the value of srcLen DO
+    LET the variable ch BE the character at the value of pos in source;
+    LET the variable scanned BE the number 0;
+
+    IF the value of state IS equal to the number 0 THEN
+        ^ === SCAN STATE: decide what kind of token we're starting ===
+
+        ^ Skip whitespace
+        CALL isWhitespace WITH the value of ch;
+        LET the variable isWs BE the RESPONSE;
+        IF the value of isWs IS equal to the number 1 THEN
+            SET the variable pos TO the value of pos plus the number 1;
+        ELSE
+            ^ Check for comment lines (^)
+            IF the value of ch IS equal to the string "^" THEN
+                SET the variable state TO the number 3;
+                SET the variable pos TO the value of pos plus the number 1;
+                SET the variable scanned TO the number 1;
+            ELSE
+                ^ Check for number literal
+                CALL isDigit WITH the value of ch;
+                LET the variable isDig BE the RESPONSE;
+                IF the value of isDig IS equal to the number 1 THEN
+                    SET the variable collectBuffer TO the value of ch;
+                    SET the variable pos TO the value of pos plus the number 1;
+                    SET the variable state TO the number 1;
+                    SET the variable scanned TO the number 1;
+                ELSE
+                    ^ Check for identifier or keyword
+                    CALL isLetter WITH the value of ch;
+                    LET the variable isLet BE the RESPONSE;
+                    IF the value of isLet IS equal to the number 1 THEN
+                        SET the variable collectBuffer TO the value of ch;
+                        SET the variable pos TO the value of pos plus the number 1;
+                        SET the variable state TO the number 2;
+                        SET the variable scanned TO the number 1;
+                    ELSE
+                        ^ Single-character operators and punctuation
+                        LET the variable isOp BE the number 0;
+
+                        IF the value of ch IS equal to the string "+" THEN
+                            SET the variable tokenTypes TO the append of "OPERATOR" to tokenTypes;
+                            SET the variable tokenValues TO the append of "+" to tokenValues;
+                            SET the variable pos TO the value of pos plus the number 1;
+                            SET the variable isOp TO the number 1;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "-" THEN
+                                SET the variable tokenTypes TO the append of "OPERATOR" to tokenTypes;
+                                SET the variable tokenValues TO the append of "-" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "*" THEN
+                                SET the variable tokenTypes TO the append of "OPERATOR" to tokenTypes;
+                                SET the variable tokenValues TO the append of "*" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "/" THEN
+                                SET the variable tokenTypes TO the append of "OPERATOR" to tokenTypes;
+                                SET the variable tokenValues TO the append of "/" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "=" THEN
+                                SET the variable tokenTypes TO the append of "OPERATOR" to tokenTypes;
+                                SET the variable tokenValues TO the append of "=" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "<" THEN
+                                SET the variable tokenTypes TO the append of "OPERATOR" to tokenTypes;
+                                SET the variable tokenValues TO the append of "<" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string ">" THEN
+                                SET the variable tokenTypes TO the append of "OPERATOR" to tokenTypes;
+                                SET the variable tokenValues TO the append of ">" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string ";" THEN
+                                SET the variable tokenTypes TO the append of "SEMICOLON" to tokenTypes;
+                                SET the variable tokenValues TO the append of ";" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "," THEN
+                                SET the variable tokenTypes TO the append of "COMMA" to tokenTypes;
+                                SET the variable tokenValues TO the append of "," to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string ":" THEN
+                                SET the variable tokenTypes TO the append of "COLON" to tokenTypes;
+                                SET the variable tokenValues TO the append of ":" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "(" THEN
+                                SET the variable tokenTypes TO the append of "LPAREN" to tokenTypes;
+                                SET the variable tokenValues TO the append of "(" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string ")" THEN
+                                SET the variable tokenTypes TO the append of "RPAREN" to tokenTypes;
+                                SET the variable tokenValues TO the append of ")" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "[" THEN
+                                SET the variable tokenTypes TO the append of "LBRACKET" to tokenTypes;
+                                SET the variable tokenValues TO the append of "[" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "]" THEN
+                                SET the variable tokenTypes TO the append of "RBRACKET" to tokenTypes;
+                                SET the variable tokenValues TO the append of "]" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "{" THEN
+                                SET the variable tokenTypes TO the append of "LBRACE" to tokenTypes;
+                                SET the variable tokenValues TO the append of "{" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "}" THEN
+                                SET the variable tokenTypes TO the append of "RBRACE" to tokenTypes;
+                                SET the variable tokenValues TO the append of "}" to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "." THEN
+                                SET the variable tokenTypes TO the append of "DOT" to tokenTypes;
+                                SET the variable tokenValues TO the append of "." to tokenValues;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable isOp TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "#" THEN
+                                SET the variable state TO the number 3;
+                                SET the variable pos TO the value of pos plus the number 1;
+                                SET the variable scanned TO the number 1;
+                            END IF;
+                        END IF;
+
+                        IF the value of isOp IS equal to the number 0 THEN
+                            IF the value of ch IS equal to the string "/" THEN
+                                ^ Already handled above as OPERATOR, skip
+                            END IF;
+                        END IF;
+
+                        ^ If not an operator, assume it's a quote and start collecting a string
+                        IF the value of isOp IS equal to the number 0 THEN
+                            SET the variable pos TO the value of pos plus the number 1;
+                            SET the variable collectBuffer TO the string "";
+                            SET the variable state TO the number 4;
+                            SET the variable scanned TO the number 1;
+                        END IF;
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
+
+    END IF;
+
+    IF the value of scanned IS equal to the number 0 THEN
+        IF the value of state IS equal to the number 1 THEN
+            ^ === COLLECT NUMBER: keep collecting digits ===
+            CALL isDigit WITH the value of ch;
+            LET the variable d BE the RESPONSE;
+            IF the value of d IS equal to the number 1 THEN
+                SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                SET the variable pos TO the value of pos plus the number 1;
+            ELSE
+                ^ Done collecting number
+                SET the variable tokenTypes TO the append of "NUMBER" to tokenTypes;
+                SET the variable tokenValues TO the append of the value of collectBuffer to tokenValues;
+                SET the variable state TO the number 0;
+            END IF;
+        END IF;
+
+        IF the value of state IS equal to the number 2 THEN
+            ^ === COLLECT IDENTIFIER: keep collecting letters, digits, and underscores ===
+            CALL isLetter WITH the value of ch;
+            LET the variable l BE the RESPONSE;
+            CALL isDigit WITH the value of ch;
+            LET the variable d2 BE the RESPONSE;
+            IF the value of l IS equal to the number 1 THEN
+                SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                SET the variable pos TO the value of pos plus the number 1;
+            ELSE
+                IF the value of d2 IS equal to the number 1 THEN
+                    SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                    SET the variable pos TO the value of pos plus the number 1;
+                ELSE
+                    IF the value of ch IS equal to the string "_" THEN
+                        SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                        SET the variable pos TO the value of pos plus the number 1;
+                    ELSE
+                        ^ Done collecting identifier - check if it's a keyword
+                        CALL isKeyword WITH the value of collectBuffer;
+                        LET the variable kw BE the RESPONSE;
+                        IF the value of kw IS equal to the number 1 THEN
+                            SET the variable tokenTypes TO the append of "KEYWORD" to tokenTypes;
+                        ELSE
+                            SET the variable tokenTypes TO the append of "IDENTIFIER" to tokenTypes;
+                        END IF;
+                        SET the variable tokenValues TO the append of the value of collectBuffer to tokenValues;
+                        SET the variable state TO the number 0;
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
+
+        IF the value of state IS equal to the number 3 THEN
+            ^ === SKIP COMMENT: skip until newline or end ===
+            IF the value of ch IS equal to the string "\n" THEN
+                SET the variable pos TO the value of pos plus the number 1;
+                SET the variable state TO the number 0;
+            ELSE
+                SET the variable pos TO the value of pos plus the number 1;
+            END IF;
+        END IF;
+
+        IF the value of state IS equal to the number 4 THEN
+            ^ === COLLECT STRING: collect until we find a quote-like char ===
+            CALL isLetter WITH the value of ch;
+            LET the variable l2 BE the RESPONSE;
+            CALL isDigit WITH the value of ch;
+            LET the variable d3 BE the RESPONSE;
+            CALL isWhitespace WITH the value of ch;
+            LET the variable ws2 BE the RESPONSE;
+
+            IF the value of l2 IS equal to the number 1 THEN
+                SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                SET the variable pos TO the value of pos plus the number 1;
+            ELSE
+                IF the value of d3 IS equal to the number 1 THEN
+                    SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                    SET the variable pos TO the value of pos plus the number 1;
+                ELSE
+                    IF the value of ws2 IS equal to the number 1 THEN
+                        SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                        SET the variable pos TO the value of pos plus the number 1;
+                    ELSE
+                        ^ Not letter, digit, or whitespace - check if it's an operator
+                        CALL isOperatorChar WITH the value of ch;
+                        LET the variable isOp BE the RESPONSE;
+                        IF the value of isOp IS equal to the number 1 THEN
+                            SET the variable collectBuffer TO the value of collectBuffer plus the value of ch;
+                            SET the variable pos TO the value of pos plus the number 1;
+                        ELSE
+                            ^ It's a quote - end of string
+                            SET the variable pos TO the value of pos plus the number 1;
+                            SET the variable tokenTypes TO the append of "STRING" to tokenTypes;
+                            SET the variable tokenValues TO the append of the value of collectBuffer to tokenValues;
+                            SET the variable state TO the number 0;
+                        END IF;
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+END WHILST;
+
+^ Print all tokens
+LET the variable tokenCount BE the size of tokenTypes;
+LET the variable i BE the number 0;
+WHILST the value of i IS less than the value of tokenCount DO
+    LET the variable tType BE the item at position the value of i in tokenTypes;
+    LET the variable tValue BE the item at position the value of i in tokenValues;
+
+    PROCLAIM the value of tType;
+    PROCLAIM the string ": ";
+    PROCLAIM the value of tValue;
+
+    SET the variable i TO the value of i plus the number 1;
+END WHILST;
+
+PROCLAIM the string "";
+PROCLAIM the string "Total tokens: ";
+PROCLAIM the number tokenCount;

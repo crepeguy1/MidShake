@@ -1,6 +1,7 @@
 from midshake_tokenizer import Tokenizer
 from midshake_parser import Parser
 from midshake_compiler import CppCompiler
+from midshake_semantic import SemanticAnalyzer
 import os
 
 def main():
@@ -25,6 +26,16 @@ def main():
         # 3. Parse tokens into AST
         parser = Parser(tokens)
         program = parser.parse()
+
+        # 3.5. Semantic analysis
+        analyzer = SemanticAnalyzer()
+        errors = analyzer.analyze(program)
+        if errors:
+            print(f"Warning: {len(errors)} semantic error(s) found:")
+            for err in errors:
+                print(f"  - {err}")
+        else:
+            print("Semantic analysis passed.")
 
         # 4. Compile AST → C++
         compiler = CppCompiler()

@@ -95,7 +95,7 @@ def check_errors(code):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) != 2:
-        print("Usage: python midshake_interpreter.py <file.ms>")
+        print("Usage: python midshake_interpreter.py <file.mish>")
         sys.exit(1)
 
     interpreter = Interpreter()

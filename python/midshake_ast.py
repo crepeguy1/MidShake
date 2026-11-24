@@ -43,7 +43,7 @@ class Response(Expression):
 
 @dataclass
 class FileReadExpression(Expression):
-    path: str
+    path: str  # Can be a string literal or an Expression for dynamic paths
 
 @dataclass
 class FileWriteNode:
@@ -51,6 +51,161 @@ class FileWriteNode:
         self.path = path
         self.expr = expr
 
+
+# -----------------------------
+# COLLECTION EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class ListLiteral(Expression):
+    elements: List[Expression]
+
+
+@dataclass
+class MapLiteral(Expression):
+    keys: List[Expression]
+    values: List[Expression]
+
+
+@dataclass
+class ListGet(Expression):
+    list_expr: Expression
+    index_expr: Expression
+
+
+@dataclass
+class MapGet(Expression):
+    map_expr: Expression
+    key_expr: Expression
+
+
+@dataclass
+class ListAppend(Expression):
+    element_expr: Expression
+    list_expr: Expression
+
+
+@dataclass
+class ListLength(Expression):
+    list_expr: Expression
+
+
+# -----------------------------
+# STRING FUNCTION EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class StringLength(Expression):
+    string_expr: Expression
+
+
+@dataclass
+class Substring(Expression):
+    string_expr: Expression
+    start_expr: Expression
+    end_expr: Expression
+
+
+@dataclass
+class CharAt(Expression):
+    string_expr: Expression
+    index_expr: Expression
+
+
+@dataclass
+class StringSplit(Expression):
+    string_expr: Expression
+    delimiter_expr: Expression
+
+
+@dataclass
+class StringTrim(Expression):
+    string_expr: Expression
+
+
+@dataclass
+class StringJoin(Expression):
+    list_expr: Expression
+    delimiter_expr: Expression
+
+
+@dataclass
+class StringReplace(Expression):
+    string_expr: Expression
+    old_expr: Expression
+    new_expr: Expression
+
+
+# -----------------------------
+# MATH FUNCTION EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class MathMin(Expression):
+    left: Expression
+    right: Expression
+
+@dataclass
+class MathMax(Expression):
+    left: Expression
+    right: Expression
+
+@dataclass
+class MathAbs(Expression):
+    expr: Expression
+
+@dataclass
+class MathRound(Expression):
+    expr: Expression
+
+
+# -----------------------------
+# STRING UTILITY EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class StringToUpper(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringToLower(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringStartsWith(Expression):
+    string_expr: Expression
+    prefix_expr: Expression
+
+@dataclass
+class StringEndsWith(Expression):
+    string_expr: Expression
+    suffix_expr: Expression
+
+@dataclass
+class StringIsDigit(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringIsLetter(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringIsWhitespace(Expression):
+    string_expr: Expression
+
+@dataclass
+class StringIndexOf(Expression):
+    string_expr: Expression
+    substr_expr: Expression
+
+
+# -----------------------------
+# BOOLEAN EXPRESSIONS
+# -----------------------------
+
+@dataclass
+class Boolean(Expression):
+    value: bool
 
 
 # -----------------------------
@@ -99,8 +254,48 @@ class While(Statement):
 
 
 @dataclass
+class ForIn(Statement):
+    var_name: str
+    list_expr: Expression
+    body: List[Statement]
+
+
+@dataclass
+class Break(Statement):
+    pass
+
+
+@dataclass
+class Continue(Statement):
+    pass
+
+
+@dataclass
 class Terminate(Statement):
     pass
+
+
+# -----------------------------
+# GLOBAL STATEMENTS
+# -----------------------------
+
+@dataclass
+class GlobalSet(Statement):
+    """Set a global variable from within a function (enables recursion with shared state)."""
+    name: str
+    value: Expression
+
+
+# -----------------------------
+# MAP STATEMENTS
+# -----------------------------
+
+@dataclass
+class MapSet(Statement):
+    map_expr: Expression
+    key_expr: Expression
+    value_expr: Expression
+
 
 # -----------------------------
 # FILE I/O STATEMENTS
@@ -110,6 +305,15 @@ class Terminate(Statement):
 class FileWriteStatement(Statement):
     path: str  #try and fix things that have to do with path to include actual file
     value: Expression
+
+
+# -----------------------------
+# IMPORT / INCLUDE
+# -----------------------------
+
+@dataclass
+class Import(Statement):
+    path: str  # file path to import
 
 
 
