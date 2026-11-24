@@ -1,0 +1,3 @@
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+PROCLAIM the string "Imports done";

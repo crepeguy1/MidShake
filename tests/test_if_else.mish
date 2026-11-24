@@ -1,0 +1,6 @@
+LET the variable x BE the number 3;
+IF the value of x IS greater than the number 5 THEN
+    PROCLAIM the string "big";
+ELSE
+    PROCLAIM the string "small";
+END IF;

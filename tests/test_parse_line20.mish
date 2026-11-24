@@ -1,0 +1,23 @@
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+LET the variable filePath BE "selfhost/codegen.mish";
+LET the variable source BE the content of the file the value of filePath;
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+
+GLOBAL SET the variable g_lines TO the value of sourceLines;
+GLOBAL SET the variable g_pos TO the number 20;
+GLOBAL SET the variable g_lineCount TO the size of g_lines;
+
+PROCLAIM the string "Parsing line 20";
+CALL getItem WITH the number 20, the value of g_lines;
+LET the variable line BE the RESPONSE;
+PROCLAIM the value of line;
+
+CALL parseStatement WITH the number 0;
+LET the variable node BE the value of g_result;
+CALL mapGet WITH "type", the value of node;
+LET the variable nodeType BE the RESPONSE;
+PROCLAIM the string "Type: ";
+PROCLAIM the value of nodeType;

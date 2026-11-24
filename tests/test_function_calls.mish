@@ -1,0 +1,21 @@
+^ Test function calls in the interpreter
+IMPORT the file "stdlib/stdlib.mish";
+
+DEFINE function greet WITH the variable name;
+    PROCLAIM the string "Hello, ";
+    PROCLAIM the value of name;
+    PROCLAIM the string "!";
+    RETURN the number 0;
+END FUNCTION;
+
+DEFINE function add WITH the variables a, b;
+    LET the variable result BE the value of a plus the value of b;
+    PROCLAIM the string "Result: ";
+    PROCLAIM the value of result;
+    RETURN the value of result;
+END FUNCTION;
+
+CALL greet WITH the string "World";
+CALL add WITH the number 3, the number 5;
+
+PROCLAIM the string "Done!";

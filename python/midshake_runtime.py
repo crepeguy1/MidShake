@@ -644,8 +644,6 @@ class Runtime:
 
             # restore environment: restore locals from deep copy, re-apply globals
             self.vars = saved_locals
-            # Restore globals (shallow copy — they are shared state)
-            self.vars.update(saved_globals_shallow)
             # Re-apply any globals modified during the call (GLOBAL SET updates)
             for gname, gval in self.globals.items():
                 self.vars[gname] = gval

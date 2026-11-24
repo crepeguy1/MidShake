@@ -1,0 +1,64 @@
+^ Test all new language features: break, continue, for-in, booleans, map set
+
+^ Test booleans
+LET the variable isTrue BE true;
+LET the variable isFalse BE false;
+PROCLAIM the value of isTrue;
+PROCLAIM the value of isFalse;
+
+^ Test for-in loop
+LET the variable fruits BE ["apple", "banana", "cherry"];
+PROCLAIM the string "--- For loop ---";
+FOR the variable fruit IN the value of fruits DO
+    PROCLAIM the value of fruit;
+END FOR;
+
+^ Test break in whilst loop
+LET the variable i BE the number 0;
+LET the variable count BE the number 10;
+PROCLAIM the string "--- Break test ---";
+WHILST the value of i IS less than the value of count DO
+    IF the value of i IS equal to the number 5 THEN
+        BREAK;
+    END IF;
+    PROCLAIM the value of i;
+    SET the variable i TO the value of i plus the number 1;
+END WHILST;
+
+^ Test continue in whilst loop
+PROCLAIM the string "--- Continue test ---";
+LET the variable j BE the number 0;
+WHILST the value of j IS less than the number 5 DO
+    SET the variable j TO the value of j plus the number 1;
+    IF the value of j IS equal to the number 3 THEN
+        CONTINUE;
+    END IF;
+    PROCLAIM the value of j;
+END WHILST;
+
+^ Test map set
+LET the variable myMap BE {"name": "Alice", "age": 30};
+SET the key "city" IN the map myMap TO the string "New York";
+PROCLAIM the string "--- Map set test ---";
+PROCLAIM the value of name in myMap;
+PROCLAIM the value of city in myMap;
+
+^ Test break in for-in loop
+PROCLAIM the string "--- Break in for loop ---";
+FOR the variable num IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] DO
+    IF the value of num IS equal to the number 6 THEN
+        BREAK;
+    END IF;
+    PROCLAIM the value of num;
+END FOR;
+
+^ Test continue in for-in loop
+PROCLAIM the string "--- Continue in for loop ---";
+FOR the variable item IN ["one", "two", "skip", "four", "skip", "six"] DO
+    IF the value of item IS equal to the string "skip" THEN
+        CONTINUE;
+    END IF;
+    PROCLAIM the value of item;
+END FOR;
+
+PROCLAIM the string "All tests passed!";

@@ -1,0 +1,41 @@
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+LET the variable filePath BE "selfhost/codegen.mish";
+LET the variable source BE the content of the file the value of filePath;
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+
+GLOBAL SET the variable g_lines TO the value of sourceLines;
+GLOBAL SET the variable g_pos TO the number 0;
+GLOBAL SET the variable g_lineCount TO the size of g_lines;
+GLOBAL SET the variable g_myAst TO [];
+
+PROCLAIM the string "Parsing codegen.mish (";
+PROCLAIM the value of g_lineCount;
+PROCLAIM the string " lines)";
+
+LET the variable parseCount BE the number 0;
+WHILST the value of g_pos IS less than the value of g_lineCount DO
+    CALL parseStatement WITH the number 0;
+    LET the variable node BE the value of g_result;
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    IF the value of nodeType IS not equal to the string "Empty" THEN
+        IF the value of nodeType IS not equal to the string "Comment" THEN
+            CALL append WITH the value of node, the value of g_myAst;
+            LET the variable newAst BE the RESPONSE;
+            GLOBAL SET the variable g_myAst TO the value of newAst;
+        END IF;
+    END IF;
+    SET the variable parseCount TO the value of parseCount plus the number 1;
+    IF the value of parseCount IS equal to the value of g_lineCount THEN
+        PROCLAIM the string "Safety break: reached line count";
+        BREAK;
+    END IF;
+END WHILST;
+
+PROCLAIM the string "Parsed lines: ";
+PROCLAIM the value of parseCount;
+PROCLAIM the string "AST nodes: ";
+PROCLAIM the size of g_myAst;

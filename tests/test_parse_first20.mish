@@ -1,0 +1,41 @@
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+LET the variable filePath BE "selfhost/codegen.mish";
+LET the variable source BE the content of the file the value of filePath;
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+
+GLOBAL SET the variable g_lines TO the value of sourceLines;
+GLOBAL SET the variable g_pos TO the number 0;
+GLOBAL SET the variable g_lineCount TO the size of g_lines;
+
+PROCLAIM the string "Testing first 20 lines of codegen.mish";
+
+LET the variable parseCount BE the number 0;
+WHILST the value of g_pos IS less than the value of g_lineCount DO
+    IF the value of g_pos IS greater than or equal to the number 40 THEN
+        BREAK;
+    END IF;
+    IF the value of g_pos IS less than the number 20 THEN
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        CONTINUE;
+    END IF;
+    CALL getItem WITH the value of g_pos, the value of g_lines;
+    LET the variable line BE the RESPONSE;
+    PROCLAIM the string "Line ";
+    PROCLAIM the value of g_pos;
+    PROCLAIM the string ": ";
+    PROCLAIM the value of line;
+    PROCLAIM the string "  -> parsing";
+    CALL parseStatement WITH the number 0;
+    LET the variable node BE the value of g_result;
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    PROCLAIM the string "  -> ";
+    PROCLAIM the value of nodeType;
+    SET the variable parseCount TO the value of parseCount plus the number 1;
+END WHILST;
+
+PROCLAIM the string "Parsed: ";
+PROCLAIM the value of parseCount;

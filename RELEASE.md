@@ -91,21 +91,38 @@ MidShake is a self-hosting programming language with a complete compilation pipe
 
 ## Quick Start
 
-### Prerequisites
-- **Python 3.8+** — for the reference compiler
-- **g++ (GCC 8+ or MinGW)** — to compile generated C++
+### Option 1: Standalone Executable (No Installation Needed)
 
-### Build and Run
+Download `midshake.exe` from the release assets and place it in your MidShake directory. No Python or g++ required for running programs:
+
+```bash
+# Run a program directly (interpreter — no C++ needed)
+midshake.exe run examples/hello.mish
+
+# Check for type errors (no C++ needed)
+midshake.exe check examples/functions.mish
+
+# View tokens, AST, or syntax-highlighted code
+midshake.exe tokens examples/hello.mish
+midshake.exe ast examples/functions.mish
+midshake.exe highlight examples/hello.mish
+```
+
+### Option 2: Build from Source
+
+**Prerequisites:**
+- **Python 3.8+** — for the reference compiler
+- **g++ (GCC 8+ or MinGW)** — to compile generated C++ (only needed for `midshake compile`)
 
 ```bash
 # Clone and enter the repository
 git clone https://github.com/crepeguy1/MidShake.git
 cd MidShake
 
-# Run a program directly
+# Run a program directly (no C++ needed)
 python python/midshake_cli.py run examples/hello.mish
 
-# Compile to native binary
+# Compile to native binary (requires g++)
 python python/midshake_cli.py compile examples/functions.mish
 ./cpp/output/functions.exe
 
@@ -149,6 +166,17 @@ Hello, World!
 2. **Array index formatting** — C++ code generation prints array indices as floats (`args[0.000000]` instead of `args[0]`).
 3. **Import resolution** — The semantic analyzer does not follow IMPORT statements to analyze imported files, which may cause false "undefined function" errors for imported functions.
 4. **Self-hosted interpreter** — The interpreter works for simple programs but has limitations with complex nested function calls.
+5. **C++ dependency for compilation** — The `midshake compile` command requires g++ to compile generated C++ into a native binary. However, `midshake run` uses the built-in interpreter and does **not** require C++ or g++ — you can run MidShake programs with just `midshake.exe`.
+
+## Reducing C++ Dependency
+
+MidShake can be used **without any C++ dependency**:
+
+- **`midshake run`** — Runs programs using the built-in Python interpreter (no g++ needed)
+- **`midshake check`** — Runs semantic analysis/type checking (no g++ needed)
+- **`midshake tokens`**, **`midshake ast`**, **`midshake highlight`** — All work without g++
+
+The only command that requires g++ is **`midshake compile`**, which generates C++ and compiles it to a native binary. For most development and learning purposes, `midshake run` is sufficient.
 
 ---
 

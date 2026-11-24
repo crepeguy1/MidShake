@@ -1,0 +1,21 @@
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+PROCLAIM the string "Step 1";
+
+GLOBAL SET the variable g_pos TO the number 0;
+GLOBAL SET the variable g_lineCount TO the number 5;
+
+PROCLAIM the string "Step 2: Globals set";
+PROCLAIM the value of g_pos;
+PROCLAIM the value of g_lineCount;
+
+PROCLAIM the string "Step 3: Entering loop";
+
+WHILST the value of g_pos IS less than the value of g_lineCount DO
+    PROCLAIM the string "Inside loop, pos=";
+    PROCLAIM the value of g_pos;
+    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+END WHILST;
+
+PROCLAIM the string "Loop done";

@@ -1,0 +1,29 @@
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+PROCLAIM the string "Step 1: Imports done";
+
+LET the variable filePath BE "selfhost/codegen.mish";
+PROCLAIM the string "Step 2: File path set";
+
+LET the variable source BE the content of the file the value of filePath;
+PROCLAIM the string "Step 3: File read";
+
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+PROCLAIM the string "Step 4: Split done";
+
+GLOBAL SET the variable g_lines TO the value of sourceLines;
+PROCLAIM the string "Step 5: g_lines set";
+
+GLOBAL SET the variable g_pos TO the number 0;
+PROCLAIM the string "Step 6: g_pos set";
+
+GLOBAL SET the variable g_lineCount TO the size of g_lines;
+PROCLAIM the string "Step 7: g_lineCount set";
+
+GLOBAL SET the variable g_myAst TO [];
+PROCLAIM the string "Step 8: g_myAst set";
+
+PROCLAIM the string "Lines: ";
+PROCLAIM the value of g_lineCount;

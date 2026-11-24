@@ -1,0 +1,11 @@
+IMPORT the file "stdlib/stdlib.mish";
+
+LET the variable testStr BE the string "the string Done.";
+PROCLAIM the string "Testing startsWith:";
+CALL startsWith WITH the value of testStr, the string "the string";
+PROCLAIM the RESPONSE;
+
+LET the variable testStr2 BE "the string Done.";
+PROCLAIM the string "Testing startsWith 2:";
+CALL startsWith WITH the value of testStr2, the string "the string";
+PROCLAIM the RESPONSE;

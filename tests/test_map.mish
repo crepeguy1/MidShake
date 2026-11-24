@@ -1,0 +1,13 @@
+IMPORT the file "stdlib/stdlib.mish";
+
+DEFINE function createNode WITH the variable nodeType;
+    LET the variable node BE {};
+    SET the key "type" IN the map node TO the value of nodeType;
+    RETURN the value of node;
+END FUNCTION;
+
+CALL createNode WITH the string "Let";
+LET the variable node BE the RESPONSE;
+
+CALL mapGet WITH "type", the value of node;
+PROCLAIM the RESPONSE;

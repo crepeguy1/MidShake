@@ -1,0 +1,20 @@
+^ Test file for semantic analysis - this file intentionally contains errors
+^ Error 1: using undeclared variable
+PROCLAIM the value of nonexistentVar;
+
+^ Error 2: SET without LET first
+SET the variable undeclaredVar TO the number 42;
+
+^ Error 3: duplicate declaration
+LET the variable dup BE the number 1;
+LET the variable dup BE the number 2;
+
+^ Error 4: RETURN outside function
+RETURN the number 99;
+
+^ Error 5: BREAK outside loop
+BREAK;
+
+^ Valid code for comparison
+LET the variable valid BE the string "ok";
+PROCLAIM the value of valid;
