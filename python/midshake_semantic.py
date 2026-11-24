@@ -27,7 +27,7 @@ from midshake_ast import (
     StringReplace, StringToUpper, StringToLower,
     StringStartsWith, StringEndsWith, StringIsDigit, StringIsLetter, StringIsWhitespace,
     MathMin, MathMax, MathAbs, MathRound,
-    FileReadExpression,
+    FileReadExpression, Public, Secret,
     # Statements
     Statement, Let, Set, GlobalSet, Proclaim, Inquire,
     If, While, ForIn, Break, Continue, Terminate,

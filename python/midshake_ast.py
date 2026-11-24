@@ -355,3 +355,17 @@ class Section:
 @dataclass
 class Program:
     sections: List[Section]
+
+# -----------------------------
+# Encapsulation
+# -----------------------------
+
+@dataclass
+class Secret:
+    pass
+
+@dataclass
+class Public:
+    pass
+
+

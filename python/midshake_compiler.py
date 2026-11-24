@@ -11,7 +11,7 @@ from midshake_ast import (
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
     StringIsDigit, StringIsLetter, StringIsWhitespace, StringReplace, StringIndexOf,
-    Boolean, MapSet, Break, Continue, ForIn, GlobalSet
+    Boolean, MapSet, Break, Continue, ForIn, GlobalSet, Secret, Public
 )
 
 

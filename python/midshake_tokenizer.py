@@ -2,17 +2,18 @@
 
 import re
 
-from midshake_ast import Number, String, Variable, Binary, Response
+from midshake_ast import Number, String, Variable, Binary, Response, Public, Secret
 
 
 class Token:
-    def __init__(self, type_, value=None, line_no=None):
+    def __init__(self, type_, value=None, line_no=None, public=None):
         self.type = type_
         self.value = value
         self.line_no = line_no
+        self.public = public
 
     def __repr__(self):
-        return f"Token({self.type}, {self.value}, line={self.line_no})"
+        return f"Token({self.type}, {self.value}, line={self.line_no}, {self.public})"
 
 
 class Tokenizer:
