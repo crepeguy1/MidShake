@@ -24,7 +24,7 @@ PROCLAIM the string "Hello, World!";
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/MidShake.git
+git clone https://github.com/crepeguy1/MidShake.git
 cd MidShake
 
 # The Python compiler requires no installation — just run it directly
