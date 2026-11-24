@@ -199,6 +199,9 @@ Python compiler → compiles codegen.mish → codegen.exe → compiles MidShake 
 
 See [docs/demo.md](docs/demo.md) for the full self-compilation walkthrough.
 
+## Other info
+I have had AI help me in the creation of this language due to some skill limitations
+
 ## License
 
 MidShake is released under the MIT License. See the `LICENSE` file for details.
