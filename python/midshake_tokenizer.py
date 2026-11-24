@@ -961,6 +961,33 @@ class ExpressionParser:
             self.pos = saved_pos
             return self.parse_variable_phrase()
 
+        # String indexOf: the index of SUBSTR in STRING
+        if self.text[self.pos:].startswith("the index of"):
+            self.pos += len("the index of")
+            self.skip_whitespace()
+            if self.text[self.pos:].startswith("the value of"):
+                substr_expr = self.parse_variable_phrase()
+            elif not self.is_at_end() and self.current_char() == '"':
+                substr_expr = self.parse_string_literal()
+            else:
+                substr_expr = self.parse_variable_name()
+            self.skip_whitespace()
+            if self.text[self.pos:].startswith("in"):
+                self.pos += len("in")
+                self.skip_whitespace()
+                if self.text[self.pos:].startswith("the value of"):
+                    string_expr = self.parse_variable_phrase()
+                elif not self.is_at_end() and self.current_char() == '"':
+                    string_expr = self.parse_string_literal()
+                else:
+                    string_expr = self.parse_variable_name()
+                from midshake_ast import StringIndexOf
+                return StringIndexOf(string_expr, substr_expr)
+            raise ValueError(
+                f"MidShake Syntax Error (line {self.line_no}):\n"
+                f"  Expected 'in' after 'the index of'."
+            )
+
         # List functions
         if self.text[self.pos:].startswith("the size of"):
             self.pos += len("the size of")
@@ -1262,7 +1289,15 @@ class ExpressionParser:
 
     def parse_string_literal(self):
         token = self.text[self.pos:]
-        if not (token.startswith('"') and '"' in token[1:]):
+        if not token.startswith('"'):
+            raise SyntaxError(
+                f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string."
+            )
+        # Allow empty strings: ""
+        if token.startswith('""'):
+            self.pos += 2
+            return String("")
+        if '"' not in token[1:]:
             raise SyntaxError(
                 f"MidShake Syntax Error (line {self.line_no}): Expected a quoted string."
             )

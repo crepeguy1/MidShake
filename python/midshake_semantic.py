@@ -141,7 +141,17 @@ class SemanticAnalyzer:
     """
 
     # Built-in special variables
-    BUILTINS = {"RESPONSE", "the RESPONSE", "the answer"}
+    BUILTINS = {"RESPONSE", "the RESPONSE", "the answer", "ARGV"}
+    
+    # Self-hosted compiler global variables (used across CALL boundaries)
+    SELFHOST_GLOBALS = {
+        "g_lines", "g_pos", "g_lineCount", "g_ast", "g_result",
+        "g_idx", "g_pIdx", "g_bIdx", "g_found", "g_name",
+        "g_paramStr", "g_resultStr", "g_conditionStr", "g_exprStr",
+        "g_pathStr", "g_word", "g_node", "g_params",
+        "g_output", "g_indent", "g_compiled", "g_functions",
+        "g_mainStmts", "g_myAst", "QUOTE", "quoteSource",
+    }
 
     def __init__(self):
         self.errors = []          # List of SemanticError
@@ -171,6 +181,10 @@ class SemanticAnalyzer:
         # Register built-in special variables
         for builtin in self.BUILTINS:
             self.global_scope.declare(builtin, "Any", "builtin")
+        
+        # Register self-hosted compiler global variables
+        for global_var in self.SELFHOST_GLOBALS:
+            self.global_scope.declare(global_var, "Any", "builtin")
 
         # Two-pass analysis:
         # Pass 1: Collect all function definitions
@@ -254,11 +268,18 @@ class SemanticAnalyzer:
         current_scope = self.scope_stack[-1]
 
         # Check for duplicate declaration
-        if current_scope.lookup(stmt.name) is not None:
-            self.errors.append(SemanticError(
-                "redeclared",
-                f"Variable '{stmt.name}' is already declared in this scope."
-            ))
+        existing = current_scope.lookup(stmt.name)
+        if existing is not None:
+            # Allow redeclaration of builtins (self-host globals pre-registered)
+            if existing.kind != "builtin":
+                self.errors.append(SemanticError(
+                    "redeclared",
+                    f"Variable '{stmt.name}' is already declared in this scope."
+                ))
+                return
+            # For builtins, update the type instead of erroring
+            existing.symbol_type = self._infer_type(stmt.value)
+            existing.kind = "variable"
             return
 
         # Infer type from the value expression
@@ -420,13 +441,23 @@ class SemanticAnalyzer:
         # Check if function is defined
         symbol = self.scope_stack[-1].lookup_function(stmt.name)
         if symbol is None:
-            # Check if it's a known stdlib function
+            # Check if it's a known stdlib function (including self-hosted compiler helpers)
             stdlib_funcs = {
                 "trim", "uppercase", "lowercase", "length", "substring",
                 "split", "join", "replace", "append", "minimum", "maximum",
                 "absolute", "rounded", "starts_with", "ends_with",
                 "is_digit", "is_letter", "is_whitespace",
-                "read_file", "write_file"
+                "read_file", "write_file",
+                # Self-hosted compiler helpers (from stdlib.mish)
+                "startsWith", "endsWith", "isDigit", "isLetter", "isWhitespace",
+                "getItem", "mapGet", "mapSet", "charAt", "size",
+                "parseStatement", "createNode", "printNode", "parseFile", "printAst",
+                "extractLetName", "extractSetName", "extractFuncName", "extractFuncParams",
+                "extractCondition", "extractAfterKeyword", "extractCallName",
+                "extractImportPath", "extractProclaimExpr",
+                "compileExpr", "compileCondition", "compileNode", "compileFunctionDef",
+                "emit", "indent", "dedent", "stripQuotes",
+                "buildEnvSet", "buildEnvGet", "buildStringLit",
             }
             if stmt.name not in stdlib_funcs:
                 self.errors.append(SemanticError(

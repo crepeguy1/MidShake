@@ -828,6 +828,67 @@ Value parseStatement(Environment& env, const std::vector<Value>& args) {
                 }
             }
             env.set("ifNode", map_set(env.get("ifNode"), Value::from_string("body"), env.get("body")));
+            {
+                std::vector<Value> args;
+                args.push_back(Value(Number(env.get("g_pos").num.value - Value::from_double(1).num.value)));
+                args.push_back(env.get("g_lines"));
+                env.set("RESPONSE", getItem(env, args));
+            }
+            env.set("lastLine", env.get("RESPONSE"));
+            {
+                std::vector<Value> args;
+                args.push_back(env.get("lastLine"));
+                env.set("RESPONSE", trim(env, args));
+            }
+            env.set("lastTrimmed", env.get("RESPONSE"));
+            if (Value(Number(value_equals(env.get("lastTrimmed"), Value::from_string("ELSE")) ? 1 : 0)).num.value != 0) {
+                env.set("elseBody", Value::from_list({}));
+                while (Value(Number((env.get("g_pos").num.value < env.get("g_lineCount").num.value) ? 1 : 0)).num.value != 0) {
+                    {
+                        std::vector<Value> args;
+                        args.push_back(env.get("g_pos"));
+                        args.push_back(env.get("g_lines"));
+                        env.set("RESPONSE", getItem(env, args));
+                    }
+                    env.set("elseLine", env.get("RESPONSE"));
+                    {
+                        std::vector<Value> args;
+                        args.push_back(env.get("elseLine"));
+                        env.set("RESPONSE", trim(env, args));
+                    }
+                    env.set("trimmedElse", env.get("RESPONSE"));
+                    {
+                        std::vector<Value> args;
+                        args.push_back(env.get("trimmedElse"));
+                        args.push_back(Value::from_string("END IF"));
+                        env.set("RESPONSE", startsWith(env, args));
+                    }
+                    env.set("isEndIfElse", env.get("RESPONSE"));
+                    if (Value(Number(value_equals(env.get("isEndIfElse"), Value::from_double(1)) ? 1 : 0)).num.value != 0) {
+                        env.set("g_pos", (env.get("g_pos") + Value::from_double(1)));
+                        break;
+                    }
+                    {
+                        std::vector<Value> args;
+                        args.push_back(Value::from_double(0));
+                        env.set("RESPONSE", parseStatement(env, args));
+                    }
+                    env.set("elseChild", env.get("g_result"));
+                    {
+                        std::vector<Value> args;
+                        args.push_back(Value::from_string("type"));
+                        args.push_back(env.get("elseChild"));
+                        env.set("RESPONSE", mapGet(env, args));
+                    }
+                    env.set("elseChildType", env.get("RESPONSE"));
+                    if (Value(Number(!value_equals(env.get("elseChildType"), Value::from_string("Empty")) ? 1 : 0)).num.value != 0) {
+                        if (Value(Number(!value_equals(env.get("elseChildType"), Value::from_string("Comment")) ? 1 : 0)).num.value != 0) {
+                            env.set("elseBody", list_append(env.get("elseBody"), env.get("elseChild")));
+                        }
+                    }
+                }
+                env.set("ifNode", map_set(env.get("ifNode"), Value::from_string("elseBody"), env.get("elseBody")));
+            }
             env.set("node", env.get("ifNode"));
             env.set("consumed", Value::from_double(1));
         }
@@ -1923,7 +1984,7 @@ Value compileCondition(Environment& env, const std::vector<Value>& args) {
         args.push_back(env.get("cleaned2"));
         env.set("RESPONSE", trim(env, args));
     }
-    env.set("trimmed", env.get("RESPONSE"));
+    env.set("trimmedCond", env.get("RESPONSE"));
     {
         std::vector<Value> args;
         args.push_back(env.get("trimmed"));
@@ -2267,8 +2328,72 @@ Value compileNode(Environment& env, const std::vector<Value>& args) {
         }
         {
             std::vector<Value> args;
-            args.push_back(Value::from_string("}"));
-            env.set("RESPONSE", emit(env, args));
+            args.push_back(Value::from_string("elseBody"));
+            args.push_back(env.get("g_node"));
+            env.set("RESPONSE", mapGet(env, args));
+        }
+        env.set("elseBody", env.get("RESPONSE"));
+        if (Value(Number(!value_equals(env.get("elseBody"), Value::from_string("")) ? 1 : 0)).num.value != 0) {
+            {
+                std::vector<Value> args;
+                args.push_back(env.get("elseBody"));
+                args.push_back(Value::from_string("[]"));
+                env.set("RESPONSE", startsWith(env, args));
+            }
+            env.set("isEmpty", env.get("RESPONSE"));
+            if (Value(Number(!value_equals(env.get("isEmpty"), Value::from_double(1)) ? 1 : 0)).num.value != 0) {
+                {
+                    std::vector<Value> args;
+                    args.push_back(Value::from_string("} else {"));
+                    env.set("RESPONSE", emit(env, args));
+                }
+                {
+                    std::vector<Value> args;
+                    args.push_back(Value::from_double(0));
+                    env.set("RESPONSE", indent(env, args));
+                }
+                env.set("elseSize", list_length(env.get("elseBody")));
+                env.set("g_bIdx", Value::from_double(0));
+                while (Value(Number((env.get("g_bIdx").num.value < env.get("elseSize").num.value) ? 1 : 0)).num.value != 0) {
+                    {
+                        std::vector<Value> args;
+                        args.push_back(env.get("g_bIdx"));
+                        args.push_back(env.get("elseBody"));
+                        env.set("RESPONSE", getItem(env, args));
+                    }
+                    env.set("elseChild", env.get("RESPONSE"));
+                    {
+                        std::vector<Value> args;
+                        args.push_back(env.get("elseChild"));
+                        env.set("RESPONSE", compileNode(env, args));
+                    }
+                    env.set("g_bIdx", (env.get("g_bIdx") + Value::from_double(1)));
+                }
+                {
+                    std::vector<Value> args;
+                    args.push_back(Value::from_double(0));
+                    env.set("RESPONSE", dedent(env, args));
+                }
+                {
+                    std::vector<Value> args;
+                    args.push_back(Value::from_string("}"));
+                    env.set("RESPONSE", emit(env, args));
+                }
+            }
+            else {
+                {
+                    std::vector<Value> args;
+                    args.push_back(Value::from_string("}"));
+                    env.set("RESPONSE", emit(env, args));
+                }
+            }
+        }
+        else {
+            {
+                std::vector<Value> args;
+                args.push_back(Value::from_string("}"));
+                env.set("RESPONSE", emit(env, args));
+            }
         }
         return Value::from_double(0);
     }
@@ -2732,8 +2857,8 @@ Value compileFunctionDef(Environment& env, const std::vector<Value>& args) {
     return Value::from_double(0);
 }
 
-int main() {
-    Environment env;
+int main(int argc, char* argv[]) {
+    Environment env(argc, argv);
     env.set("g_output", Value::from_list({}));
     env.set("g_indent", Value::from_double(0));
     env.set("g_idx", Value::from_double(0));
@@ -2746,7 +2871,17 @@ int main() {
     env.set("g_myAst", Value::from_list({}));
     env.set("quoteSource", Value::from_string("a\"b"));
     env.set("QUOTE", char_at(env.get("quoteSource"), Value::from_double(1)));
-    env.set("filePath", Value::from_string("examples/conditionals.mish"));
+    env.set("argCount", list_length(env.get("ARGV")));
+    env.set("filePath", Value::from_string("examples/hello.mish"));
+    if (Value(Number((env.get("argCount").num.value > Value::from_double(0).num.value) ? 1 : 0)).num.value != 0) {
+        {
+            std::vector<Value> args;
+            args.push_back(Value::from_double(0));
+            args.push_back(env.get("ARGV"));
+            env.set("RESPONSE", getItem(env, args));
+        }
+        env.set("filePath", env.get("RESPONSE"));
+    }
     print(Value::from_string("Compiling: "));
     print(env.get("filePath"));
     print(Value::from_string(""));
@@ -2866,7 +3001,7 @@ int main() {
     }
     {
         std::vector<Value> args;
-        args.push_back(Value::from_string("int main() {"));
+        args.push_back(Value::from_string("int main(int argc, char* argv[]) {"));
         env.set("RESPONSE", emit(env, args));
     }
     {
@@ -2876,7 +3011,7 @@ int main() {
     }
     {
         std::vector<Value> args;
-        args.push_back(Value::from_string("Environment env;"));
+        args.push_back(Value::from_string("Environment env(argc, argv);"));
         env.set("RESPONSE", emit(env, args));
     }
     env.set("mainCount", list_length(env.get("g_mainStmts")));

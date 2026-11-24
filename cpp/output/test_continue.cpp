@@ -216,8 +216,16 @@ Value mapGet(Environment& env, const std::vector<Value>& args) {
     return Value::from_double(0);
 }
 
-int main() {
-    Environment env;
+Value indexOf(Environment& env, const std::vector<Value>& args) {
+    env.set("s", args[0]);
+    env.set("substr", args[1]);
+    env.set("result", string_indexof(env.get("s"), env.get("substr")));
+    return env.get("result");
+    return Value::from_double(0);
+}
+
+int main(int argc, char* argv[]) {
+    Environment env(argc, argv);
     env.set("i", Value::from_double(0));
     while (Value(Number((env.get("i").num.value < Value::from_double(10).num.value) ? 1 : 0)).num.value != 0) {
         if (Value(Number(value_equals(env.get("i"), Value::from_double(5)) ? 1 : 0)).num.value != 0) {

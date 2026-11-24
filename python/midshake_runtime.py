@@ -13,7 +13,7 @@ from midshake_ast import (
     StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin, StringReplace,
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
-    StringIsDigit, StringIsLetter, StringIsWhitespace,
+    StringIsDigit, StringIsLetter, StringIsWhitespace, StringIndexOf,
     Boolean, MapSet, Break, Continue, ForIn, GlobalSet
 )
 
@@ -440,11 +440,19 @@ class Runtime:
         if isinstance(expr, StringIsWhitespace):
             s = self.eval_expr(expr.string_expr)
             if not isinstance(s, str):
-                raise ValueError(
-                    f"MidShake Runtime Error:\n"
-                    f"  Expected a string but got a different type."
-                )
-            return 1 if str(s).isspace() and len(str(s)) == 1 else 0
+                s = str(s)
+            return 1.0 if (len(s) == 1 and s.isspace()) else 0.0
+
+        # String indexOf: the index of SUBSTR in STRING
+        if isinstance(expr, StringIndexOf):
+            s = self.eval_expr(expr.string_expr)
+            sub = self.eval_expr(expr.substr_expr)
+            if not isinstance(s, str):
+                s = str(s)
+            if not isinstance(sub, str):
+                sub = str(sub)
+            idx = s.find(sub)
+            return float(idx)
 
         raise ValueError(
             f"MidShake Runtime Error:\n"
@@ -598,8 +606,23 @@ class Runtime:
                     f"but got {len(stmt.args)}."
                 )
 
-            # save environment with deep copy for recursion support
-            saved_vars = copy.deepcopy(self.vars)
+            # save environment: shallow-copy everything for performance
+            # Deep-copy is only needed for mutable locals (lists/maps created with LET inside functions)
+            # but the self-hosted parser uses GLOBAL SET for all shared state, so shallow-copy is safe
+            # For recursion safety, we deep-copy only function parameters and local LET variables
+            # that are mutable types (list/map)
+            global_names = set(self.globals.keys())
+            saved_locals = {}
+            for k, v in self.vars.items():
+                if k in global_names:
+                    # Shallow-copy globals — shared state across CALL boundaries
+                    saved_locals[k] = v
+                elif isinstance(v, (list, dict)):
+                    # Deep-copy mutable locals (lists/maps) for recursion safety
+                    saved_locals[k] = copy.deepcopy(v)
+                else:
+                    # Shallow-copy immutable locals (strings, numbers, booleans)
+                    saved_locals[k] = v
             saved_return = self.return_value
             saved_flag = self.in_function
 
@@ -619,9 +642,11 @@ class Runtime:
             # capture return value
             result = self.return_value
 
-            # restore environment
-            self.vars = saved_vars
-            # Re-apply globals so GLOBAL SET changes survive across CALL boundaries
+            # restore environment: restore locals from deep copy, re-apply globals
+            self.vars = saved_locals
+            # Restore globals (shallow copy — they are shared state)
+            self.vars.update(saved_globals_shallow)
+            # Re-apply any globals modified during the call (GLOBAL SET updates)
             for gname, gval in self.globals.items():
                 self.vars[gname] = gval
             self.return_value = saved_return

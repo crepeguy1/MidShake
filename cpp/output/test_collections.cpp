@@ -1,8 +1,8 @@
 #include "midshake_runtime.hpp"
 using namespace ms;
 
-int main() {
-    Environment env;
+int main(int argc, char* argv[]) {
+    Environment env(argc, argv);
     env.set("mylist", Value::from_list({Value::from_double(1), Value::from_double(2), Value::from_double(3)}));
     print(env.get("mylist"));
     env.set("first", list_index(env.get("mylist"), Value::from_double(0)));

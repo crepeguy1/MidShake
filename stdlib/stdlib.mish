@@ -168,3 +168,9 @@ DEFINE function mapGet WITH the variables key, map;
     LET the variable result BE the value of key in map;
     RETURN the value of result;
 END FUNCTION;
+
+^ Find the index of a substring in a string
+DEFINE function indexOf WITH the variables s, substr;
+    LET the variable result BE the index of the value of substr in the value of s;
+    RETURN the value of result;
+END FUNCTION;

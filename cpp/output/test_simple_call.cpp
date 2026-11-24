@@ -209,6 +209,14 @@ Value mapGet(Environment& env, const std::vector<Value>& args) {
     return Value::from_double(0);
 }
 
+Value indexOf(Environment& env, const std::vector<Value>& args) {
+    env.set("s", args[0]);
+    env.set("substr", args[1]);
+    env.set("result", string_indexof(env.get("s"), env.get("substr")));
+    return env.get("result");
+    return Value::from_double(0);
+}
+
 Value greet(Environment& env, const std::vector<Value>& args) {
     env.set("name", args[0]);
     print(Value::from_string("Hello "));
@@ -217,8 +225,8 @@ Value greet(Environment& env, const std::vector<Value>& args) {
     return Value::from_double(0);
 }
 
-int main() {
-    Environment env;
+int main(int argc, char* argv[]) {
+    Environment env(argc, argv);
     {
         std::vector<Value> args;
         args.push_back(Value::from_string("World"));

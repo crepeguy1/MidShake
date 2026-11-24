@@ -15,6 +15,17 @@ namespace ms {
             vars["RESPONSE"] = Value::from_string("");
         }
 
+        // Initialize environment with command-line arguments
+        Environment(int argc, char* argv[]) {
+            vars["RESPONSE"] = Value::from_string("");
+            // Store command-line arguments in a list accessible from MidShake
+            List argList;
+            for (int i = 1; i < argc; i++) {
+                argList.push_back(Value::from_string(argv[i]));
+            }
+            vars["ARGV"] = Value::from_list(argList);
+        }
+
         void set(const std::string& name, const Value& v) {
             vars[name] = v;
         }
@@ -83,6 +94,7 @@ namespace ms {
     Value string_isletter(const Value& s);
     Value string_iswhitespace(const Value& s);
     Value string_replace(const Value& s, const Value& old, const Value& new_);
+    Value string_indexof(const Value& s, const Value& substr);
     bool value_equals(const Value& a, const Value& b);
 
     // -------------------------

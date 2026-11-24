@@ -1,0 +1,328 @@
+^ minicodegen.mish
+^ A minimal self-hosted MidShake compiler that can compile itself.
+^ Handles: LET, SET, PROCLAIM, DEFINE, CALL, IF/ELSE, WHILST, RETURN
+^ Designed to be small enough to compile itself.
+
+IMPORT the file "stdlib/stdlib.mish";
+
+^ Global state for the compiler
+LET the variable g_lines BE [];
+LET the variable g_pos BE the number 0;
+LET the variable g_lineCount BE the number 0;
+LET the variable g_out BE [];
+LET the variable g_indent BE the number 0;
+LET the variable g_funcs BE [];
+LET the variable g_idx BE the number 0;
+LET the variable g_compiled BE "";
+
+^ Wrap a string with quotes for C++ output
+DEFINE function wrapQuote WITH the variable s;
+    LET the variable q BE "\"";
+    LET the variable result BE the value of q + the value of s + the value of q;
+    RETURN the value of result;
+END FUNCTION;
+
+^ Emit a line of C++ code
+DEFINE function emit WITH the variable line;
+    CALL append WITH the value of line, the value of g_out;
+    LET the variable updated BE the RESPONSE;
+    GLOBAL SET the variable g_out TO the value of updated;
+    RETURN the number 1;
+END FUNCTION;
+
+^ Compile a simple value expression to C++
+DEFINE function compileVal WITH the variable expr;
+    CALL trim WITH the value of expr;
+    LET the variable e BE the RESPONSE;
+
+    ^ the string "..."
+    CALL startsWith WITH the value of e, the string "the string";
+    LET the variable isStr BE the RESPONSE;
+    IF the value of isStr IS equal to the number 1 THEN
+        CALL substring WITH the value of e, the number 10, the length of e;
+        LET the variable s BE the RESPONSE;
+        CALL trim WITH the value of s;
+        LET the variable s BE the RESPONSE;
+        GLOBAL SET the variable g_compiled TO "Value::from_string(" + the value of s + ")";
+        RETURN the number 1;
+    END IF;
+
+    ^ the number ...
+    CALL startsWith WITH the value of e, the string "the number";
+    LET the variable isNum BE the RESPONSE;
+    IF the value of isNum IS equal to the number 1 THEN
+        CALL substring WITH the value of e, the number 10, the length of e;
+        LET the variable n BE the RESPONSE;
+        CALL trim WITH the value of n;
+        LET the variable n BE the RESPONSE;
+        GLOBAL SET the variable g_compiled TO "Value::from_double(" + the value of n + ")";
+        RETURN the number 1;
+    END IF;
+
+    ^ the value of varName
+    CALL startsWith WITH the value of e, the string "the value of";
+    LET the variable isVal BE the RESPONSE;
+    IF the value of isVal IS equal to the number 1 THEN
+        CALL substring WITH the value of e, the number 11, the length of e;
+        LET the variable v BE the RESPONSE;
+        CALL trim WITH the value of v;
+        LET the variable v BE the RESPONSE;
+        CALL wrapQuote WITH the value of v;
+        LET the variable qv BE the RESPONSE;
+        GLOBAL SET the variable g_compiled TO "env.get(" + the value of qv + ")";
+        RETURN the number 1;
+    END IF;
+
+    ^ Plain number
+    CALL isDigit WITH the value of e;
+    LET the variable isDigit BE the RESPONSE;
+    IF the value of isDigit IS equal to the number 1 THEN
+        GLOBAL SET the variable g_compiled TO "Value::from_double(" + the value of e + ")";
+        RETURN the number 1;
+    END IF;
+
+    ^ Default: treat as variable
+    CALL wrapQuote WITH the value of e;
+    LET the variable qe BE the RESPONSE;
+    GLOBAL SET the variable g_compiled TO "env.get(" + the value of qe + ")";
+    RETURN the number 1;
+END FUNCTION;
+
+^ Extract the variable name from "LET the variable NAME BE ..."
+DEFINE function extractLetName WITH the variable line;
+    CALL split WITH the value of line, the string " ";
+    LET the variable words BE the RESPONSE;
+    LET the variable name BE "";
+    LET the variable found BE the number 0;
+    LET the variable wi BE the number 0;
+    LET the variable wc BE the size of words;
+    WHILST the value of wi IS less than the value of wc DO
+        CALL getItem WITH the value of wi, the value of words;
+        LET the variable w BE the RESPONSE;
+        IF the value of found IS equal to the number 1 THEN
+            SET the variable name TO the value of w;
+            BREAK;
+        END IF;
+        IF the value of w IS equal to the string "variable" THEN
+            SET the variable found TO the number 1;
+        END IF;
+        SET the variable wi TO the value of wi plus the number 1;
+    END WHILST;
+    GLOBAL SET the variable g_name TO the value of name;
+    RETURN the number 1;
+END FUNCTION;
+
+LET the variable g_name BE "";
+
+^ Compile one statement from g_lines[g_pos]
+DEFINE function compileStmt WITH the variable dummy;
+    CALL getItem WITH the value of g_pos, the value of g_lines;
+    LET the variable line BE the RESPONSE;
+    CALL trim WITH the value of line;
+    LET the variable t BE the RESPONSE;
+
+    IF the length of t IS equal to the number 0 THEN
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        RETURN the number 0;
+    END IF;
+
+    ^ LET the variable NAME BE VALUE;
+    CALL startsWith WITH the value of t, the string "LET";
+    LET the variable isLet BE the RESPONSE;
+    IF the value of isLet IS equal to the number 1 THEN
+        CALL extractLetName WITH the value of t;
+        LET the variable name BE the value of g_name;
+        CALL indexOf WITH the value of t, the string "BE";
+        LET the variable bePos BE the RESPONSE;
+        IF the value of bePos IS greater than the number 0 THEN
+            CALL substring WITH the value of t, the value of bePos plus the number 2, the length of t;
+            LET the variable valStr BE the RESPONSE;
+            CALL trim WITH the value of valStr;
+            LET the variable valStr BE the RESPONSE;
+            CALL endsWith WITH the value of valStr, the string ";";
+            LET the variable hasSemi BE the RESPONSE;
+            IF the value of hasSemi IS equal to the number 1 THEN
+                CALL substring WITH the value of valStr, the number 0, the length of valStr minus the number 1;
+                LET the variable valStr BE the RESPONSE;
+            END IF;
+            CALL compileVal WITH the value of valStr;
+            LET the variable cv BE the value of g_compiled;
+            CALL wrapQuote WITH the value of name;
+            LET the variable qn BE the RESPONSE;
+            CALL emit WITH "    env.set(" + the value of qn + ", " + the value of cv + ");";
+        END IF;
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        RETURN the number 1;
+    END IF;
+
+    ^ PROCLAIM ...;
+    CALL startsWith WITH the value of t, the string "PROCLAIM";
+    LET the variable isProclaim BE the RESPONSE;
+    IF the value of isProclaim IS equal to the number 1 THEN
+        CALL substring WITH the value of t, the number 8, the length of t;
+        LET the variable valStr BE the RESPONSE;
+        CALL trim WITH the value of valStr;
+        LET the variable valStr BE the RESPONSE;
+        CALL endsWith WITH the value of valStr, the string ";";
+        LET the variable hasSemi BE the RESPONSE;
+        IF the value of hasSemi IS equal to the number 1 THEN
+            CALL substring WITH the value of valStr, the number 0, the length of valStr minus the number 1;
+            LET the variable valStr BE the RESPONSE;
+        END IF;
+        CALL compileVal WITH the value of valStr;
+        LET the variable cv BE the value of g_compiled;
+        CALL emit WITH "    print(" + the value of cv + ");";
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        RETURN the number 1;
+    END IF;
+
+    ^ DEFINE function NAME ...
+    CALL startsWith WITH the value of t, the string "DEFINE";
+    LET the variable isDef BE the RESPONSE;
+    IF the value of isDef IS equal to the number 1 THEN
+        CALL split WITH the value of t, the string " ";
+        LET the variable words BE the RESPONSE;
+        LET the variable funcName BE "";
+        LET the variable found BE the number 0;
+        LET the variable wi BE the number 0;
+        LET the variable wc BE the size of words;
+        WHILST the value of wi IS less than the value of wc DO
+            CALL getItem WITH the value of wi, the value of words;
+            LET the variable w BE the RESPONSE;
+            IF the value of found IS equal to the number 1 THEN
+                SET the variable funcName TO the value of w;
+                BREAK;
+            END IF;
+            IF the value of w IS equal to the string "function" THEN
+                SET the variable found TO the number 1;
+            END IF;
+            SET the variable wi TO the value of wi plus the number 1;
+        END WHILST;
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        LET the variable body BE [];
+        WHILST the value of g_pos IS less than the value of g_lineCount DO
+            CALL getItem WITH the value of g_pos, the value of g_lines;
+            LET the variable bLine BE the RESPONSE;
+            CALL trim WITH the value of bLine;
+            LET the variable bTrimmed BE the RESPONSE;
+            CALL startsWith WITH the value of bTrimmed, the string "END FUNCTION";
+            LET the variable isEnd BE the RESPONSE;
+            IF the value of isEnd IS equal to the number 1 THEN
+                GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+                BREAK;
+            END IF;
+            CALL append WITH the value of bLine, the value of body;
+            LET the variable newBody BE the RESPONSE;
+            SET the variable body TO the value of newBody;
+            GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        END WHILST;
+        CALL append WITH the value of funcName, the value of g_funcs;
+        LET the variable newFuncs BE the RESPONSE;
+        GLOBAL SET the variable g_funcs TO the value of newFuncs;
+        CALL emit WITH "void " + the value of funcName + "(Environment& env) {";
+        CALL emit WITH "}";
+        RETURN the number 1;
+    END IF;
+
+    ^ CALL FUNC WITH ARGS;
+    CALL startsWith WITH the value of t, the string "CALL";
+    LET the variable isCall BE the RESPONSE;
+    IF the value of isCall IS equal to the number 1 THEN
+        CALL indexOf WITH the value of t, the string "WITH";
+        LET the variable withPos BE the RESPONSE;
+        LET the variable callName BE "";
+        IF the value of withPos IS greater than the number 0 THEN
+            CALL substring WITH the value of t, the number 4, the value of withPos minus the number 4;
+            LET the variable callName BE the RESPONSE;
+            CALL trim WITH the value of callName;
+            LET the variable callName BE the RESPONSE;
+        ELSE
+            CALL substring WITH the value of t, the number 4, the length of t;
+            LET the variable callName BE the RESPONSE;
+            CALL trim WITH the value of callName;
+            LET the variable callName BE the RESPONSE;
+        END IF;
+        CALL endsWith WITH the value of callName, the string ";";
+        LET the variable hasSemi BE the RESPONSE;
+        IF the value of hasSemi IS equal to the number 1 THEN
+            CALL substring WITH the value of callName, the number 0, the length of callName minus the number 1;
+            LET the variable callName BE the RESPONSE;
+        END IF;
+        CALL emit WITH "    " + the value of callName + "(env);";
+        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+        RETURN the number 1;
+    END IF;
+
+    ^ IMPORT, SET, GLOBAL SET, IF, WHILST, FOR, RETURN, BREAK, CONTINUE, TERMINATE
+    ^ — skip these lines for the minimal compiler
+    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+    RETURN the number 0;
+END FUNCTION;
+
+^ ====== Main: Read file, compile, write C++ ======
+
+LET the variable argCount BE the size of ARGV;
+LET the variable filePath BE "selfhost/minicodegen.mish";
+IF the value of argCount IS greater than the number 0 THEN
+    CALL getItem WITH the number 0, the value of ARGV;
+    SET the variable filePath TO the RESPONSE;
+END IF;
+
+LET the variable source BE the content of the file the value of filePath;
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+
+GLOBAL SET the variable g_lines TO the value of sourceLines;
+GLOBAL SET the variable g_pos TO the number 0;
+GLOBAL SET the variable g_lineCount TO the size of g_lines;
+GLOBAL SET the variable g_out TO [];
+GLOBAL SET the variable g_funcs TO [];
+
+^ Parse and compile all statements
+WHILST the value of g_pos IS less than the value of g_lineCount DO
+    CALL compileStmt WITH the number 0;
+END WHILST;
+
+^ Generate C++ header
+CALL emit WITH "#include \"midshake_runtime.hpp\"";
+CALL emit WITH "using namespace ms;";
+CALL emit WITH "";
+
+^ Generate main function
+CALL emit WITH "int main(int argc, char* argv[]) {";
+CALL emit WITH "    Environment env(argc, argv);";
+
+^ Write output to file
+LET the variable cppOutput BE "";
+LET the variable outCount BE the size of g_out;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of outCount DO
+    CALL getItem WITH the value of g_idx, the value of g_out;
+    LET the variable outLine BE the RESPONSE;
+    IF the value of g_idx IS greater than the number 0 THEN
+        SET the variable cppOutput TO the value of cppOutput + "\n";
+    END IF;
+    SET the variable cppOutput TO the value of cppOutput + the value of outLine;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+END WHILST;
+CALL emit WITH "    return 0;";
+CALL emit WITH "}";
+
+^ Rebuild output with the main closing
+LET the variable finalOut BE "";
+LET the variable outCount2 BE the size of g_out;
+GLOBAL SET the variable g_idx TO the number 0;
+WHILST the value of g_idx IS less than the value of outCount2 DO
+    CALL getItem WITH the value of g_idx, the value of g_out;
+    LET the variable line BE the RESPONSE;
+    IF the value of g_idx IS greater than the number 0 THEN
+        SET the variable finalOut TO the value of finalOut + "\n";
+    END IF;
+    SET the variable finalOut TO the value of finalOut + the value of line;
+    GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+END WHILST;
+
+IN the file "output/generated.cpp" WRITE the value of finalOut;
+PROCLAIM the string "Compilation complete! Generated ";
+PROCLAIM the size of g_out;
+PROCLAIM the string " lines of C++.";

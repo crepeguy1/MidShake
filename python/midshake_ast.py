@@ -193,6 +193,11 @@ class StringIsLetter(Expression):
 class StringIsWhitespace(Expression):
     string_expr: Expression
 
+@dataclass
+class StringIndexOf(Expression):
+    string_expr: Expression
+    substr_expr: Expression
+
 
 # -----------------------------
 # BOOLEAN EXPRESSIONS

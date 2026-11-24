@@ -142,7 +142,8 @@ namespace ms {
         std::string keyStr = key.to_string();
         auto it = mp.mp.find(keyStr);
         if (it == mp.mp.end()) {
-            throw std::runtime_error("Key not found in map: " + keyStr);
+            // Return empty string instead of throwing - needed for self-hosting (optional map keys)
+            return Value::from_string("");
         }
         return it->second;
     }
@@ -233,6 +234,14 @@ namespace ms {
             pos += newStr.length();
         }
         return Value::from_string(str);
+    }
+
+    Value string_indexof(const Value& s, const Value& substr) {
+        std::string str = s.to_string();
+        std::string sub = substr.to_string();
+        size_t pos = str.find(sub);
+        if (pos == std::string::npos) return Value::from_double(-1.0);
+        return Value::from_double(static_cast<double>(pos));
     }
 
     bool value_equals(const Value& a, const Value& b) {

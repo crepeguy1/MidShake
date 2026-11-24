@@ -1,8 +1,8 @@
 #include "midshake_runtime.hpp"
 using namespace ms;
 
-int main() {
-    Environment env;
+int main(int argc, char* argv[]) {
+    Environment env(argc, argv);
     env.set("isTrue", Value::from_double(1));
     env.set("isFalse", Value::from_double(0));
     print(env.get("isTrue"));

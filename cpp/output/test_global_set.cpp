@@ -27,8 +27,8 @@ Value addUp(Environment& env, const std::vector<Value>& args) {
     return Value::from_double(0);
 }
 
-int main() {
-    Environment env;
+int main(int argc, char* argv[]) {
+    Environment env(argc, argv);
     env.set("counter", Value::from_double(0));
     {
         std::vector<Value> args;

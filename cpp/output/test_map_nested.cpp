@@ -216,6 +216,14 @@ Value mapGet(Environment& env, const std::vector<Value>& args) {
     return Value::from_double(0);
 }
 
+Value indexOf(Environment& env, const std::vector<Value>& args) {
+    env.set("s", args[0]);
+    env.set("substr", args[1]);
+    env.set("result", string_indexof(env.get("s"), env.get("substr")));
+    return env.get("result");
+    return Value::from_double(0);
+}
+
 Value createNode(Environment& env, const std::vector<Value>& args) {
     env.set("nodeType", args[0]);
     env.set("node", Value::from_map({}));
@@ -240,8 +248,8 @@ Value parseStatement(Environment& env, const std::vector<Value>& args) {
     return Value::from_double(0);
 }
 
-int main() {
-    Environment env;
+int main(int argc, char* argv[]) {
+    Environment env(argc, argv);
     env.set("g_result", Value::from_map({}));
     {
         std::vector<Value> args;

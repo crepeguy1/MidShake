@@ -276,7 +276,7 @@ DEFINE function compileCondition WITH the variable condition;
     GLOBAL SET the variable g_compiled TO the RESPONSE;
     LET the variable cleaned2 BE the value of g_compiled;
     CALL trim WITH the value of cleaned2;
-    LET the variable trimmed BE the RESPONSE;
+    LET the variable trimmedCond BE the RESPONSE;
 
     ^ "X IS equal to Y"
     CALL split WITH the value of trimmed, the string " IS equal to ";
@@ -442,24 +442,28 @@ DEFINE function compileNode WITH the variable node;
             GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
         END WHILST;
         CALL dedent WITH the number 0;
-        ^ Check for else body
+        ^ Check for else body — only if the key exists
         CALL mapGet WITH "elseBody", the value of g_node;
         LET the variable elseBody BE the RESPONSE;
-        CALL startsWith WITH the value of elseBody, the string "[]";
-        LET the variable isEmpty BE the RESPONSE;
-        IF the value of isEmpty IS not equal to the number 1 THEN
-            CALL emit WITH "} else {";
-            CALL indent WITH the number 0;
-            LET the variable elseSize BE the size of elseBody;
-            GLOBAL SET the variable g_bIdx TO the number 0;
-            WHILST the value of g_bIdx IS less than the value of elseSize DO
-                CALL getItem WITH the value of g_bIdx, the value of elseBody;
-                LET the variable elseChild BE the RESPONSE;
-                CALL compileNode WITH the value of elseChild;
-                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
-            END WHILST;
-            CALL dedent WITH the number 0;
-            CALL emit WITH "}";
+        IF the value of elseBody IS not equal to the string "" THEN
+            CALL startsWith WITH the value of elseBody, the string "[]";
+            LET the variable isEmpty BE the RESPONSE;
+            IF the value of isEmpty IS not equal to the number 1 THEN
+                CALL emit WITH "} else {";
+                CALL indent WITH the number 0;
+                LET the variable elseSize BE the size of elseBody;
+                GLOBAL SET the variable g_bIdx TO the number 0;
+                WHILST the value of g_bIdx IS less than the value of elseSize DO
+                    CALL getItem WITH the value of g_bIdx, the value of elseBody;
+                    LET the variable elseChild BE the RESPONSE;
+                    CALL compileNode WITH the value of elseChild;
+                    GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+                END WHILST;
+                CALL dedent WITH the number 0;
+                CALL emit WITH "}";
+            ELSE
+                CALL emit WITH "}";
+            END IF;
         ELSE
             CALL emit WITH "}";
         END IF;
@@ -705,8 +709,13 @@ DEFINE function compileFunctionDef WITH the variable funcNode;
 END FUNCTION;
 
 ^ ====== Main: Parse source, generate C++ ======
-^ Change this path to compile a different file
-LET the variable filePath BE "examples/conditionals.mish";
+^ Check command-line arguments for file path, otherwise use default
+LET the variable argCount BE the size of ARGV;
+LET the variable filePath BE "examples/hello.mish";
+IF the value of argCount IS greater than the number 0 THEN
+    CALL getItem WITH the number 0, the value of ARGV;
+    SET the variable filePath TO the RESPONSE;
+END IF;
 PROCLAIM the string "Compiling: ";
 PROCLAIM the value of filePath;
 PROCLAIM the string "";
@@ -773,10 +782,10 @@ WHILST the value of g_idx IS less than the value of funcCount DO
     GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
 END WHILST;
 
-^ Generate main function
-CALL emit WITH "int main() {";
+^ Generate main function with command-line argument support
+CALL emit WITH "int main(int argc, char* argv[]) {";
 CALL indent WITH the number 0;
-CALL emit WITH "Environment env;";
+CALL emit WITH "Environment env(argc, argv);";
 
 LET the variable mainCount BE the size of g_mainStmts;
 GLOBAL SET the variable g_idx TO the number 0;

@@ -10,7 +10,7 @@ from midshake_ast import (
     ListLength, ListAppend,
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
-    StringIsDigit, StringIsLetter, StringIsWhitespace, StringReplace,
+    StringIsDigit, StringIsLetter, StringIsWhitespace, StringReplace, StringIndexOf,
     Boolean, MapSet, Break, Continue, ForIn, GlobalSet
 )
 
@@ -53,10 +53,10 @@ class CppCompiler:
         for func in unique_funcs:
             self.compile_function_def(func)
 
-        # main()
-        self.emit("int main() {")
+        # main() with command-line argument support
+        self.emit("int main(int argc, char* argv[]) {")
         self.indent += 1
-        self.emit("Environment env;")
+        self.emit("Environment env(argc, argv);")
 
         for stmt in main_stmts:
             self.compile_stmt(stmt)
@@ -497,6 +497,12 @@ class CppCompiler:
         if isinstance(expr, StringIsWhitespace):
             s = self.compile_expr(expr.string_expr)
             return f'string_iswhitespace({s})'
+
+        # String indexOf: the index of SUBSTR in STRING
+        if isinstance(expr, StringIndexOf):
+            s = self.compile_expr(expr.string_expr)
+            sub = self.compile_expr(expr.substr_expr)
+            return f'string_indexof({s}, {sub})'
 
         # File read: the contents of FILE
         if isinstance(expr, FileReadExpression):
