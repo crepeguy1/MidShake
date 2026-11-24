@@ -1,0 +1,14 @@
+Secret LET the variable pin BE the number 1234;
+Public LET the variable bank_name BE the string "MidShake Bank";
+
+Secret DEFINE function verify_pin WITH the variable input;
+    RETURN the value of input IS equal to the value of pin;
+END FUNCTION;
+
+Public DEFINE function withdraw WITH the variable input;
+    IF the value of CALL verify_pin WITH the variable input THEN
+        PROCLAIM the string "Access granted";
+    ELSE
+        PROCLAIM the string "Access denied";
+    END IF;
+END FUNCTION;

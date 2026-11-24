@@ -5,7 +5,7 @@ from midshake_ast import (
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
     Call, FunctionDef, Return, FileWriteStatement, Import,
-    Break, Continue, ForIn, MapSet, GlobalSet
+    Break, Continue, ForIn, MapSet, GlobalSet, Public, Secret
 )
 
 
@@ -42,7 +42,7 @@ class Parser:
     # -----------------------------
     # FUNCTION PARSER
     # -----------------------------
-    def parse_function(self, func_name, param_names, line_no):
+    def parse_function(self, func_name, param_names, line_no, visibility=None):
         body = []
         self.advance()  # move past FUNC_DEF
 
@@ -50,7 +50,6 @@ class Parser:
             stmt = self.parse_statement()
             if stmt is not None:
                 body.append(stmt)
-            # self.advance() might be the cause of the problem
 
         if not self.current():
             raise ValueError(
@@ -59,7 +58,8 @@ class Parser:
             )
 
         self.advance()  # consume END_FUNC
-        return FunctionDef(func_name, param_names, body)
+        vis = visibility if visibility is not None else Public()
+        return FunctionDef(func_name, param_names, body, visibility=vis)
 
     # -----------------------------
     # STATEMENTS
@@ -69,11 +69,20 @@ class Parser:
         if tok is None:
             return None
 
+        # Guard against using Public/Secret on statements that can't be encapsulated
+        if tok.public is not None and tok.type not in ("LET", "FUNC_DEF"):
+            modifier = "Public" if isinstance(tok.public, Public) else "Secret"
+            raise ValueError(
+                f"MidShake Syntax Error (line {tok.line_no}):\n"
+                f"  '{modifier}' cannot be used before '{tok.type}'."
+            )
+
         # LET
         if tok.type == "LET":
             name, expr = tok.value
+            vis = tok.public if tok.public is not None else Public()
             self.advance()
-            return Let(name, expr)
+            return Let(name, expr, visibility=vis)
 
         # SET
         if tok.type == "SET":
@@ -111,7 +120,7 @@ class Parser:
         # FUNCTION DEF
         if tok.type == "FUNC_DEF":
             func_name, param_names = tok.value
-            return self.parse_function(func_name, param_names, tok.line_no)
+            return self.parse_function(func_name, param_names, tok.line_no, tok.public)
 
         # CALL
         if tok.type == "CALL":
@@ -167,6 +176,8 @@ class Parser:
             f"MidShake Syntax Error (line {tok.line_no}):\n"
             f"  Unexpected token '{tok.type}'."
         )
+
+    
 
     # -----------------------------
     # IF / ELSE / END IF

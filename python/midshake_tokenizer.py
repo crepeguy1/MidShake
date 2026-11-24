@@ -2,7 +2,7 @@
 
 import re
 
-from midshake_ast import Number, String, Variable, Binary, Response, Public, Secret
+from midshake_ast import Number, String, Variable, Binary, Response, Public, Secret, Import
 
 
 class Token:
@@ -108,13 +108,14 @@ class Tokenizer:
                         i += 1
                         continue
 
-                    # treat DEFINE function as standalone
-                    if possible.startswith("DEFINE function"):
+                    # treat DEFINE function as standalone (including with Public/Secret)
+                    if possible.startswith(("DEFINE function", "Public DEFINE function", "Secret DEFINE function")):
                         statements.append((possible, start_line))
                         current = []
                         start_line = line_no
                         i += 1
                         continue
+
 
                     # treat FOR ... DO header like WHILST ... DO header
                     if possible.startswith("FOR the variable") and " DO" in possible:
@@ -135,11 +136,13 @@ class Tokenizer:
                     # Check if the accumulated text starts a new statement type
                     # that should be separated from the previous line
                     stmt_keywords = [
+                        "Public", "Secret",  
                         "PROCLAIM", "LET the variable", "SET the variable", "GLOBAL SET the variable",
                         "CALL", "IF the value of", "WHILST the value of",
                         "INQUIRE", "RETURN", "DEFINE function",
-                        "the string", "the number",
+                        "the string", "the number", "IMPORT"
                     ]
+
                     is_new_stmt = False
                     for kw in stmt_keywords:
                         if possible.startswith(kw):
@@ -202,19 +205,31 @@ class Tokenizer:
     # STATEMENT TOKENIZATION
     # ------------------------------------------------------------
     def tokenize_line(self, line: str, line_no: int):
-        # Strip leading/trailing whitespace so indented lines inside functions work
         line = line.strip()
 
         # caret comments
         if line.startswith("^"):
             return None
 
+        # 1. Strip Public / Secret prefix if present
+        visibility = None
+        if line.startswith("Public "):
+            visibility = Public()
+            line = line[len("Public "):].strip()
+        elif line.startswith("Secret "):
+            visibility = Secret()
+            line = line[len("Secret "):].strip()
+
+        # 2. Helper so you don't have to touch all your existing return statements!
+        def make_token(type_, value=None):
+            return Token(type_, value, line_no, public=visibility)
+
         # LET
         if line.startswith("LET the variable"):
             name = self.extract_between(line, "variable", "BE", line_no).strip()
             value_text = self.extract_after(line, "BE", line_no).strip()
             expr = self.parse_expression(value_text, line_no)
-            return Token("LET", (name, expr), line_no)
+            return make_token("LET", (name, expr))
 
         # GLOBAL SET — allows functions to modify global variables (enables recursion with shared state)
         if line.startswith("GLOBAL SET the variable"):

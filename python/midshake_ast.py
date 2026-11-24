@@ -1,6 +1,18 @@
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import List, Optional, Union
 
+Public = None
+Secret = None
+Visibility = Union[Public, Secret]
+
+
+@dataclass
+class Secret:
+    pass
+
+@dataclass
+class Public:
+    pass
 
 # -----------------------------
 # EXPRESSIONS
@@ -221,13 +233,14 @@ class Statement:
 class Let(Statement):
     name: str
     value: Expression
+    visibility: Visibility = field(default_factory=Public)
 
 
 @dataclass
 class Set(Statement):
     name: str
     value: Expression
-
+    visibility: Visibility = field(default_factory=Public)  
 
 @dataclass
 class Proclaim(Statement):
@@ -326,6 +339,8 @@ class FunctionDef(Statement):
     name: str
     param_names: List[str]
     body: List[Statement]
+    visibility: Visibility = field(default_factory=Public)
+
 
 
 @dataclass
@@ -350,7 +365,7 @@ class Return:
 class Section:
     name: str
     body: List[Statement]
-
+    visibility: Visibility = field(default_factory=Public)  
 
 @dataclass
 class Program:
@@ -360,12 +375,5 @@ class Program:
 # Encapsulation
 # -----------------------------
 
-@dataclass
-class Secret:
-    pass
-
-@dataclass
-class Public:
-    pass
 
 

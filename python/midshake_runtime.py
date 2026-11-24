@@ -26,8 +26,11 @@ class Runtime:
         self.terminated: bool = False
         self.return_value = None
         self.in_function = False
-        # Global variables that survive deep copy across function calls
         self.globals: Dict[str, Any] = {}
+
+        # Track Secret symbols imported from other files
+        self.secret_vars: set[str] = set()
+        self.secret_functions: set[str] = set()
 
 
 
@@ -68,43 +71,52 @@ class Runtime:
 
         path = str(stmt.path).strip().strip('"').strip("'")
 
-        # resolve relative to the current working directory first,
-        # then relative to the stdlib directory
         candidates = [
             os.path.abspath(path),
             os.path.join(os.getcwd(), path),
             os.path.join(os.getcwd(), "stdlib", os.path.basename(path)),
         ]
 
-        resolved = None
-        for c in candidates:
-            if os.path.isfile(c):
-                resolved = c
-                break
-
+        resolved = next((c for c in candidates if os.path.isfile(c)), None)
         if resolved is None:
             raise ValueError(
                 f"MidShake Runtime Error:\n"
                 f"  Could not find the file '{path}' for IMPORT."
             )
 
-        # prevent circular imports by tracking what's been imported
         if not hasattr(self, "_imported_files"):
             self._imported_files = set()
 
         real_path = os.path.realpath(resolved)
         if real_path in self._imported_files:
-            return  # already imported, skip
+            return
         self._imported_files.add(real_path)
 
         with open(resolved, "r", encoding="utf-8") as f:
             source = f.read()
 
-        tokenizer = Tokenizer(source)
-        tokens = tokenizer.tokenize()
-        parser = Parser(tokens)
-        program = parser.parse()
-        self.exec_program(program)
+        program = Parser(Tokenizer(source).tokenize()).parse()
+
+        # Execute the imported file in its own sub-runtime
+        module_runtime = Runtime()
+        module_runtime._imported_files = self._imported_files
+        module_runtime.exec_program(program)
+
+        # Export Public variables; record Secret variables so direct access raises a clear error
+        for var_name, val in module_runtime.vars.items():
+            if var_name in module_runtime.secret_vars:
+                self.secret_vars.add(var_name)
+            else:
+                self.vars[var_name] = val
+
+        # Export Public functions; record Secret functions
+        for func_name, func_def in module_runtime.functions.items():
+            if isinstance(func_def.visibility, Secret):
+                self.secret_functions.add(func_name)
+            else:
+                # Attach module's secret vars/functions so Public functions can still use their own Secrets!
+                func_def._module_runtime = module_runtime
+                self.functions[func_name] = func_def
 
     # ------------------------------------------------------------
     # EXPRESSION EVALUATION
@@ -120,8 +132,12 @@ class Runtime:
             return expr.value
 
         if isinstance(expr, Variable):
+            if expr.name in self.secret_vars and expr.name not in self.vars:
+                raise ValueError(
+                    f"MidShake Access Error:\n"
+                    f"  '{expr.name}' is marked as Secret and cannot be accessed outside its file."
+                )
             self.require_declared(expr.name)
-            # Check globals first (for GLOBAL SET variables), then local vars
             if expr.name in self.globals:
                 return self.globals[expr.name]
             return self.vars.get(expr.name, "")
@@ -466,7 +482,13 @@ class Runtime:
 
         # LET
         if isinstance(stmt, Let):
-            self.vars[stmt.name] = self.eval_expr(stmt.value)
+            val = self.eval_expr(stmt.value)
+            self.vars[stmt.name] = val
+            if isinstance(stmt.visibility, Secret):
+                self.secret_vars.add(stmt.name)
+            else:
+                self.secret_vars.discard(stmt.name)
+
 
         # SET
         elif isinstance(stmt, Set):
@@ -598,6 +620,13 @@ class Runtime:
                 )
 
             func = self.functions[stmt.name]
+
+            if stmt.name in self.secret_functions:
+                raise ValueError(
+                    f"MidShake Access Error:\n"
+                    f"  Function '{stmt.name}' is marked as Secret and cannot be called outside its file."
+                )
+
 
             if len(stmt.args) != len(func.param_names):
                 raise ValueError(
