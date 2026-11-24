@@ -1,0 +1,63 @@
+^ Test file for List and Map features
+
+^ --- List Tests ---
+
+LET the variable mylist BE [1, 2, 3]
+PROCLAIM the list mylist
+
+LET the variable first BE the item at position 0 in mylist
+PROCLAIM the number first
+
+LET the variable size BE the size of mylist
+PROCLAIM the number size
+
+LET the variable extended BE the append of 4 to mylist
+PROCLAIM the list extended
+
+^ --- Map Tests ---
+
+LET the variable mymap BE {name: "Alice", age: 30}
+PROCLAIM the map mymap
+
+LET the variable name BE the value of name in mymap
+PROCLAIM the string name
+
+LET the variable age BE the value of age in mymap
+PROCLAIM the number age
+
+^ --- String Function Tests ---
+
+LET the variable greeting BE "Hello, World!"
+LET the variable len BE the length of greeting
+PROCLAIM the number len
+
+LET the variable sub BE the substring of greeting starting at 0 ending at 5
+PROCLAIM the string sub
+
+LET the variable ch BE the character at 7 in greeting
+PROCLAIM the string ch
+
+LET the variable trimmed BE the trimmed "  hello  "
+PROCLAIM the string trimmed
+
+LET the variable words BE the split of "one,two,three" by ","
+PROCLAIM the list words
+
+LET the variable joined BE the join of words with " - "
+PROCLAIM the string joined
+
+^ --- Combined Tests ---
+
+LET the variable fruits BE ["apple", "banana", "cherry"]
+PROCLAIM the list fruits
+
+LET the variable fruitCount BE the size of fruits
+PROCLAIM the number fruitCount
+
+LET the variable firstFruit BE the item at position 0 in fruits
+PROCLAIM the string firstFruit
+
+LET the variable moreFruits BE the append of "date" to fruits
+PROCLAIM the list moreFruits
+
+PROCLAIM the string "All tests passed!"

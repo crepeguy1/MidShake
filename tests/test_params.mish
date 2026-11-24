@@ -1,0 +1,17 @@
+^ Test extractFuncParams directly
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+LET the variable testLine BE the string "DEFINE function greet WITH the variable name;";
+PROCLAIM the string "Testing: ";
+PROCLAIM the value of testLine;
+
+CALL extractFuncParams WITH the value of testLine;
+LET the variable params BE the RESPONSE;
+PROCLAIM the string "Params: ";
+PROCLAIM the value of params;
+PROCLAIM the string "";
+
+LET the variable paramCount BE the size of params;
+PROCLAIM the string "Param count: ";
+PROCLAIM the value of paramCount;

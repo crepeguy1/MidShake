@@ -1,0 +1,32 @@
+IMPORT the file "stdlib/stdlib.mish";
+IMPORT the file "selfhost/parser.mish";
+
+PROCLAIM the string "Testing parseStatement on functions.mish";
+
+LET the variable filePath BE "examples/functions.mish";
+LET the variable source BE the content of the file the value of filePath;
+CALL split WITH the value of source, the string "\n";
+LET the variable sourceLines BE the RESPONSE;
+
+GLOBAL SET the variable g_lines TO the value of sourceLines;
+GLOBAL SET the variable g_pos TO the number 0;
+GLOBAL SET the variable g_lineCount TO the size of g_lines;
+
+PROCLAIM the string "Lines: ";
+PROCLAIM the value of g_lineCount;
+
+LET the variable parseCount BE the number 0;
+WHILST the value of g_pos IS less than the value of g_lineCount DO
+    PROCLAIM the string "Parsing line ";
+    PROCLAIM the value of g_pos;
+    CALL parseStatement WITH the number 0;
+    LET the variable node BE the value of g_result;
+    CALL mapGet WITH "type", the value of node;
+    LET the variable nodeType BE the RESPONSE;
+    PROCLAIM the string "  Type: ";
+    PROCLAIM the value of nodeType;
+    SET the variable parseCount TO the value of parseCount plus the number 1;
+END WHILST;
+
+PROCLAIM the string "Parsed: ";
+PROCLAIM the value of parseCount;

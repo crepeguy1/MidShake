@@ -1,0 +1,11 @@
+^ Simple test - just a function call with one argument
+IMPORT the file "stdlib/stdlib.mish";
+
+DEFINE function greet WITH the variable name;
+    PROCLAIM the string "Hello ";
+    PROCLAIM the value of name;
+    RETURN the number 0;
+END FUNCTION;
+
+CALL greet WITH the string "World";
+PROCLAIM the string "Done!";

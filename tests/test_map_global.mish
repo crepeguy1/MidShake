@@ -1,0 +1,23 @@
+IMPORT the file "stdlib/stdlib.mish";
+
+DEFINE function createNode WITH the variable nodeType;
+    LET the variable node BE {};
+    SET the key "type" IN the map node TO the value of nodeType;
+    SET the key "body" IN the map node TO [];
+    SET the key "children" IN the map node TO [];
+    RETURN the value of node;
+END FUNCTION;
+
+CALL createNode WITH the string "Let";
+LET the variable node BE the RESPONSE;
+
+PROCLAIM the string "Direct mapGet:";
+CALL mapGet WITH "type", the value of node;
+PROCLAIM the RESPONSE;
+
+LET the variable g_result BE {};
+GLOBAL SET the variable g_result TO the value of node;
+
+PROCLAIM the string "After GLOBAL SET:";
+CALL mapGet WITH "type", the value of g_result;
+PROCLAIM the RESPONSE;

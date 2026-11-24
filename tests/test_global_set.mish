@@ -1,0 +1,61 @@
+^ Test GLOBAL SET — enables recursive functions with shared global state
+
+^ Global counter that functions can modify
+LET the variable counter BE the number 0;
+
+^ This function increments the global counter using GLOBAL SET
+DEFINE function increment WITH the variable dummy;
+    GLOBAL SET the variable counter TO the value of counter plus the number 1;
+END FUNCTION;
+
+^ Call increment 3 times
+CALL increment WITH the number 0;
+CALL increment WITH the number 0;
+CALL increment WITH the number 0;
+
+^ Counter should be 3
+PROCLAIM the string "Counter after 3 increments:";
+PROCLAIM the value of counter;
+
+^ Test with a list — append to a global list from a function
+LET the variable items BE [];
+
+DEFINE function addItem WITH the variable item;
+    GLOBAL SET the variable items TO the append of the value of item to items;
+END FUNCTION;
+
+CALL addItem WITH the string "apple";
+CALL addItem WITH the string "banana";
+CALL addItem WITH the string "cherry";
+
+PROCLAIM the string "Items:";
+PROCLAIM the value of items;
+PROCLAIM the string "Item count:";
+PROCLAIM the size of items;
+
+^ Test recursive function with global state
+LET the variable sum BE the number 0;
+LET the variable n BE the number 5;
+
+DEFINE function addUp WITH the variable x;
+    IF the value of x IS less than or equal to the number 0 THEN
+        RETURN the number 0;
+    END IF;
+    GLOBAL SET the variable sum TO the value of sum plus the value of x;
+    CALL addUp WITH the value of x minus the number 1;
+END FUNCTION;
+
+CALL addUp WITH the value of n;
+
+PROCLAIM the string "Sum 1 to 5:";
+PROCLAIM the value of sum;
+
+^ Expected output:
+^ Counter after 3 increments:
+^ 3
+^ Items:
+^ ["apple", "banana", "cherry"]
+^ Item count:
+^ 3
+^ Sum 1 to 5:
+^ 15

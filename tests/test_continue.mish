@@ -1,0 +1,14 @@
+IMPORT the file "stdlib/stdlib.mish";
+
+LET the variable i BE the number 0;
+WHILST the value of i IS less than the number 10 DO
+    IF the value of i IS equal to the number 5 THEN
+        PROCLAIM the string "Skipping 5";
+        SET the variable i TO the value of i plus the number 1;
+        CONTINUE;
+    END IF;
+    PROCLAIM the value of i;
+    SET the variable i TO the value of i plus the number 1;
+END WHILST;
+
+PROCLAIM the string "Done";

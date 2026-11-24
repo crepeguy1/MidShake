@@ -14,36 +14,64 @@ PROCLAIM the string "Hello, World!";
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Standalone Executable (No Installation)
 
+Download `midshake.exe` from the [latest release](https://github.com/crepeguy1/MidShake/releases) and place it in the MidShake directory. No Python or g++ required:
+
+```bash
+# Run a program (interpreter — no C++ needed)
+midshake.exe run examples/hello.mish
+
+# Check for type errors (no C++ needed)
+midshake.exe check examples/functions.mish
+
+# View tokens, AST, or syntax-highlighted code
+midshake.exe tokens examples/hello.mish
+midshake.exe ast examples/functions.mish
+midshake.exe highlight examples/hello.mish
+```
+
+### Option 2: Build from Source
+
+**Prerequisites:**
 - **Python 3.8+** — for the reference compiler and CLI
-- **g++ (GCC 8+ or MinGW)** — to compile generated C++ into native binaries
-- No other dependencies are required
-
-### Build from Source
+- **g++ (GCC 8+ or MinGW)** — only needed for `midshake compile` to build native binaries
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/MidShake.git
+git clone https://github.com/crepeguy1/MidShake.git
 cd MidShake
 
 # The Python compiler requires no installation — just run it directly
 python python/midshake_cli.py --help
 
-# Verify g++ is available
+# Verify g++ is available (only needed for compilation)
 g++ --version
 ```
 
 ### Run a Program
 
 ```bash
-# Interpret and run directly
+# Interpret and run directly (no C++ needed)
 python python/midshake_cli.py run examples/hello.mish
 
-# Or compile to native binary first
+# Or compile to native binary first (requires g++)
 python python/midshake_cli.py compile examples/hello.mish
 ./cpp/output/hello.exe
 ```
+
+### No C++? No Problem
+
+Most MidShake commands work **without g++ or C++**:
+
+| Command | Needs g++? | Description |
+|---------|-----------|-------------|
+| `run` | ❌ No | Runs programs via built-in interpreter |
+| `check` | ❌ No | Semantic analysis and type checking |
+| `tokens` | ❌ No | Show tokenized output |
+| `ast` | ❌ No | Show parsed AST |
+| `highlight` | ❌ No | Syntax-highlighted code |
+| `compile` | ✅ Yes | Generates C++ and compiles to native binary |
 
 ### Compile the Self-Hosted Compiler
 
@@ -67,21 +95,26 @@ See [docs/demo.md](docs/demo.md) for a detailed walkthrough of the self-compilat
 
 ## CLI Commands
 
-All commands are run through the Python CLI:
+Use either the standalone `midshake.exe` or the Python CLI:
 
 ```bash
+# Standalone executable (no Python needed)
+midshake.exe <command> [args]
+
+# Or Python CLI
 python python/midshake_cli.py <command> [args]
 ```
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `run` | Interpret and run a `.mish` file | `python python/midshake_cli.py run examples/hello.mish` |
-| `compile` | Compile to C++ and build native binary | `python python/midshake_cli.py compile examples/functions.mish` |
-| `check` | Run semantic analysis (type checking) | `python python/midshake_cli.py check examples/functions.mish` |
-| `tokens` | Show tokenized output | `python python/midshake_cli.py tokens examples/full.mish` |
-| `ast` | Show parsed AST | `python python/midshake_cli.py ast examples/functions.mish` |
-| `version` | Show version | `python python/midshake_cli.py version` |
-| `help` | Show help | `python python/midshake_cli.py help` |
+| Command | Needs g++? | Description | Example |
+|---------|-----------|-------------|---------|
+| `run` | ❌ No | Interpret and run a `.mish` file | `midshake.exe run examples/hello.mish` |
+| `compile` | ✅ Yes | Compile to C++ and build native binary | `midshake.exe compile examples/functions.mish` |
+| `check` | ❌ No | Run semantic analysis (type checking) | `midshake.exe check examples/functions.mish` |
+| `tokens` | ❌ No | Show tokenized output | `midshake.exe tokens examples/full.mish` |
+| `ast` | ❌ No | Show parsed AST | `midshake.exe ast examples/functions.mish` |
+| `highlight` | ❌ No | Show syntax-highlighted code | `midshake.exe highlight examples/hello.mish` |
+| `version` | ❌ No | Show version | `midshake.exe version` |
+| `help` | ❌ No | Show help | `midshake.exe help` |
 
 ### Self-Hosted Compiler
 

@@ -1,0 +1,28 @@
+IMPORT the file "stdlib/stdlib.mish";
+
+LET the variable g_result BE {};
+
+DEFINE function createNode WITH the variable nodeType;
+    LET the variable node BE {};
+    SET the key "type" IN the map node TO the value of nodeType;
+    SET the key "body" IN the map node TO [];
+    SET the key "children" IN the map node TO [];
+    RETURN the value of node;
+END FUNCTION;
+
+DEFINE function parseStatement WITH the variable dummy;
+    CALL createNode WITH the string "Let";
+    LET the variable node BE the RESPONSE;
+    SET the key "name" IN the map node TO the string "myVar";
+    GLOBAL SET the variable g_result TO the value of node;
+    RETURN the value of node;
+END FUNCTION;
+
+CALL parseStatement WITH the number 0;
+LET the variable node BE the value of g_result;
+
+PROCLAIM the string "From g_result:";
+CALL mapGet WITH "type", the value of node;
+PROCLAIM the RESPONSE;
+CALL mapGet WITH "name", the value of node;
+PROCLAIM the RESPONSE;
