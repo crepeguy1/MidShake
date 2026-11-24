@@ -1,19 +1,15 @@
 #include "midshake_runtime.hpp"
 using namespace ms;
 
-Value greet(Environment& env, const std::vector<Value>& args) {
-    env.set("name", args[0.000000]);
-    print(Value::from_string("Hello, "));
-    print(env.get("name"));
-    return Value::from_double(0);
-}
-
 int main() {
     Environment env;
-    {
-        std::vector<Value> args;
-        args.push_back(Value::from_string("adam"));
-        greet(env, args);
+    env.set("x", Value::from_double(10));
+    env.set("light", Value::from_string("on"));
+    print(env.get("x"));
+    print(env.get("light"));
+    if ((env.get("x").num.value > Value::from_double(5).num.value)) {
+        print(env.get("light"));
     }
+    return Value::from_double(0);
     return 0;
 }

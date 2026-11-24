@@ -6,7 +6,7 @@ This folder contains all the tools, examples, and code needed to make MidShake s
 
 Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mish` files), so the language can compile itself without relying on the Python implementation.
 
-## Current Progress: ~95% (Self-Compilation Pipeline Working)
+## Current Progress: ~95% (Bootstrap Chain + Test Suite Working)
 
 ### What's Done ✓
 
@@ -28,10 +28,14 @@ Build a tokenizer, parser, and eventually a compiler entirely in MidShake (`.mis
 
 ### What's Still Needed
 
-1. **~ Self-hosted compiler binary** ✓ — `codegen.mish` has been compiled to a standalone C++ binary (`cpp/output/codegen.exe`) that compiles MidShake → C++ without Python
-2. **~ End-to-end self-compilation** ✓ — The self-hosted compiler successfully compiled itself: `codegen.mish` parsed its own 717 lines, built 76 AST nodes, and generated 277 lines of C++ code
-3. **Refine self-compiled output** — Fix the code generator so the self-compiled C++ compiles and runs correctly
-4. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
+1. **✓ Self-hosted compiler binary** — `codegen.mish` compiled to `cpp/output/codegen.exe` via the Python compiler
+2. **✓ Bootstrap chain** — codegen.exe compiles simple programs (functions.mish, conditionals.mish) → valid C++ → compiles and runs
+3. **✓ Binary expression compilation** — `X plus Y` and `X minus Y` handling in compileExpr
+4. **✓ Recursive condition compilation** — compileCondition compiles sub-expressions to C++
+5. **✓ IF/ELSE handling** — Parser collects ELSE bodies, codegen generates C++ else branches
+6. **✓ TERMINATE fix** — Generates `return 0;` instead of `return Value::from_double(0);`
+7. **~ Full self-compilation** — codegen.exe compiling itself still hangs (self-hosted parser limitation with 800+ line files)
+8. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
 
 ## Folder Structure
 
@@ -91,7 +95,19 @@ Key fixes that enabled this:
 
 The next milestones are:
 
-1. **~ Compile the self-hosted codegen** ✓ — `codegen.mish` has been compiled to `cpp/output/codegen.exe` via the Python compiler
-2. **~ End-to-end self-compilation** ✓ — `codegen.mish` successfully compiled itself: 717 lines → 76 AST nodes → 277 lines of C++
-3. **Refine self-compiled output** — Fix the code generator so the self-compiled C++ compiles and runs correctly
-4. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
+1. **✓ Compile the self-hosted codegen** — `codegen.mish` compiled to `cpp/output/codegen.exe` via the Python compiler (2700+ lines of C++)
+2. **✓ Bootstrap chain** — codegen.exe compiles functions.mish and conditionals.mish → valid C++ → compiles and runs
+3. **✓ IF/ELSE handling** — Parser collects ELSE bodies, codegen generates C++ else branches
+4. **✓ TERMINATE fix** — Generates `return 0;` instead of `return Value::from_double(0);`
+5. **~ Full self-compilation** — Fix the self-hosted parser to handle 800+ line files so codegen.exe can compile itself
+6. **Replace C++ runtime** — Implement runtime functions in MidShake so compiled programs don't need external C++
+
+### Key fixes in this phase:
+- **Binary expression compilation** — compileExpr now handles `X plus Y` and `X minus Y` patterns recursively
+- **Recursive condition compilation** — compileCondition compiles left/right sub-expressions to C++ instead of passing raw strings
+- **Condition THEN stripping** — Fixed condition parsing to strip trailing `THEN` keywords
+- **CLI compile pipeline** — Fixed include paths so `midshake compile` links against the correct runtime (`selfhost/runtime/`)
+- **IF/ELSE body collection** — Parser now collects ELSE bodies into separate AST field
+- **C++ else branch generation** — Codegen generates `} else {` when ELSE body exists
+- **Function deduplication** — Later function definitions override imported ones
+- **Map literal keys** — Bare identifiers treated as string literals in map literals

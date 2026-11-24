@@ -214,6 +214,50 @@ DEFINE function compileExpr WITH the variable expr;
         RETURN "Value::from_double(0)";
     END IF;
     
+    ^ Binary: "X plus Y" — split on " plus " to handle nested expressions
+    CALL split WITH the value of normalized, the string " plus ";
+    LET the variable plusParts BE the RESPONSE;
+    LET the variable plusCount BE the size of plusParts;
+    IF the value of plusCount IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of plusParts;
+        LET the variable plusLeft BE the RESPONSE;
+        CALL trim WITH the value of plusLeft;
+        LET the variable plusLeftTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of plusLeftTrimmed;
+        LET the variable compiledLeft BE the value of g_compiled;
+        CALL getItem WITH the value of plusCount minus the number 1, the value of plusParts;
+        LET the variable plusRight BE the RESPONSE;
+        CALL trim WITH the value of plusRight;
+        LET the variable plusRightTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of plusRightTrimmed;
+        LET the variable compiledRight BE the value of g_compiled;
+        LET the variable result BE the string "(" plus the value of compiledLeft plus the string " + " plus the value of compiledRight plus the string ")";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
+    ^ Binary: "X minus Y" — split on " minus "
+    CALL split WITH the value of normalized, the string " minus ";
+    LET the variable minusParts BE the RESPONSE;
+    LET the variable minusCount BE the size of minusParts;
+    IF the value of minusCount IS greater than the number 1 THEN
+        CALL getItem WITH the number 0, the value of minusParts;
+        LET the variable minusLeft BE the RESPONSE;
+        CALL trim WITH the value of minusLeft;
+        LET the variable minusLeftTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of minusLeftTrimmed;
+        LET the variable compiledLeft BE the value of g_compiled;
+        CALL getItem WITH the value of minusCount minus the number 1, the value of minusParts;
+        LET the variable minusRight BE the RESPONSE;
+        CALL trim WITH the value of minusRight;
+        LET the variable minusRightTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of minusRightTrimmed;
+        LET the variable compiledRight BE the value of g_compiled;
+        LET the variable result BE the string "Value(Number(" plus the value of compiledLeft plus the string ".num.value - " plus the value of compiledRight plus the string ".num.value))";
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+    
     ^ Fallback: bare variable
     CALL buildEnvGet WITH the value of normalized;
     LET the variable fallback BE the RESPONSE;
@@ -225,7 +269,15 @@ END FUNCTION;
 DEFINE function compileCondition WITH the variable condition;
     CALL trim WITH the value of condition;
     LET the variable trimmed BE the RESPONSE;
-    
+    CALL replace WITH the value of trimmed, the string " THEN", the string "";
+    GLOBAL SET the variable g_compiled TO the RESPONSE;
+    LET the variable cleaned BE the value of g_compiled;
+    CALL replace WITH the value of cleaned, the string " THEN;", the string "";
+    GLOBAL SET the variable g_compiled TO the RESPONSE;
+    LET the variable cleaned2 BE the value of g_compiled;
+    CALL trim WITH the value of cleaned2;
+    LET the variable trimmed BE the RESPONSE;
+
     ^ "X IS equal to Y"
     CALL split WITH the value of trimmed, the string " IS equal to ";
     LET the variable parts BE the RESPONSE;
@@ -233,11 +285,19 @@ DEFINE function compileCondition WITH the variable condition;
     IF the value of count IS greater than the number 1 THEN
         CALL getItem WITH the number 0, the value of parts;
         LET the variable left BE the RESPONSE;
+        CALL trim WITH the value of left;
+        LET the variable leftTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of leftTrimmed;
+        LET the variable compiledLeft BE the value of g_compiled;
         CALL getItem WITH the number 1, the value of parts;
         LET the variable right BE the RESPONSE;
-        RETURN the string "(" plus the value of left plus the string ".num.value == " plus the value of right plus the string ".num.value)";
+        CALL trim WITH the value of right;
+        LET the variable rightTrimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of rightTrimmed;
+        LET the variable compiledRight BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft plus the string ".num.value == " plus the value of compiledRight plus the string ".num.value)";
     END IF;
-    
+
     ^ "X IS not equal to Y"
     CALL split WITH the value of trimmed, the string " IS not equal to ";
     LET the variable parts2 BE the RESPONSE;
@@ -245,11 +305,19 @@ DEFINE function compileCondition WITH the variable condition;
     IF the value of count2 IS greater than the number 1 THEN
         CALL getItem WITH the number 0, the value of parts2;
         LET the variable left2 BE the RESPONSE;
+        CALL trim WITH the value of left2;
+        LET the variable left2Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of left2Trimmed;
+        LET the variable compiledLeft2 BE the value of g_compiled;
         CALL getItem WITH the number 1, the value of parts2;
         LET the variable right2 BE the RESPONSE;
-        RETURN the string "(" plus the value of left2 plus the string ".num.value != " plus the value of right2 plus the string ".num.value)";
+        CALL trim WITH the value of right2;
+        LET the variable right2Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of right2Trimmed;
+        LET the variable compiledRight2 BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft2 plus the string ".num.value != " plus the value of compiledRight2 plus the string ".num.value)";
     END IF;
-    
+
     ^ "X IS less than Y"
     CALL split WITH the value of trimmed, the string " IS less than ";
     LET the variable parts3 BE the RESPONSE;
@@ -257,11 +325,19 @@ DEFINE function compileCondition WITH the variable condition;
     IF the value of count3 IS greater than the number 1 THEN
         CALL getItem WITH the number 0, the value of parts3;
         LET the variable left3 BE the RESPONSE;
+        CALL trim WITH the value of left3;
+        LET the variable left3Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of left3Trimmed;
+        LET the variable compiledLeft3 BE the value of g_compiled;
         CALL getItem WITH the number 1, the value of parts3;
         LET the variable right3 BE the RESPONSE;
-        RETURN the string "(" plus the value of left3 plus the string ".num.value < " plus the value of right3 plus the string ".num.value)";
+        CALL trim WITH the value of right3;
+        LET the variable right3Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of right3Trimmed;
+        LET the variable compiledRight3 BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft3 plus the string ".num.value < " plus the value of compiledRight3 plus the string ".num.value)";
     END IF;
-    
+
     ^ "X IS greater than Y"
     CALL split WITH the value of trimmed, the string " IS greater than ";
     LET the variable parts4 BE the RESPONSE;
@@ -269,13 +345,23 @@ DEFINE function compileCondition WITH the variable condition;
     IF the value of count4 IS greater than the number 1 THEN
         CALL getItem WITH the number 0, the value of parts4;
         LET the variable left4 BE the RESPONSE;
+        CALL trim WITH the value of left4;
+        LET the variable left4Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of left4Trimmed;
+        LET the variable compiledLeft4 BE the value of g_compiled;
         CALL getItem WITH the number 1, the value of parts4;
         LET the variable right4 BE the RESPONSE;
-        RETURN the string "(" plus the value of left4 plus the string ".num.value > " plus the value of right4 plus the string ".num.value)";
+        CALL trim WITH the value of right4;
+        LET the variable right4Trimmed BE the RESPONSE;
+        CALL compileExpr WITH the value of right4Trimmed;
+        LET the variable compiledRight4 BE the value of g_compiled;
+        RETURN the string "(" plus the value of compiledLeft4 plus the string ".num.value > " plus the value of compiledRight4 plus the string ".num.value)";
     END IF;
-    
+
     ^ Fallback
-    RETURN the string "(" plus the value of trimmed plus the string ".num.value != 0)";
+    CALL compileExpr WITH the value of trimmed;
+    LET the variable compiledFallback BE the value of g_compiled;
+    RETURN the string "(" plus the value of compiledFallback plus the string ".num.value != 0)";
 END FUNCTION;
 
 ^ ====== Compile a single AST node to C++ ======
@@ -356,7 +442,27 @@ DEFINE function compileNode WITH the variable node;
             GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
         END WHILST;
         CALL dedent WITH the number 0;
-        CALL emit WITH "}";
+        ^ Check for else body
+        CALL mapGet WITH "elseBody", the value of g_node;
+        LET the variable elseBody BE the RESPONSE;
+        CALL startsWith WITH the value of elseBody, the string "[]";
+        LET the variable isEmpty BE the RESPONSE;
+        IF the value of isEmpty IS not equal to the number 1 THEN
+            CALL emit WITH "} else {";
+            CALL indent WITH the number 0;
+            LET the variable elseSize BE the size of elseBody;
+            GLOBAL SET the variable g_bIdx TO the number 0;
+            WHILST the value of g_bIdx IS less than the value of elseSize DO
+                CALL getItem WITH the value of g_bIdx, the value of elseBody;
+                LET the variable elseChild BE the RESPONSE;
+                CALL compileNode WITH the value of elseChild;
+                GLOBAL SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
+            END WHILST;
+            CALL dedent WITH the number 0;
+            CALL emit WITH "}";
+        ELSE
+            CALL emit WITH "}";
+        END IF;
         RETURN the number 0;
     END IF;
     
@@ -599,8 +705,8 @@ DEFINE function compileFunctionDef WITH the variable funcNode;
 END FUNCTION;
 
 ^ ====== Main: Parse source, generate C++ ======
-
-LET the variable filePath BE "examples/functions.mish";
+^ Change this path to compile a different file
+LET the variable filePath BE "examples/conditionals.mish";
 PROCLAIM the string "Compiling: ";
 PROCLAIM the value of filePath;
 PROCLAIM the string "";

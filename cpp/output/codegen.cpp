@@ -1782,6 +1782,108 @@ Value compileExpr(Environment& env, const std::vector<Value>& args) {
     {
         std::vector<Value> args;
         args.push_back(env.get("normalized"));
+        args.push_back(Value::from_string(" plus "));
+        env.set("RESPONSE", split(env, args));
+    }
+    env.set("plusParts", env.get("RESPONSE"));
+    env.set("plusCount", list_length(env.get("plusParts")));
+    if (Value(Number((env.get("plusCount").num.value > Value::from_double(1).num.value) ? 1 : 0)).num.value != 0) {
+        {
+            std::vector<Value> args;
+            args.push_back(Value::from_double(0));
+            args.push_back(env.get("plusParts"));
+            env.set("RESPONSE", getItem(env, args));
+        }
+        env.set("plusLeft", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("plusLeft"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("plusLeftTrimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("plusLeftTrimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledLeft", env.get("g_compiled"));
+        {
+            std::vector<Value> args;
+            args.push_back(Value(Number(env.get("plusCount").num.value - Value::from_double(1).num.value)));
+            args.push_back(env.get("plusParts"));
+            env.set("RESPONSE", getItem(env, args));
+        }
+        env.set("plusRight", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("plusRight"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("plusRightTrimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("plusRightTrimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledRight", env.get("g_compiled"));
+        env.set("result", ((((Value::from_string("(") + env.get("compiledLeft")) + Value::from_string(" + ")) + env.get("compiledRight")) + Value::from_string(")")));
+        env.set("g_compiled", env.get("result"));
+        return env.get("result");
+    }
+    {
+        std::vector<Value> args;
+        args.push_back(env.get("normalized"));
+        args.push_back(Value::from_string(" minus "));
+        env.set("RESPONSE", split(env, args));
+    }
+    env.set("minusParts", env.get("RESPONSE"));
+    env.set("minusCount", list_length(env.get("minusParts")));
+    if (Value(Number((env.get("minusCount").num.value > Value::from_double(1).num.value) ? 1 : 0)).num.value != 0) {
+        {
+            std::vector<Value> args;
+            args.push_back(Value::from_double(0));
+            args.push_back(env.get("minusParts"));
+            env.set("RESPONSE", getItem(env, args));
+        }
+        env.set("minusLeft", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("minusLeft"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("minusLeftTrimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("minusLeftTrimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledLeft", env.get("g_compiled"));
+        {
+            std::vector<Value> args;
+            args.push_back(Value(Number(env.get("minusCount").num.value - Value::from_double(1).num.value)));
+            args.push_back(env.get("minusParts"));
+            env.set("RESPONSE", getItem(env, args));
+        }
+        env.set("minusRight", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("minusRight"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("minusRightTrimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("minusRightTrimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledRight", env.get("g_compiled"));
+        env.set("result", ((((Value::from_string("Value(Number(") + env.get("compiledLeft")) + Value::from_string(".num.value - ")) + env.get("compiledRight")) + Value::from_string(".num.value))")));
+        env.set("g_compiled", env.get("result"));
+        return env.get("result");
+    }
+    {
+        std::vector<Value> args;
+        args.push_back(env.get("normalized"));
         env.set("RESPONSE", buildEnvGet(env, args));
     }
     env.set("fallback", env.get("RESPONSE"));
@@ -1795,6 +1897,30 @@ Value compileCondition(Environment& env, const std::vector<Value>& args) {
     {
         std::vector<Value> args;
         args.push_back(env.get("condition"));
+        env.set("RESPONSE", trim(env, args));
+    }
+    env.set("trimmed", env.get("RESPONSE"));
+    {
+        std::vector<Value> args;
+        args.push_back(env.get("trimmed"));
+        args.push_back(Value::from_string(" THEN"));
+        args.push_back(Value::from_string(""));
+        env.set("RESPONSE", replace(env, args));
+    }
+    env.set("g_compiled", env.get("RESPONSE"));
+    env.set("cleaned", env.get("g_compiled"));
+    {
+        std::vector<Value> args;
+        args.push_back(env.get("cleaned"));
+        args.push_back(Value::from_string(" THEN;"));
+        args.push_back(Value::from_string(""));
+        env.set("RESPONSE", replace(env, args));
+    }
+    env.set("g_compiled", env.get("RESPONSE"));
+    env.set("cleaned2", env.get("g_compiled"));
+    {
+        std::vector<Value> args;
+        args.push_back(env.get("cleaned2"));
         env.set("RESPONSE", trim(env, args));
     }
     env.set("trimmed", env.get("RESPONSE"));
@@ -1816,12 +1942,36 @@ Value compileCondition(Environment& env, const std::vector<Value>& args) {
         env.set("left", env.get("RESPONSE"));
         {
             std::vector<Value> args;
+            args.push_back(env.get("left"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("leftTrimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("leftTrimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledLeft", env.get("g_compiled"));
+        {
+            std::vector<Value> args;
             args.push_back(Value::from_double(1));
             args.push_back(env.get("parts"));
             env.set("RESPONSE", getItem(env, args));
         }
         env.set("right", env.get("RESPONSE"));
-        return ((((Value::from_string("(") + env.get("left")) + Value::from_string(".num.value == ")) + env.get("right")) + Value::from_string(".num.value)"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("right"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("rightTrimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("rightTrimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledRight", env.get("g_compiled"));
+        return ((((Value::from_string("(") + env.get("compiledLeft")) + Value::from_string(".num.value == ")) + env.get("compiledRight")) + Value::from_string(".num.value)"));
     }
     {
         std::vector<Value> args;
@@ -1841,12 +1991,36 @@ Value compileCondition(Environment& env, const std::vector<Value>& args) {
         env.set("left2", env.get("RESPONSE"));
         {
             std::vector<Value> args;
+            args.push_back(env.get("left2"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("left2Trimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("left2Trimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledLeft2", env.get("g_compiled"));
+        {
+            std::vector<Value> args;
             args.push_back(Value::from_double(1));
             args.push_back(env.get("parts2"));
             env.set("RESPONSE", getItem(env, args));
         }
         env.set("right2", env.get("RESPONSE"));
-        return ((((Value::from_string("(") + env.get("left2")) + Value::from_string(".num.value != ")) + env.get("right2")) + Value::from_string(".num.value)"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("right2"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("right2Trimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("right2Trimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledRight2", env.get("g_compiled"));
+        return ((((Value::from_string("(") + env.get("compiledLeft2")) + Value::from_string(".num.value != ")) + env.get("compiledRight2")) + Value::from_string(".num.value)"));
     }
     {
         std::vector<Value> args;
@@ -1866,12 +2040,36 @@ Value compileCondition(Environment& env, const std::vector<Value>& args) {
         env.set("left3", env.get("RESPONSE"));
         {
             std::vector<Value> args;
+            args.push_back(env.get("left3"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("left3Trimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("left3Trimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledLeft3", env.get("g_compiled"));
+        {
+            std::vector<Value> args;
             args.push_back(Value::from_double(1));
             args.push_back(env.get("parts3"));
             env.set("RESPONSE", getItem(env, args));
         }
         env.set("right3", env.get("RESPONSE"));
-        return ((((Value::from_string("(") + env.get("left3")) + Value::from_string(".num.value < ")) + env.get("right3")) + Value::from_string(".num.value)"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("right3"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("right3Trimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("right3Trimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledRight3", env.get("g_compiled"));
+        return ((((Value::from_string("(") + env.get("compiledLeft3")) + Value::from_string(".num.value < ")) + env.get("compiledRight3")) + Value::from_string(".num.value)"));
     }
     {
         std::vector<Value> args;
@@ -1891,14 +2089,44 @@ Value compileCondition(Environment& env, const std::vector<Value>& args) {
         env.set("left4", env.get("RESPONSE"));
         {
             std::vector<Value> args;
+            args.push_back(env.get("left4"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("left4Trimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("left4Trimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledLeft4", env.get("g_compiled"));
+        {
+            std::vector<Value> args;
             args.push_back(Value::from_double(1));
             args.push_back(env.get("parts4"));
             env.set("RESPONSE", getItem(env, args));
         }
         env.set("right4", env.get("RESPONSE"));
-        return ((((Value::from_string("(") + env.get("left4")) + Value::from_string(".num.value > ")) + env.get("right4")) + Value::from_string(".num.value)"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("right4"));
+            env.set("RESPONSE", trim(env, args));
+        }
+        env.set("right4Trimmed", env.get("RESPONSE"));
+        {
+            std::vector<Value> args;
+            args.push_back(env.get("right4Trimmed"));
+            env.set("RESPONSE", compileExpr(env, args));
+        }
+        env.set("compiledRight4", env.get("g_compiled"));
+        return ((((Value::from_string("(") + env.get("compiledLeft4")) + Value::from_string(".num.value > ")) + env.get("compiledRight4")) + Value::from_string(".num.value)"));
     }
-    return ((Value::from_string("(") + env.get("trimmed")) + Value::from_string(".num.value != 0)"));
+    {
+        std::vector<Value> args;
+        args.push_back(env.get("trimmed"));
+        env.set("RESPONSE", compileExpr(env, args));
+    }
+    env.set("compiledFallback", env.get("g_compiled"));
+    return ((Value::from_string("(") + env.get("compiledFallback")) + Value::from_string(".num.value != 0)"));
     return Value::from_double(0);
 }
 
@@ -2518,7 +2746,7 @@ int main() {
     env.set("g_myAst", Value::from_list({}));
     env.set("quoteSource", Value::from_string("a\"b"));
     env.set("QUOTE", char_at(env.get("quoteSource"), Value::from_double(1)));
-    env.set("filePath", Value::from_string("examples/functions.mish"));
+    env.set("filePath", Value::from_string("examples/conditionals.mish"));
     print(Value::from_string("Compiling: "));
     print(env.get("filePath"));
     print(Value::from_string(""));

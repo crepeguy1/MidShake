@@ -144,8 +144,8 @@ def command_compile(path, output_name=None):
     print(f"Generated: {cpp_file}")
 
     # 5. Find the runtime source files
-    cpp_dir = os.path.join(PROJECT_ROOT, "cpp")
-    runtime_cpp = os.path.join(cpp_dir, "midshake_runtime.cpp")
+    runtime_dir = os.path.join(PROJECT_ROOT, "selfhost", "runtime")
+    runtime_cpp = os.path.join(runtime_dir, "midshake_runtime.cpp")
 
     # 6. Find g++ compiler
     import shutil
@@ -159,7 +159,7 @@ def command_compile(path, output_name=None):
     cmd = [
         gpp,
         "-std=c++17",
-        "-I" + cpp_dir,
+        "-I" + runtime_dir,
         cpp_file,
         runtime_cpp,
         "-o", exe_file

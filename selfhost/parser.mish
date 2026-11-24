@@ -499,6 +499,42 @@ DEFINE function parseStatement WITH the variable dummy;
             END WHILST;
             
             SET the key "body" IN the map ifNode TO the value of body;
+            
+            ^ Check if we broke on ELSE — if so, collect the else body
+            CALL getItem WITH the value of g_pos minus the number 1, the value of g_lines;
+            LET the variable lastLine BE the RESPONSE;
+            CALL trim WITH the value of lastLine;
+            LET the variable lastTrimmed BE the RESPONSE;
+            
+            IF the value of lastTrimmed IS equal to the string "ELSE" THEN
+                LET the variable elseBody BE [];
+                WHILST the value of g_pos IS less than the value of g_lineCount DO
+                    CALL getItem WITH the value of g_pos, the value of g_lines;
+                    LET the variable elseLine BE the RESPONSE;
+                    CALL trim WITH the value of elseLine;
+                    LET the variable trimmedElse BE the RESPONSE;
+                    
+                    CALL startsWith WITH the value of trimmedElse, the string "END IF";
+                    LET the variable isEndIfElse BE the RESPONSE;
+                    IF the value of isEndIfElse IS equal to the number 1 THEN
+                        GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+                        BREAK;
+                    END IF;
+                    
+                    CALL parseStatement WITH the number 0;
+                    LET the variable elseChild BE the value of g_result;
+                    CALL mapGet WITH "type", the value of elseChild;
+                    LET the variable elseChildType BE the RESPONSE;
+                    
+                    IF the value of elseChildType IS not equal to the string "Empty" THEN
+                        IF the value of elseChildType IS not equal to the string "Comment" THEN
+                            SET the variable elseBody TO the append of the value of elseChild to elseBody;
+                        END IF;
+                    END IF;
+                END WHILST;
+                SET the key "elseBody" IN the map ifNode TO the value of elseBody;
+            END IF;
+            
             SET the variable node TO the value of ifNode;
             SET the variable consumed TO the number 1;
         END IF;

@@ -40,8 +40,17 @@ class CppCompiler:
         all_funcs = self._collect_functions(program)
         main_stmts = self._collect_main_stmts(program)
 
+        # Deduplicate functions by name (later definitions override earlier ones)
+        seen_names = set()
+        unique_funcs = []
+        for func in reversed(all_funcs):
+            if func.name not in seen_names:
+                seen_names.add(func.name)
+                unique_funcs.append(func)
+        unique_funcs.reverse()
+
         # emit function definitions
-        for func in all_funcs:
+        for func in unique_funcs:
             self.compile_function_def(func)
 
         # main()
@@ -252,7 +261,7 @@ class CppCompiler:
 
         # TERMINATE
         elif isinstance(stmt, Terminate):
-            self.emit("return Value::from_double(0);")
+            self.emit("return 0;")
 
         # BREAK
         elif isinstance(stmt, Break):
@@ -356,7 +365,11 @@ class CppCompiler:
                 return 'Value::from_map({})'
             pairs = []
             for k, v in zip(expr.keys, expr.values):
-                key_str = self.compile_expr(k)
+                # Treat bare identifier keys as string literals
+                if isinstance(k, Variable):
+                    key_str = f'Value::from_string("{k.name}")'
+                else:
+                    key_str = self.compile_expr(k)
                 val = self.compile_expr(v)
                 pairs.append(f'{{{key_str}.to_string(), {val}}}')
             return f'Value::from_map({{{", ".join(pairs)}}})'
