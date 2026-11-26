@@ -14,6 +14,47 @@ namespace ms {
         std::cout << v.to_string() << std::endl;
     }
 
+    Value cpp_unescape_string(Environment&, const std::vector<Value>& args) {
+        const std::string input = args.empty() ? std::string() : args[0].to_string();
+        std::string decoded;
+        decoded.reserve(input.size());
+        for (size_t i = 0; i < input.size(); ++i) {
+            if (input[i] != '\\' || i + 1 >= input.size()) {
+                decoded += input[i];
+                continue;
+            }
+            switch (input[++i]) {
+                case 'n': decoded += '\n'; break;
+                case 'r': decoded += '\r'; break;
+                case 't': decoded += '\t'; break;
+                case '\\': decoded += '\\'; break;
+                case '"': decoded += '"'; break;
+                default:
+                    decoded += '\\';
+                    decoded += input[i];
+                    break;
+            }
+        }
+        return Value::from_string(decoded);
+    }
+
+    Value cpp_escape_string(Environment&, const std::vector<Value>& args) {
+        const std::string input = args.empty() ? std::string() : args[0].to_string();
+        std::string escaped;
+        escaped.reserve(input.size());
+        for (char character : input) {
+            switch (character) {
+                case '\\': escaped += "\\\\"; break;
+                case '"': escaped += "\\\""; break;
+                case '\n': escaped += "\\n"; break;
+                case '\r': escaped += "\\r"; break;
+                case '\t': escaped += "\\t"; break;
+                default: escaped += character; break;
+            }
+        }
+        return Value::from_string(escaped);
+    }
+
     // -------------------------
     // inquire_number
     // -------------------------
@@ -273,6 +314,130 @@ namespace ms {
             throw std::runtime_error("Cannot open file for writing: " + path);
         }
         outfile << value.to_string();
+    }
+
+    Value ms_std_println(Environment&, const std::vector<Value>& args) {
+        print(args.at(0));
+        return Value::from_double(0);
+    }
+
+    Value ms_std_greet(Environment&, const std::vector<Value>& args) {
+        print(Value::from_string("Hello, "));
+        print(args.at(0));
+        return Value::from_double(0);
+    }
+
+    Value ms_std_add_and_print(Environment&, const std::vector<Value>& args) {
+        print(Value::from_double(args.at(0).num.value + args.at(1).num.value));
+        return Value::from_double(0);
+    }
+
+    Value ms_std_repeat(Environment&, const std::vector<Value>& args) {
+        const int count = std::max(0, static_cast<int>(args.at(0).num.value));
+        for (int i = 0; i < count; ++i) {
+            print(args.at(1));
+        }
+        return Value::from_double(0);
+    }
+
+    Value ms_std_min(Environment&, const std::vector<Value>& args) {
+        return math_min(args.at(0), args.at(1));
+    }
+
+    Value ms_std_max(Environment&, const std::vector<Value>& args) {
+        return math_max(args.at(0), args.at(1));
+    }
+
+    Value ms_std_abs(Environment&, const std::vector<Value>& args) {
+        return math_abs(args.at(0));
+    }
+
+    Value ms_std_round(Environment&, const std::vector<Value>& args) {
+        return math_round(args.at(0));
+    }
+
+    Value ms_std_toupper(Environment&, const std::vector<Value>& args) {
+        return string_toupper(args.at(0));
+    }
+
+    Value ms_std_tolower(Environment&, const std::vector<Value>& args) {
+        return string_tolower(args.at(0));
+    }
+
+    Value ms_std_startsWith(Environment&, const std::vector<Value>& args) {
+        return string_startswith(args.at(0), args.at(1));
+    }
+
+    Value ms_std_endsWith(Environment&, const std::vector<Value>& args) {
+        return string_endswith(args.at(0), args.at(1));
+    }
+
+    Value ms_std_isDigit(Environment&, const std::vector<Value>& args) {
+        return string_isdigit(args.at(0));
+    }
+
+    Value ms_std_isLetter(Environment&, const std::vector<Value>& args) {
+        return string_isletter(args.at(0));
+    }
+
+    Value ms_std_isWhitespace(Environment&, const std::vector<Value>& args) {
+        return string_iswhitespace(args.at(0));
+    }
+
+    Value ms_std_readFile(Environment&, const std::vector<Value>& args) {
+        return file_read(args.at(0).to_string());
+    }
+
+    Value ms_std_length(Environment&, const std::vector<Value>& args) {
+        return string_length(args.at(0));
+    }
+
+    Value ms_std_charAt(Environment&, const std::vector<Value>& args) {
+        return char_at(args.at(0), args.at(1));
+    }
+
+    Value ms_std_substring(Environment&, const std::vector<Value>& args) {
+        return ms::substring(args.at(0), args.at(1), args.at(2));
+    }
+
+    Value ms_std_split(Environment&, const std::vector<Value>& args) {
+        return string_split(args.at(0), args.at(1));
+    }
+
+    Value ms_std_join(Environment&, const std::vector<Value>& args) {
+        return string_join(args.at(0), args.at(1));
+    }
+
+    Value ms_std_trim(Environment&, const std::vector<Value>& args) {
+        return string_trim(args.at(0));
+    }
+
+    Value ms_std_replace(Environment&, const std::vector<Value>& args) {
+        return string_replace(args.at(0), args.at(1), args.at(2));
+    }
+
+    Value ms_std_size(Environment&, const std::vector<Value>& args) {
+        return list_length(args.at(0));
+    }
+
+    Value ms_std_append(Environment&, const std::vector<Value>& args) {
+        return list_append(args.at(1), args.at(0));
+    }
+
+    Value ms_std_getItem(Environment&, const std::vector<Value>& args) {
+        return list_index(args.at(1), args.at(0));
+    }
+
+    Value ms_std_mapSet(Environment&, const std::vector<Value>& args) {
+        return map_set(args.at(0), args.at(1), args.at(2));
+    }
+
+    Value ms_std_mapGet(Environment&, const std::vector<Value>& args) {
+        return map_get(args.at(1), args.at(0));
+    }
+
+    Value ms_std_indexOf(Environment&, const std::vector<Value>& args) {
+        return string_indexof(args.at(0), args.at(1));
     }
 
 }

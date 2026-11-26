@@ -124,7 +124,7 @@ def command_compile(path, output_name=None):
     cpp_source = compiler.compile_program(program)
 
     # 3. Determine output directory and names
-    out_dir = os.path.join(PROJECT_ROOT, "cpp", "output")
+    out_dir = os.path.join(PROJECT_ROOT, "build", "output")
     os.makedirs(out_dir, exist_ok=True)
 
     base = os.path.splitext(os.path.basename(path))[0]

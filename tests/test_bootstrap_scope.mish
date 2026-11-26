@@ -1,0 +1,15 @@
+LET the variable calls BE the number 0;
+
+DEFINE function factorial WITH the variable n;
+    GLOBAL SET the variable calls TO the value of calls plus the number 1;
+    IF the value of n IS less than or equal to the number 1 THEN
+        RETURN the number 1;
+    END IF;
+    CALL factorial WITH the value of n minus the number 1;
+    LET the variable previous BE the RESPONSE;
+    RETURN the value of n times the value of previous;
+END FUNCTION;
+
+CALL factorial WITH the number 5;
+PROCLAIM the RESPONSE;
+PROCLAIM the value of calls;

@@ -12,7 +12,7 @@ MidShake follows a traditional compiler pipeline with five phases:
 Source Code → Tokenizer → Parser → Semantic Analysis → C++ Code Generator → C++ Compiler → Native Binary
 ```
 
-### 1. Tokenizer (`midshake_tokenizer.py`, 1290 lines)
+### 1. Tokenizer (`midshake_tokenizer.py`)
 
 The tokenizer converts raw source text into typed tokens representing MidShake statements. It operates in two stages:
 
@@ -25,7 +25,7 @@ Key design decisions:
 - **Line joining**: The tokenizer handles multi-line statements by joining lines until a semicolon or standalone keyword is found. This means `IF ... THEN` on one line and the body on the next are properly connected.
 - **Expression parsing**: Within each statement, a recursive descent parser handles expressions with operator precedence (multiplication before addition, comparisons, etc.).
 
-### 2. Parser (`midshake_parser.py`, 245 lines)
+### 2. Parser (`midshake_parser.py`)
 
 The parser takes the statement-level tokens and builds an Abstract Syntax Tree (AST). Since the tokenizer already parsed most of the statement structure, the parser's main job is:
 
@@ -34,10 +34,10 @@ The parser takes the statement-level tokens and builds an Abstract Syntax Tree (
 - Recursively parsing nested statements
 
 Key design decisions:
-- **Section-based AST**: The AST is organized into `Section` objects (currently only "MAIN"), each containing a list of statements. This design预留s room for future module/package support.
+- **Section-based AST**: The AST is organized into `Section` objects (currently only "MAIN"), each containing a list of statements. This design leaves room for future module/package support.
 - **Recursive block parsing**: Functions like `parse_if` and `parse_while` recursively call `parse_statement` to build nested structures, stopping when they encounter the corresponding end keyword.
 
-### 3. Semantic Analysis (`midshake_semantic.py`, 697 lines)
+### 3. Semantic Analysis (`midshake_semantic.py`)
 
 The semantic analyzer performs two-pass analysis:
 
@@ -54,7 +54,7 @@ Key design decisions:
 - **Scope chain**: Nested scopes delegate to parent scopes for variable lookup, implementing lexical scoping.
 - **Map key handling**: Bare identifiers used as map keys are not flagged as undeclared variables, since they are string keys, not variable references.
 
-### 4. C++ Code Generator (`midshake_compiler.py`, 551 lines)
+### 4. C++ Code Generator (`midshake_compiler.py`)
 
 The code generator walks the AST and produces C++ code that links against the MidShake C++ runtime library.
 
@@ -71,34 +71,11 @@ The C++ runtime provides:
 - **Environment**: Variable storage, function dispatch, and I/O
 - **Built-in functions**: String operations (length, substring, split, join, trim, etc.), math functions (min, max, abs, round), list operations (get, append, size), map operations (get, set)
 
-## The Deep-Copy Scope Model
+## Lexical Environment Frames
 
-One of MidShake's most distinctive design features is its **deep-copy scope model** for function calls:
+Each compiled function receives its caller's environment as a parent and creates a fresh local frame. Parameters and local assignments are stored in that frame; reads search the current frame and then its parents. `GLOBAL SET` explicitly writes to the root environment, while `RESPONSE` remains local to each call so recursion preserves return values. The Python interpreter currently implements the same observable behavior by snapshotting and restoring its environment around calls.
 
-### How it works
-
-When a `CALL` statement executes:
-1. The current variable scope is deep-copied
-2. Function parameters are bound in the new scope
-3. The function body executes in this isolated scope
-4. When the function returns, the scope is restored to the pre-call state
-5. The return value is stored in the `RESPONSE` variable
-
-### Why this design
-
-This model was chosen because:
-- **Simplicity**: No need for complex stack frame management or register allocation
-- **Safety**: Functions cannot accidentally modify caller variables
-- **Natural language semantics**: Each function call is an independent "action" that doesn't leak state
-
-### Challenges
-
-The deep-copy model creates significant challenges for the self-hosted compiler:
-- **Shared state**: Lists, maps, and accumulators cannot be easily shared across CALL boundaries
-- **Workaround**: `GLOBAL SET` bypasses the deep-copy by writing directly to the global scope
-- **Self-hosted parser**: Uses `GLOBAL SET` for all shared state (g_lines, g_pos, g_result, etc.)
-
-This is the primary blocker for full self-compilation: the self-hosted parser and codegen must use `GLOBAL SET` extensively, which is less elegant than local variable sharing.
+This linked-frame model isolates local variables without copying the complete environment and provides a direct parent-chain lookup for lexical scope.
 
 ## Self-Compilation Strategy
 
@@ -112,7 +89,7 @@ The self-compilation path follows a bootstrap approach:
 
 ### Current status
 
-The bootstrap chain works for simple programs (functions, conditionals, loops). Full self-compilation (codegen.exe compiling itself) is blocked by the self-hosted parser's inability to handle 800+ line files efficiently.
+`python tools/bootstrap.py` builds the Python seed, compiles two native generations, verifies byte-for-byte identical compiler source, and runs a recursion/scope smoke test. The generated compiler still relies on the shared C++ runtime.
 
 ## Language Design Philosophy
 
@@ -134,22 +111,18 @@ This design makes MidShake accessible to beginners while maintaining the express
 
 The test suite covers all compiler phases:
 
-- **Unit tests** (146 tests): Verify each phase independently — tokenizer produces correct tokens, parser builds correct AST, codegen produces correct C++
-- **Integration tests** (15 tests): End-to-end compilation and execution of MidShake programs covering all language constructs
+- **Unit tests** (151 tests): Verify each phase independently — tokenizer produces correct tokens, parser builds correct AST, codegen produces correct C++
+- **Integration tests** (16 tests): End-to-end compilation and execution of MidShake programs covering all language constructs
 - **Semantic error tests** (5 errors): Verify the semantic analyzer catches common mistakes
 
 ## Known Limitations
 
-1. **Full self-compilation**: The self-hosted parser hangs on files over 800 lines due to the deep-copy scope model's performance characteristics
-2. **Array index formatting**: Integer indices print as floats (`args[0.000000]` instead of `args[0]`)
-3. **Self-hosted semantic analysis**: Not yet implemented in MidShake
-4. **Import resolution**: The semantic analyzer doesn't follow imports, causing false "undefined function" errors for imported functions
-5. **C++ runtime dependency**: Compiled programs still require the C++ runtime library; full survival without C++ is not yet achieved
+1. **Semantic import analysis**: The analyzer may not resolve all declarations from imported modules.
+2. **Self-hosted implementation parity**: The interpreter and semantic analyzer do not yet cover every Python implementation feature.
+3. **C++ runtime dependency**: Native output still requires the shared runtime and a C++17 compiler.
 
 ## Future Work
 
-1. **Fix self-hosted parser performance**: Enable codegen.exe to compile itself
-2. **Self-hosted semantic analysis**: Port `midshake_semantic.py` to MidShake
-3. **Replace C++ runtime**: Implement runtime functions in MidShake
-4. **Minimal bootstrap**: Create a tiny C bootstrap program (~500 lines) as the only external dependency
-5. **Full self-compilation**: Achieve `midshake-compiler selfhost/codegen.mish → new-midshake-compiler`
+1. **Runtime independence**: Implement runtime functionality in MidShake and reduce the native C++ dependency.
+2. **Semantic import analysis**: Resolve imported declarations during static analysis.
+3. **Interpreter parity**: Match Python interpreter coverage and test behavior across both implementations.

@@ -57,7 +57,7 @@ python python/midshake_cli.py run examples/hello.mish
 
 # Or compile to native binary first (requires g++)
 python python/midshake_cli.py compile examples/hello.mish
-./cpp/output/hello.exe
+./build/output/hello.exe
 ```
 
 ### No C++? No Problem
@@ -82,7 +82,7 @@ The self-hosted compiler (`selfhost/codegen.mish`) is written in MidShake and ca
 python python/midshake_cli.py compile selfhost/codegen.mish
 
 # The compiled binary can compile MidShake programs without Python
-./cpp/output/codegen.exe examples/functions.mish
+./build/output/codegen.exe examples/functions.mish
 ```
 
 ### Self-Compilation Chain
@@ -120,8 +120,8 @@ python python/midshake_cli.py <command> [args]
 
 The self-hosted compiler is written in MidShake and lives in `selfhost/`. It includes:
 
-- `parser.mish` — AST-building parser (941 lines)
-- `codegen.mish` — C++ code generator (819 lines)
+- `parser.mish` — AST-building parser
+- `codegen.mish` — C++ code generator
 - `interpreter.mish` — AST interpreter
 - `lexer.mish` / `tokenizer.mish` — Character-level lexer
 
@@ -129,19 +129,26 @@ To compile the self-hosted compiler:
 
 ```bash
 python python/midshake_cli.py compile selfhost/codegen.mish
-./cpp/output/codegen.exe examples/functions.mish
+./build/output/codegen.exe examples/functions.mish
+
+# Verify the complete native bootstrap chain
+python tools/bootstrap.py
 ```
+
+The bootstrap builds a Python-seeded compiler, recompiles it twice natively,
+compares both generated compiler sources, and runs a recursion/scope smoke test.
+All generated artifacts are isolated under the ignored `build/` directory.
 
 ### Running Tests
 
 ```bash
-# Run all unit and integration tests (161 tests)
+# Run all unit and integration tests (177 total, including skipped cases)
 python tests/run_tests.py
 
 # Run specific test categories
 python tests/test_lexer.py      # 52 lexer unit tests
 python tests/test_parser.py     # 63 parser unit tests
-python tests/test_codegen.py    # 31 codegen unit tests
+python tests/test_codegen.py    # Codegen unit tests
 ```
 
 ## Language Features
@@ -171,7 +178,7 @@ python tests/test_codegen.py    # 31 codegen unit tests
 - [Demo Walkthrough](docs/demo.md) — Self-compilation process demonstration
 - [Examples](examples/) — Example programs
 - [Standard Library](stdlib/stdlib.mish) — Built-in utility functions
-- [Tests](tests/) — 161 unit and integration tests
+- [Tests](tests/) — Unit/integration suite plus skipped cases
 
 ## Project Structure
 
@@ -189,18 +196,18 @@ MidShake/
         codegen.mish           # C++ code generator in MidShake
         interpreter.mish       # AST interpreter in MidShake
         lexer.mish / tokenizer.mish
-    cpp/               # C++ runtime and compiled output
+    cpp/               # Legacy C++ runtime sources
     selfhost/runtime/  # C++ runtime for self-hosted compiler
     stdlib/            # Standard library
         stdlib.mish            # Built-in utility functions
     examples/          # Example MidShake programs
     docs/              # Documentation
-    tests/             # Test suite (161 tests)
+    tests/             # Test suite (167 active + 10 skipped)
         run_tests.py           # Test runner
         test_lexer.py          # Lexer unit tests (52)
         test_parser.py         # Parser unit tests (63)
         test_codegen.py        # Codegen unit tests (31)
-        *.mish                 # Integration test files (15)
+        *.mish                 # Integration test files (16)
     ide/               # IDE syntax highlighting (VS Code, IntelliJ, Vim, Sublime)
     bindings/          # pybind11 bindings
     tools/             # Developer utilities
@@ -224,7 +231,7 @@ Source (.mish)
 
 ## Self-Compilation Status
 
-The self-hosted compiler (`selfhost/codegen.mish`) can compile MidShake programs to C++ without Python:
+The self-hosted compiler (`selfhost/codegen.mish`) can compile MidShake programs to C++ without Python. `python tools/bootstrap.py` verifies that the native compiler reproduces itself:
 
 ```
 Python compiler → compiles codegen.mish → codegen.exe → compiles MidShake programs → C++ → g++ → native binary

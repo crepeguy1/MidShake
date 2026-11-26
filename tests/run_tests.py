@@ -13,21 +13,22 @@ import time
 # Project root
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "cpp", "output")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "build", "output")
 PYTHON_DIR = os.path.join(PROJECT_ROOT, "python")
 RUNTIME_DIR = os.path.join(PROJECT_ROOT, "selfhost", "runtime")
 
 # Add python dir to path
 sys.path.insert(0, PYTHON_DIR)
 
-# Expected outputs for test files (last line of output should match)
+# Expected output fragments for integration tests
 EXPECTED_OUTPUTS = {
     "test_collections.mish": "All tests passed!",
     "test_global_set.mish": "15.000000",
+    "test_bootstrap_scope.mish": "5.000000",
+    "test_function_calls.mish": "Done!",
     "test_if_else.mish": "small",
     "test_recursion.mish": None,  # Just check it compiles and runs
     "test_continue.mish": None,
-    "test_function_calls.mish": None,
     "test_import.mish": None,
     "test_map.mish": None,
     "test_map_global.mish": None,
@@ -191,7 +192,7 @@ def run_tests():
                 failed += 1
                 continue
         
-        print("COMPILED", end="")
+        print("COMPILED |", end=" ")
         
         # Run
         returncode, output = run_test(os.path.splitext(test_file)[0])
@@ -216,17 +217,16 @@ def run_tests():
         
         # Check expected output
         expected = EXPECTED_OUTPUTS.get(test_file)
-        if expected and output.strip():
-            last_line = output.strip().split("\n")[-1]
+        if expected is not None:
             # Handle float formatting (15 vs 15.000000)
-            if expected in last_line or expected.replace(".000000", "") in last_line:
+            if expected in output or expected.replace(".000000", "") in output:
                 print("PASSED")
                 results.append((test_file, "PASSED", ""))
                 passed += 1
             else:
-                print(f"PASSED (output check: expected '{expected}', got '{last_line}')")
-                results.append((test_file, "PASSED", ""))
-                passed += 1
+                print(f"FAILED (expected '{expected}')")
+                results.append((test_file, "OUTPUT MISMATCH", output))
+                failed += 1
         else:
             print("PASSED")
             results.append((test_file, "PASSED", ""))

@@ -283,7 +283,7 @@ Output:
 Semantic analysis passed: no errors found.
 === Symbol Table Summary ===
 ...
-Generated: cpp/output/functions.cpp
+Generated: build/output/functions.cpp
 ```
 
 If errors are found, compilation proceeds with a warning:

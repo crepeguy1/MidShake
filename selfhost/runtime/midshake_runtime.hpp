@@ -9,14 +9,15 @@ namespace ms {
     class Environment {
     public:
         std::unordered_map<std::string, Value> vars;
+        Environment* parent;
 
-        Environment() {
+        Environment() : parent(nullptr) {
             // Initialize RESPONSE to empty string by default
             vars["RESPONSE"] = Value::from_string("");
         }
 
         // Initialize environment with command-line arguments
-        Environment(int argc, char* argv[]) {
+        Environment(int argc, char* argv[]) : parent(nullptr) {
             vars["RESPONSE"] = Value::from_string("");
             // Store command-line arguments in a list accessible from MidShake
             List argList;
@@ -26,16 +27,29 @@ namespace ms {
             vars["ARGV"] = Value::from_list(argList);
         }
 
+        explicit Environment(Environment& enclosing) : parent(&enclosing) {}
+
         void set(const std::string& name, const Value& v) {
             vars[name] = v;
         }
 
+        void set_global(const std::string& name, const Value& v) {
+            Environment* root = this;
+            while (root->parent != nullptr) {
+                root = root->parent;
+            }
+            root->vars[name] = v;
+        }
+
         const Value& get(const std::string& name) const {
             auto it = vars.find(name);
-            if (it == vars.end()) {
-                throw std::runtime_error("Variable not defined: " + name);
+            if (it != vars.end()) {
+                return it->second;
             }
-            return it->second;
+            if (parent != nullptr) {
+                return parent->get(name);
+            }
+            throw std::runtime_error("Variable not defined: " + name);
         }
     };
 
@@ -48,6 +62,37 @@ namespace ms {
     // Standard library
     // -------------------------
     void print(const Value& v);
+    Value cpp_unescape_string(Environment& env, const std::vector<Value>& args);
+    Value cpp_escape_string(Environment& env, const std::vector<Value>& args);
+    Value ms_std_println(Environment& env, const std::vector<Value>& args);
+    Value ms_std_greet(Environment& env, const std::vector<Value>& args);
+    Value ms_std_add_and_print(Environment& env, const std::vector<Value>& args);
+    Value ms_std_repeat(Environment& env, const std::vector<Value>& args);
+    Value ms_std_min(Environment& env, const std::vector<Value>& args);
+    Value ms_std_max(Environment& env, const std::vector<Value>& args);
+    Value ms_std_abs(Environment& env, const std::vector<Value>& args);
+    Value ms_std_round(Environment& env, const std::vector<Value>& args);
+    Value ms_std_toupper(Environment& env, const std::vector<Value>& args);
+    Value ms_std_tolower(Environment& env, const std::vector<Value>& args);
+    Value ms_std_startsWith(Environment& env, const std::vector<Value>& args);
+    Value ms_std_endsWith(Environment& env, const std::vector<Value>& args);
+    Value ms_std_isDigit(Environment& env, const std::vector<Value>& args);
+    Value ms_std_isLetter(Environment& env, const std::vector<Value>& args);
+    Value ms_std_isWhitespace(Environment& env, const std::vector<Value>& args);
+    Value ms_std_readFile(Environment& env, const std::vector<Value>& args);
+    Value ms_std_length(Environment& env, const std::vector<Value>& args);
+    Value ms_std_charAt(Environment& env, const std::vector<Value>& args);
+    Value ms_std_substring(Environment& env, const std::vector<Value>& args);
+    Value ms_std_split(Environment& env, const std::vector<Value>& args);
+    Value ms_std_join(Environment& env, const std::vector<Value>& args);
+    Value ms_std_trim(Environment& env, const std::vector<Value>& args);
+    Value ms_std_replace(Environment& env, const std::vector<Value>& args);
+    Value ms_std_size(Environment& env, const std::vector<Value>& args);
+    Value ms_std_append(Environment& env, const std::vector<Value>& args);
+    Value ms_std_getItem(Environment& env, const std::vector<Value>& args);
+    Value ms_std_mapSet(Environment& env, const std::vector<Value>& args);
+    Value ms_std_mapGet(Environment& env, const std::vector<Value>& args);
+    Value ms_std_indexOf(Environment& env, const std::vector<Value>& args);
 
     Value inquire_number(const std::string& question);
     Value inquire_string(const std::string& question);

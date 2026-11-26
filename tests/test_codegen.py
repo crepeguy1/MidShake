@@ -51,7 +51,9 @@ class CodegenTest:
         self.test_while_compilation()
         self.test_for_in_compilation()
         self.test_function_compilation()
+        self.test_function_scope_and_global_set()
         self.test_call_compilation()
+        self.test_user_function_overrides_standard()
         self.test_return_compilation()
         self.test_break_continue()
         self.test_terminate()
@@ -115,10 +117,31 @@ class CodegenTest:
         self.check("Contains function definition", 'void greet' in cpp or 'Value greet' in cpp)
         self.check("Contains parameter", 'name' in cpp)
 
+    def test_function_scope_and_global_set(self):
+        print("[Function Scope and GLOBAL SET]")
+        code = """LET the variable counter BE the number 0;
+DEFINE function increment WITH the variable amount;
+    GLOBAL SET the variable counter TO the value of counter plus the value of amount;
+END FUNCTION;"""
+        cpp = self.compile(code)
+        self.check("Creates a function-local environment", "Environment env(parent_env);" in cpp)
+        self.check("Writes GLOBAL SET to the root environment", 'env.set_global("counter"' in cpp)
+
     def test_call_compilation(self):
         print("[CALL Compilation]")
         cpp = self.compile('CALL greet WITH the string "Alice";')
         self.check("Contains function call", 'greet(' in cpp)
+        self.check("Stores call result in RESPONSE", 'env.set("RESPONSE", ms_std_greet(env, args));' in cpp)
+
+    def test_user_function_overrides_standard(self):
+        print("[User Function Override]")
+        code = """DEFINE function greet WITH the variable name;
+    RETURN the value of name;
+END FUNCTION;
+CALL greet WITH the string \"Ada\";"""
+        cpp = self.compile(code)
+        self.check("Calls the user-defined function", 'env.set("RESPONSE", greet(env, args));' in cpp)
+        self.check("Does not call the runtime fallback", 'env.set("RESPONSE", ms_std_greet(env, args));' not in cpp)
 
     def test_return_compilation(self):
         print("[RETURN Compilation]")

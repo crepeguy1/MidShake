@@ -73,21 +73,20 @@ Make the self-hosted compiler produce correct, runnable output when compiling it
 - [x] **Map literal keys** — Bare identifiers treated as string literals in map literals
 - [x] **map_get safety** — C++ runtime returns empty string for missing keys instead of throwing
 - [x] **Semantic analyzer import resolution** — Added self-host globals and stdlib functions to builtins
-- [x] **Full self-compilation** — codegen.exe compiling itself hangs (self-hosted parser limitation with 800+ line files)
+- [x] **Native bootstrap verification** — The Python seed builds the self-hosted compiler; two native generations match byte-for-byte and pass a recursion/scope smoke test.
 - [x] **Self-compiling demo** — `minicodegen.mish` (~300 lines) compiles itself end-to-end, generating 51 lines of C++
 - [ ] **Second self-compiling file** — Compile parser.mish using the self-hosted compiler
 
 **What works:**
-- Python compiler generates correct C++ for all 15 test files → compiles with g++ → runs correctly
+- Python compiler generates correct C++ for all 16 integration test files → compiles with g++ → runs correctly
 - Compiled codegen.exe generates correct C++ for functions.mish, conditionals.mish → compiles and runs
 - IF/ELSE branches compile and execute correctly in both directions
 - Map literals, function deduplication, and TERMINATE all work
 - codegen.mish passes semantic analysis with 0 errors
 
-**Known limitations:**
-- Self-hosted parser hangs on 800+ line files due to the deep-copy scope model making it difficult to share mutable state across CALL boundaries in the WHILST parse loop
-- Array index float formatting (`args[0.000000]` instead of `args[0]`)
-- Full self-compilation (codegen.exe compiling itself) requires rewriting the parser to avoid CALL boundaries for shared state
+**Remaining limitations:**
+- Native programs still require the shared C++ runtime and a C++17 compiler.
+- The self-hosted interpreter and semantic analyzer do not yet match every Python implementation feature.
 
 **Estimated effort:** 3–5 days (core items complete)
 
@@ -98,11 +97,11 @@ Make the self-hosted compiler produce correct, runnable output when compiling it
 Create systematic tests for each compiler phase.
 
 - [x] **Test runner** — `tests/run_tests.py` runs unit + integration tests, reports combined results
-- [x] **Integration tests** — 15 test files covering all language constructs, all passing
+- [x] **Integration tests** — 16 test files covering all language constructs, all passing
 - [x] **Semantic analysis tests** — `test_semantic_errors.mish` validates error detection
 - [x] **Lexer unit tests** — `tests/test_lexer.py` (52 tests covering all token types)
 - [x] **Parser unit tests** — `tests/test_parser.py` (63 tests covering all AST node types)
-- [x] **Code generation unit tests** — `tests/test_codegen.py` (31 tests verifying C++ output)
+- [x] **Code generation unit tests** — `tests/test_codegen.py` (36 tests verifying C++ output)
 - [x] **Edge case tests** — Empty input, nested structures, multi-statement programs
 
 **Test results:**
@@ -110,10 +109,10 @@ Create systematic tests for each compiler phase.
 |----------|-------|--------|
 | Lexer unit tests | 52 | ✓ All pass |
 | Parser unit tests | 63 | ✓ All pass |
-| Codegen unit tests | 31 | ✓ All pass |
-| Integration tests | 15 | ✓ All pass |
+| Codegen unit tests | 36 | ✓ All pass |
+| Integration tests | 16 | ✓ All pass |
 | Semantic error detection | 5 errors | ✓ Detected |
-| **Total** | **166** | **✓ 161 pass, 0 fail, 10 skipped** |
+| **Total** | **177** | **✓ 167 pass, 0 fail, 10 skipped** |
 
 **Estimated effort:** 2–3 days (completed)
 
@@ -123,10 +122,10 @@ Create systematic tests for each compiler phase.
 
 Final documentation for presentation and evaluation.
 
-- [x] **Design document** — `docs/design.md` explains architecture, deep-copy scope model, self-compilation strategy, and known limitations
+- [x] **Design document** — `docs/design.md` explains architecture, lexical environment frames, self-compilation strategy, and known limitations
 - [x] **Build/run instructions** — README updated with source build instructions, CLI command table, project structure, and compiler pipeline
 - [x] **Demo presentation** — `docs/demo.md` shows the self-compilation process with command output evidence
-- [x] **Test coverage report** — Roadmap includes test results table; 161 tests passing
+- [x] **Test coverage report** — Roadmap includes test results table; 167 active tests passing, 10 skipped
 
 **Estimated effort:** 1–2 days (complete)
 
@@ -137,12 +136,12 @@ Final documentation for presentation and evaluation.
 | Component | Python | Self-Hosted (`.mish`) | Notes |
 |-----------|--------|----------------------|-------|
 | Lexer/Tokenizer | ✓ | ✓ | `selfhost/lexer.mish`, `selfhost/tokenizer.mish` |
-| Parser (AST) | ✓ | ✓ | `selfhost/parser.mish` (941 lines, IF/ELSE body collection) |
+| Parser (AST) | ✓ | ✓ | `selfhost/parser.mish` (IF/ELSE body collection) |
 | Semantic Analysis | ✓ | ✓ | `python/midshake_semantic.py` (721 lines) + `selfhost/semantic.mish` (277 lines) |
 | Interpreter | ✓ | ~ | `selfhost/interpreter.mish` (partial) |
-| C++ Code Generator | ✓ | ~ | `selfhost/codegen.mish` (823 lines, functions, IF/ELSE, binary expressions) |
-| Self-Compilation | — | ~ | Python compiler → codegen.exe → compiles programs up to ~20 lines; full self-compilation blocked by parser limitation |
-| Test Suite | ✓ | — | `tests/run_tests.py` (146 unit + 15 integration tests, all passing) |
+| C++ Code Generator | ✓ | ✓ | `selfhost/codegen.mish` (native bootstrap verified) |
+| Self-Compilation | — | ✓ | Python seed → stage 1 → stage 2, identical generated sources |
+| Test Suite | ✓ | — | `tests/run_tests.py` (151 unit + 16 integration tests; 10 skipped) |
 
 ---
 
@@ -185,8 +184,6 @@ Final documentation for presentation and evaluation.
 
 The following items remain for future development:
 
-1. **Full self-compilation** — Rewrite the self-hosted parser to avoid CALL boundaries for shared state, enabling codegen.exe to compile itself
-2. **Self-hosted compiler test** — Compile parser.mish using the self-hosted compiler
-3. **Array index formatting** — Fix float formatting in C++ code generation (`args[0.000000]` → `args[0]`)
-4. **Import resolution** — Follow IMPORT statements in the semantic analyzer to analyze imported files
-5. **Self-hosted codegen improvements** — Add more expression types and statement handling to the self-hosted code generator
+1. **Shared runtime independence** — Replace external C++ runtime dependencies with runtime implementations in MidShake.
+2. **Semantic import analysis** — Resolve imported declarations during semantic analysis.
+3. **Interpreter parity** — Expand self-hosted interpreter coverage and test it against the Python implementation.

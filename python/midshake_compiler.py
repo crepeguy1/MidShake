@@ -14,6 +14,13 @@ from midshake_ast import (
     Boolean, MapSet, Break, Continue, ForIn, GlobalSet, Secret, Public
 )
 
+STDLIB_RUNTIME_FUNCTIONS = {
+    "println", "greet", "add_and_print", "repeat", "min", "max", "abs", "round",
+    "toupper", "tolower", "startsWith", "endsWith", "isDigit", "isLetter",
+    "isWhitespace", "readFile", "length", "charAt", "substring", "split", "join",
+    "trim", "replace", "size", "append", "getItem", "mapSet", "mapGet", "indexOf",
+}
+
 
 class CppCompiler:
     def __init__(self):
@@ -48,6 +55,7 @@ class CppCompiler:
                 seen_names.add(func.name)
                 unique_funcs.append(func)
         unique_funcs.reverse()
+        self._defined_function_names = {func.name for func in unique_funcs}
 
         # emit function definitions
         for func in unique_funcs:
@@ -95,6 +103,13 @@ class CppCompiler:
                     stmts.append(stmt)
         return stmts
 
+    def _resolve_call_name(self, name):
+        if name in self._defined_function_names:
+            return name
+        if name in STDLIB_RUNTIME_FUNCTIONS:
+            return f"ms_std_{name}"
+        return name
+
     def _import_program(self, stmt: Import):
         """Load and parse an imported file, returning its FunctionDef nodes."""
         import os
@@ -102,6 +117,9 @@ class CppCompiler:
         from midshake_parser import Parser
 
         path = str(stmt.path).strip().strip('"').strip("'")
+        normalized_path = path.replace("\\", "/")
+        if normalized_path == "stdlib/stdlib.mish" or os.path.basename(normalized_path) == "stdlib.mish":
+            return []
         candidates = [
             os.path.abspath(path),
             os.path.join(os.getcwd(), path),
@@ -146,6 +164,9 @@ class CppCompiler:
         from midshake_parser import Parser
 
         path = str(stmt.path).strip().strip('"').strip("'")
+        normalized_path = path.replace("\\", "/")
+        if normalized_path == "stdlib/stdlib.mish" or os.path.basename(normalized_path) == "stdlib.mish":
+            return []
         candidates = [
             os.path.abspath(path),
             os.path.join(os.getcwd(), path),
@@ -250,7 +271,8 @@ class CppCompiler:
             self.emit("std::vector<Value> args;")
             for arg in stmt.args:
                 self.emit(f"args.push_back({self.compile_expr(arg)});")
-            self.emit(f'env.set("RESPONSE", {stmt.name}(env, args));')
+            call_name = self._resolve_call_name(stmt.name)
+            self.emit(f'env.set("RESPONSE", {call_name}(env, args));')
             self.indent -= 1
             self.emit("}")
 
@@ -296,7 +318,7 @@ class CppCompiler:
         # GLOBAL SET: modify a global variable from within a function
         elif isinstance(stmt, GlobalSet):
             value = self.compile_expr(stmt.value)
-            self.emit(f'env.set("{stmt.name}", {value});')
+            self.emit(f'env.set_global("{stmt.name}", {value});')
 
         # FILE WRITE
         elif isinstance(stmt, (FileWriteNode, FileWriteStatement)):
@@ -533,10 +555,11 @@ class CppCompiler:
     def compile_function_def(self, func: FunctionDef):
         self._param_names = set(func.param_names)
         self.emit(
-            f"Value {func.name}(Environment& env, "
+            f"Value {func.name}(Environment& parent_env, "
             f"const std::vector<Value>& args) {{"
         )
         self.indent += 1
+        self.emit("Environment env(parent_env);")
 
         # bind parameters
         for i, name in enumerate(func.param_names):

@@ -29,6 +29,7 @@ venv/
 .idea/
 *.swp
 *.swo
+*.bat
 
 # OS junk
 .DS_Store

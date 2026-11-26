@@ -33,7 +33,7 @@ PROCLAIM the string "Hello from MidShake!";
 
 ```bash
 python python/midshake_cli.py compile examples/hello.mish
-./cpp/output/hello.exe
+./build/output/hello.exe
 ```
 
 **Expected output:**
@@ -65,7 +65,7 @@ CALL greet WITH the string "adam";
 
 ```bash
 python python/midshake_cli.py compile examples/functions.mish
-./cpp/output/functions.exe
+./build/output/functions.exe
 ```
 
 **Expected output:**
@@ -124,21 +124,19 @@ The self-hosted compiler (`selfhost/codegen.mish`) is written entirely in MidSha
 python python/midshake_cli.py compile selfhost/codegen.mish
 ```
 
-**This produces:** `cpp/output/codegen.exe` — a standalone MidShake compiler binary.
+**This produces:** `build/output/codegen.exe` — a standalone MidShake compiler binary.
 
 **Compile a program using the self-hosted compiler:**
 
 ```bash
-./cpp/output/codegen.exe examples/functions.mish
+./build/output/codegen.exe examples/functions.mish
 ```
 
 **Expected output:**
 ```
-Parsing examples/functions.mish...
-Lines read: 5
-AST nodes: 2
-Generating C++ code...
-C++ code written to output/generated.cpp
+Compiling:
+examples/functions.mish
+Generated C++ code written to build/output/generated.cpp
 Compilation complete!
 ```
 
@@ -146,35 +144,21 @@ Compilation complete!
 1. `codegen.exe` reads the source file
 2. The self-hosted parser (`parser.mish`) builds an AST
 3. The self-hosted code generator (`codegen.mish`) converts AST nodes to C++
-4. The C++ is written to `output/generated.cpp`
-5. g++ compiles the generated C++ to a native binary
+4. The C++ is written to `build/output/generated.cpp`
 
-## Step 5: Self-Compilation Evidence
+## Step 5: Native Bootstrap Verification
 
-The self-hosted compiler can parse itself:
+Run the bootstrap verifier to build the Python seed, compile two native generations, compare their generated C++ source, and run a recursion/local-scope/global-update smoke program:
 
 ```bash
-./cpp/output/codegen.exe selfhost/codegen.mish
+python tools/bootstrap.py
 ```
 
-**Expected output:**
-```
-Parsing selfhost/codegen.mish...
-Lines read: 717
-AST nodes: 76
-Generating C++ code...
-C++ code written to output/generated.cpp
-Compilation complete!
-```
-
-**Key metrics:**
-- The self-hosted parser correctly parses 717 lines of MidShake code
-- 76 AST nodes are built, covering all statement types
-- The generated C++ is 277+ lines of valid code
+The verifier stores binaries and intermediate generated source under `build/bootstrap/`.
 
 ## Step 6: Test Suite
 
-MidShake includes 161 passing tests:
+MidShake currently has 177 test cases: 151 unit tests, 16 integration programs, and 10 skipped cases.
 
 ```bash
 python tests/run_tests.py
@@ -183,14 +167,15 @@ python tests/run_tests.py
 **Expected output:**
 ```
 === Running Unit Tests ===
-  Unit tests: 146 passed, 0 failed
+  Unit tests: 151 passed, 0 failed
 
 === MidShake Test Suite ===
-Found 15 test files
+Found 16 test files
 
-Testing: test_collections.mish... PASSED
-Testing: test_continue.mish... PASSED
-Testing: test_function_calls.mish... PASSED
+Testing: test_bootstrap_scope.mish... COMPILED | PASSED
+Testing: test_collections.mish... COMPILED | PASSED
+Testing: test_continue.mish... COMPILED | PASSED
+Testing: test_function_calls.mish... COMPILED | PASSED
 Testing: test_global_set.mish... PASSED
 Testing: test_if_else.mish... PASSED
 Testing: test_import.mish... PASSED
@@ -205,9 +190,9 @@ Testing: test_startswith.mish... PASSED
 Testing: test_while_simple.mish... PASSED
 
 === Results ===
-Unit tests: 146 passed, 0 failed
-Integration tests: 15 passed, 0 failed
-Total: 171 (161 ok, 0 failed, 10 skipped)
+Unit tests: 151 passed, 0 failed
+Integration tests: 16 passed, 0 failed
+Total: 177 (167 ok, 0 failed, 10 skipped)
 ```
 
 **Test breakdown:**
@@ -215,8 +200,8 @@ Total: 171 (161 ok, 0 failed, 10 skipped)
 |----------|-------|----------|
 | Lexer unit tests | 52 | All token types |
 | Parser unit tests | 63 | All AST node types |
-| Codegen unit tests | 31 | C++ output correctness |
-| Integration tests | 15 | End-to-end compilation |
+| Codegen unit tests | 36 | C++ output correctness |
+| Integration tests | 16 | End-to-end compilation |
 | Semantic error detection | 5 | Error categories |
 
 ## Architecture
@@ -237,26 +222,20 @@ Source (.mish)
 [5] Native Compilation (g++) → Executable
 ```
 
-### Deep-Copy Scope Model
+### Lexical Environment Frames
 
-MidShake uses a deep-copy scope model for function calls:
-- Each `CALL` creates a deep copy of the current variable scope
-- Changes inside the called function are isolated
-- `GLOBAL SET` persists changes across call boundaries
-- Return values are passed through the `RESPONSE` variable
-
-This model simplifies reasoning about variable scope but requires careful use of `GLOBAL SET` for shared state in the self-hosted compiler.
+The compiled native backend gives each function a local environment frame whose parent is the caller's environment. Local assignments stay in the current frame, lookups fall back through parent frames, and `GLOBAL SET` writes to the root frame. The Python interpreter snapshots and restores its call environment instead; both implementations preserve the same observable local, recursive, and global behavior.
 
 ## Compiler Components
 
-| Component | Python | Self-Hosted | Lines |
-|-----------|--------|-------------|-------|
-| Lexer/Tokenizer | `midshake_tokenizer.py` | `lexer.mish`, `tokenizer.mish` | 1290 / ~400 |
-| Parser (AST) | `midshake_parser.py` | `parser.mish` | 800 / 941 |
-| Semantic Analysis | `midshake_semantic.py` | — | 697 |
-| Interpreter | `midshake_runtime.py` | `interpreter.mish` | 1500 / ~600 |
-| C++ Code Generator | `midshake_compiler.py` | `codegen.mish` | 1200 / 819 |
-| CLI | `midshake_cli.py` | — | 400 |
+| Component | Python | Self-Hosted |
+|-----------|--------|-------------|
+| Lexer/Tokenizer | `midshake_tokenizer.py` | `lexer.mish`, `tokenizer.mish` |
+| Parser (AST) | `midshake_parser.py` | `parser.mish` |
+| Semantic Analysis | `midshake_semantic.py` | `semantic.mish` (partial) |
+| Interpreter | `midshake_runtime.py` | `interpreter.mish` (partial) |
+| C++ Code Generator | `midshake_compiler.py` | `codegen.mish` |
+| CLI | `midshake_cli.py` | — |
 
 ## Language Features
 
@@ -271,70 +250,11 @@ The compiler supports all of the following language constructs:
 - **Modules**: `IMPORT`
 - **Collections**: List and map literals with get/set/append/size operations
 
-## Step 7: Self-Compiling Demo
+## Step 7: Self-Compilation Status
 
-To prove the self-compilation concept works, MidShake includes a minimal self-hosted compiler that can compile itself.
+`python tools/bootstrap.py` verifies the complete native bootstrap: the Python compiler builds stage 0, stage 0 builds stage 1, stage 1 rebuilds stage 2, and both native generations produce identical C++ source. The verifier then compiles and runs a recursive scope/global-update program using stage 2.
 
-**The self-compiling demo:** `selfhost/minicodegen.mish`
-
-This is a minimal MidShake compiler (~100 lines) designed to be small enough to compile itself:
-
-```bash
-^ Step 1: Compile minicodegen.mish using the Python compiler
-python python/midshake_cli.py compile selfhost/minicodegen.mish
-
-^ Step 2: Run the compiled binary on itself
-./cpp/output/minicodegen.exe selfhost/minicodegen.mish
-
-^ Step 3: Compile the generated C++
-g++ output/generated.cpp selfhost/runtime/midshake_runtime.cpp -o output/minicodegen2.exe
-
-^ Step 4: Run the self-compiled output
-./output/minicodegen2.exe
-```
-
-**Expected output:**
-```
-Compilation complete! Generated 51 lines of C++.
-```
-
-**What this proves:**
-The compiled `minicodegen.exe` binary (produced by the Python compiler) successfully reads its own source code, parses it, and generates C++ output. This demonstrates the complete bootstrap chain:
-
-```
-Python compiler → minicodegen.mish → minicodegen.exe
-minicodegen.exe → reads minicodegen.mish → generates C++ → 51 lines of valid structure
-```
-
-**Why a minimal compiler?**
-The full `codegen.mish` (800+ lines) cannot yet compile itself due to the self-hosted parser's performance limitation with large files. The minimal compiler demonstrates the same bootstrap chain on a smaller scale, proving the concept works.
-
-## Self-Compilation Status
-
-### What Works ✅
-
-| Step | Description | Status |
-|------|-------------|--------|
-| Python → codegen.exe | Python compiler compiles the self-hosted codegen | ✅ Works |
-| codegen.exe → small programs | Self-hosted compiler compiles functions.mish, conditionals.mish | ✅ Works |
-| codegen.exe → itself (parse) | Self-hosted parser parses 717 lines, builds 76 AST nodes | ✅ Works |
-| codegen.exe → itself (codegen) | Generates 277+ lines of C++ from itself | ✅ Works |
-| minicodegen.exe → itself | Minimal compiler compiles itself end-to-end | ✅ Works |
-| All 171 tests | Unit + integration tests pass | ✅ Works |
-
-### Known Limitations ⚠️
-
-| Limitation | Cause | Impact |
-|------------|-------|--------|
-| Full self-compilation hangs | Self-hosted parser is slow on 800+ line files | codegen.exe cannot produce runnable output from itself yet |
-| Array index float formatting | C++ `Value` stores indices as doubles | `args[0.000000]` instead of `args[0]` (cosmetic) |
-| Import resolution in semantic analyzer | IMPORT statements not followed | False "undefined function" errors for imported functions |
-
-### Why Full Self-Compilation Is Slow
-
-The self-hosted parser uses `WHILST` loops with `CALL` statements for each line. For 800+ lines, this creates ~12,000 CALLs during parsing. Each CALL in the deep-copy scope model involves function call overhead and map operations. The parser correctly builds the AST but takes too long to complete within a reasonable time frame.
-
-The minimal compiler (`minicodegen.mish`) avoids this by being small enough (~100 lines) that the self-hosted parser can handle it in seconds.
+The generated native compiler still links against `selfhost/runtime/` and requires a C++17 compiler to turn generated C++ into an executable. The Python interpreter and semantic analyzer also remain more complete than their self-hosted counterparts.
 
 ## Conclusion
 
@@ -345,9 +265,9 @@ MidShake demonstrates a working self-hosting compiler pipeline:
 3. ✅ Parser with AST construction (Python + self-hosted)
 4. ✅ Semantic analysis with type inference (Python)
 5. ✅ C++ code generation (Python + self-hosted)
-6. ✅ Self-compilation demo: minicodegen compiles itself end-to-end
-7. ✅ Test suite: 171 passing tests (146 unit + 15 integration + 10 skipped)
+6. ✅ Native compiler bootstrap: two generations match byte-for-byte
+7. ✅ Test suite: 177 total (167 passing, 10 skipped)
 8. ✅ Standard library with utility functions
 9. ✅ Documentation: grammar, types, language reference, design
 
-The self-hosted compiler can compile MidShake programs to native C++ without Python, demonstrating the language's ability to bootstrap itself. The minimal self-compiling demo proves the concept works end-to-end.
+The self-hosted compiler can regenerate itself and compile MidShake programs to C++ without Python. A shared C++ runtime and C++17 toolchain are still required for native executables.
