@@ -1,0 +1,7 @@
+IMPORT the file "selfhost/fixtures/private_module.mish";
+
+CALL readSecret;
+PROCLAIM the RESPONSE;
+PROCLAIM the value of publicValue;
+SET the variable publicValue TO the number 8;
+PROCLAIM the value of publicValue;

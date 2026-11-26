@@ -73,15 +73,16 @@ Make the self-hosted compiler produce correct, runnable output when compiling it
 - [x] **Map literal keys** — Bare identifiers treated as string literals in map literals
 - [x] **map_get safety** — C++ runtime returns empty string for missing keys instead of throwing
 - [x] **Semantic analyzer import resolution** — Added self-host globals and stdlib functions to builtins
-- [x] **Native bootstrap verification** — The Python seed builds the self-hosted compiler; two native generations match byte-for-byte and pass a recursion/scope smoke test.
+- [x] **Native bootstrap verification** — The Python seed builds the self-hosted compiler; two native generations match byte-for-byte and pass recursion/scope, class-construction, module-privacy, and exception regressions.
 - [x] **Self-compiling demo** — `minicodegen.mish` (~300 lines) compiles itself end-to-end, generating 51 lines of C++
-- [ ] **Second self-compiling file** — Compile parser.mish using the self-hosted compiler
+- [x] **Native parser compilation** — Stage 1 and stage 2 compile `selfhost/parser.mish` to identical C++ that builds and runs natively.
 
 **What works:**
-- Python compiler generates correct C++ for all 16 integration test files → compiles with g++ → runs correctly
+- Python compiler generates correct C++ for all 22 integration test files → compiles with g++ → runs correctly
 - Compiled codegen.exe generates correct C++ for functions.mish, conditionals.mish → compiles and runs
 - IF/ELSE branches compile and execute correctly in both directions
 - Map literals, function deduplication, and TERMINATE all work
+- `TRY`/`CATCH` and `THROW` preserve thrown values through nested handlers and function calls
 - codegen.mish passes semantic analysis with 0 errors
 
 **Remaining limitations:**
@@ -97,11 +98,12 @@ Make the self-hosted compiler produce correct, runnable output when compiling it
 Create systematic tests for each compiler phase.
 
 - [x] **Test runner** — `tests/run_tests.py` runs unit + integration tests, reports combined results
-- [x] **Integration tests** — 16 test files covering all language constructs, all passing
+- [x] **Integration tests** — 22 test files covering all language constructs, all passing
 - [x] **Semantic analysis tests** — `test_semantic_errors.mish` validates error detection
 - [x] **Lexer unit tests** — `tests/test_lexer.py` (52 tests covering all token types)
 - [x] **Parser unit tests** — `tests/test_parser.py` (63 tests covering all AST node types)
 - [x] **Code generation unit tests** — `tests/test_codegen.py` (36 tests verifying C++ output)
+- [x] **Visibility and exception unit tests** — 23 checks for access enforcement, exception parsing, and runtime behavior
 - [x] **Edge case tests** — Empty input, nested structures, multi-statement programs
 
 **Test results:**
@@ -110,9 +112,9 @@ Create systematic tests for each compiler phase.
 | Lexer unit tests | 52 | ✓ All pass |
 | Parser unit tests | 63 | ✓ All pass |
 | Codegen unit tests | 36 | ✓ All pass |
-| Integration tests | 16 | ✓ All pass |
-| Semantic error detection | 5 errors | ✓ Detected |
-| **Total** | **177** | **✓ 167 pass, 0 fail, 10 skipped** |
+| Visibility and exception unit tests | 23 | ✓ All pass |
+| Integration tests | 22 | ✓ All pass |
+| **Total** | **206** | **✓ 196 pass, 0 fail, 10 skipped** |
 
 **Estimated effort:** 2–3 days (completed)
 
@@ -125,7 +127,7 @@ Final documentation for presentation and evaluation.
 - [x] **Design document** — `docs/design.md` explains architecture, lexical environment frames, self-compilation strategy, and known limitations
 - [x] **Build/run instructions** — README updated with source build instructions, CLI command table, project structure, and compiler pipeline
 - [x] **Demo presentation** — `docs/demo.md` shows the self-compilation process with command output evidence
-- [x] **Test coverage report** — Roadmap includes test results table; 167 active tests passing, 10 skipped
+- [x] **Test coverage report** — Roadmap includes test results table; 196 active tests passing, 10 skipped
 
 **Estimated effort:** 1–2 days (complete)
 
@@ -141,7 +143,7 @@ Final documentation for presentation and evaluation.
 | Interpreter | ✓ | ~ | `selfhost/interpreter.mish` (partial) |
 | C++ Code Generator | ✓ | ✓ | `selfhost/codegen.mish` (native bootstrap verified) |
 | Self-Compilation | — | ✓ | Python seed → stage 1 → stage 2, identical generated sources |
-| Test Suite | ✓ | — | `tests/run_tests.py` (151 unit + 16 integration tests; 10 skipped) |
+| Test Suite | ✓ | — | `tests/run_tests.py` (174 unit + 22 integration tests; 10 skipped) |
 
 ---
 
@@ -156,6 +158,7 @@ Final documentation for presentation and evaluation.
 | While loops (WHILST/DO/END WHILST) | ✓ |
 | For-in loops (FOR/IN/DO/END FOR) | ✓ |
 | Loop control (BREAK, CONTINUE) | ✓ |
+| Exceptions (TRY/CATCH/THROW) | ✓ |
 | Functions (DEFINE/CALL/RETURN) | ✓ |
 | String operations (length, substring, split, join, etc.) | ✓ |
 | String checks (startsWith, isDigit, etc.) | ✓ |

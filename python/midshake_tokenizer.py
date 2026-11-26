@@ -51,6 +51,8 @@ class Tokenizer:
         i = 0
 
         standalone = {
+            "TRY",
+            "END TRY",
             "ELSE",
             "END IF",
             "END WHILST",
@@ -147,7 +149,7 @@ class Tokenizer:
                         "Public", "Private", "Protected",
                         "PROCLAIM", "LET the variable", "SET the variable", "GLOBAL SET the variable",
                         "CALL", "IF the value of", "WHILST the value of",
-                        "INQUIRE", "RETURN", "DEFINE function",
+                        "INQUIRE", "RETURN", "THROW", "CATCH the variable", "DEFINE function",
                         "the string", "the number", "IMPORT"
                     ]
 
@@ -283,6 +285,32 @@ class Tokenizer:
         # END WHILST
         if line.startswith("END WHILST"):
             return Token("END_WHILST", None, line_no)
+
+        # TRY / CATCH / END TRY
+        if line == "TRY":
+            return Token("TRY", None, line_no)
+
+        if line.startswith("CATCH the variable"):
+            name = line[len("CATCH the variable"):].strip().rstrip(";").strip()
+            if not name or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+                raise ValueError(
+                    f"MidShake Syntax Error (line {line_no}):\n"
+                    f"  CATCH must declare a variable name."
+                )
+            return Token("CATCH", name, line_no)
+
+        if line.startswith("END TRY"):
+            return Token("END_TRY", None, line_no)
+
+        if line.startswith("THROW"):
+            value_text = self.extract_after(line, "THROW", line_no).strip()
+            if not value_text:
+                raise ValueError(
+                    f"MidShake Syntax Error (line {line_no}):\n"
+                    f"  THROW requires a value."
+                )
+            expr = self.parse_expression(value_text, line_no)
+            return Token("THROW", expr, line_no)
 
         # RETURN
         if line.startswith("RETURN"):

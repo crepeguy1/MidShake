@@ -35,11 +35,11 @@ MidShake is a self-hosting programming language with a complete compilation pipe
 - **Map literal keys** — Bare identifiers treated as string literals in map literals
 
 ### Test Suite (Phase 4)
-- **167 active tests passing** — 151 unit tests + 16 integration tests, 10 skipped
+- **187 active tests passing** — 167 unit tests + 20 integration tests, 10 skipped
 - **Lexer tests** — 52 tests covering all token types
 - **Parser tests** — 63 tests covering all AST node types
 - **Codegen tests** — 36 tests verifying C++ output correctness
-- **Integration tests** — 16 `.mish` files covering all language constructs
+- **Integration tests** — 20 `.mish` files covering all language constructs
 - **Semantic error tests** — 5 intentional errors correctly detected
 
 ### Documentation (Phase 5)
@@ -85,7 +85,7 @@ MidShake is a self-hosting programming language with a complete compilation pipe
 | Semantic Analysis | ✓ | ✓ (277 lines) |
 | Interpreter | ✓ | ~ (partial) |
 | C++ Code Generator | ✓ | ✓ (native bootstrap verified) |
-| Test Suite | ✓ (177 total; 10 skipped) | — |
+| Test Suite | ✓ (197 total; 10 skipped) | — |
 
 ---
 
@@ -199,7 +199,7 @@ MidShake/
 ├── stdlib/
 │   └── stdlib.mish      # Standard library
 ├── examples/            # Example programs
-├── tests/               # Test suite (177 total; 10 skipped)
+├── tests/               # Test suite (197 total; 10 skipped)
 ├── docs/                # Documentation
 ├── ide/                 # IDE syntax highlighting
 └── cpp/                 # C++ output directory
@@ -235,7 +235,7 @@ Integration Tests:
 Semantic Analysis:
   ✓ 5/5 errors correctly detected
 
-Total: 167 passed, 0 failed, 10 skipped (177 total)
+Total: 187 passed, 0 failed, 10 skipped (197 total)
 ```
 
 ---

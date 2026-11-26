@@ -1,0 +1,3 @@
+IMPORT the file "selfhost/fixtures/private_module.mish";
+
+CALL getSecretValue;

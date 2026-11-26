@@ -6,7 +6,7 @@
 IMPORT the file "stdlib/stdlib.mish";
 
 ^ The list of all MidShake keywords
-LET the variable keywords BE ["LET", "SET", "PROCLAIM", "IF", "THEN", "ELSE", "WHILST", "DO", "END", "FUNCTION", "DEFINE", "CALL", "WITH", "RETURN", "IMPORT", "INQUIRE", "TERMINATE", "IN", "THE", "VALUE", "OF", "STRING", "NUMBER", "LIST", "MAP", "ITEM", "AT", "POSITION", "BE", "TO", "IS", "PLUS", "MINUS", "TIMES", "MULTIPLIED", "DIVIDED", "GREATER", "LESS", "THAN", "EQUAL", "NOT", "AND", "OR", "LENGTH", "SUBSTRING", "CHARACTER", "SPLIT", "JOIN", "TRIMMED", "APPEND", "SIZE", "CONTENT", "FILE", "WRITE", "READ", "RESPONSE", "STARTING", "ENDING", "BY", "STARTS", "ENDS", "DIGIT", "LETTER", "WHITESPACE", "UPPERCASE", "LOWERCASE", "CHECK", "MINIMUM", "MAXIMUM", "ABSOLUTE", "ROUNDED"];
+LET the variable keywords BE ["LET", "SET", "PROCLAIM", "IF", "THEN", "ELSE", "WHILST", "DO", "TRY", "CATCH", "THROW", "END", "FUNCTION", "DEFINE", "CALL", "WITH", "RETURN", "IMPORT", "INQUIRE", "TERMINATE", "IN", "THE", "VALUE", "OF", "STRING", "NUMBER", "LIST", "MAP", "ITEM", "AT", "POSITION", "BE", "TO", "IS", "PLUS", "MINUS", "TIMES", "MULTIPLIED", "DIVIDED", "GREATER", "LESS", "THAN", "EQUAL", "NOT", "AND", "OR", "LENGTH", "SUBSTRING", "CHARACTER", "SPLIT", "JOIN", "TRIMMED", "APPEND", "SIZE", "CONTENT", "FILE", "WRITE", "READ", "RESPONSE", "STARTING", "ENDING", "BY", "STARTS", "ENDS", "DIGIT", "LETTER", "WHITESPACE", "UPPERCASE", "LOWERCASE", "CHECK", "MINIMUM", "MAXIMUM", "ABSOLUTE", "ROUNDED"];
 
 ^ Check if a word is a keyword (exact match)
 DEFINE function isKeyword WITH the variable word;

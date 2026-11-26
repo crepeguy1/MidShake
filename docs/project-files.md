@@ -49,6 +49,7 @@ The main Python toolchain in `python/` tokenizes `.mish` source, parses it into 
 | `selfhost/semantic.mish` | Self-hosted semantic-analysis implementation, including symbol/type tracking and checks. |
 | `selfhost/interpreter.mish` | Self-hosted AST interpreter for executing parsed MidShake programs. |
 | `selfhost/codegen.mish` | Main self-hosted C++ code generator. It parses source through the self-hosted parser and emits C++ that links to `selfhost/runtime/`. |
+| `selfhost/fixtures/*.mish` | Imported-module visibility regressions for public access and denied private reads, writes, function calls, and class construction. |
 | `selfhost/minicodegen.mish` | Smaller compiler demonstration used to exercise the self-compilation idea independently of the full code generator. |
 | `selfhost/compiler/midshake_compiler.py` | Earlier/reference Python C++ generator retained alongside the MidShake implementation; it is separate from the current `python/midshake_compiler.py` CLI path. |
 | `selfhost/tools/midshake_highlight.py` | Earlier syntax-highlighting implementation and vocabulary lists associated with the self-hosted tooling. |
@@ -83,7 +84,7 @@ The main Python toolchain in `python/` tokenizes `.mish` source, parses it into 
 
 | File | Purpose |
 | --- | --- |
-| `tools/bootstrap.py` | Builds the Python-seeded compiler, compiles and runs native self-hosted compiler generations, compares their generated C++, and runs a recursion/scope smoke test. Outputs are placed under `build/`. |
+| `tools/bootstrap.py` | Builds the Python-seeded compiler, compiles and runs native self-hosted compiler generations, compares their generated C++, and verifies scope, classes, base constructors, and module visibility. Outputs are placed under `build/`. |
 | `tools/inspect_tokens.py` | Prints the tokens produced from a selected `.mish` file; useful when diagnosing tokenization. |
 | `tools/midshake_highlight.py` | Applies ANSI terminal colors to MidShake source for quick command-line inspection. |
 
@@ -133,12 +134,15 @@ These `.mish` files are runnable examples rather than compiler implementation fi
 | `tests/test_codegen.py` | Unit tests for Python-to-C++ generation. |
 | `tests/test_file_write.py` | Python unit test for parsing and executing file-write statements. |
 | `tests/test_bootstrap_scope.mish` | Smoke program covering recursive calls, local scope, and global updates in the native bootstrap. |
+| `tests/test_class_encapsulation.mish` | Integration coverage for public, private, and protected class-member access. |
+| `tests/test_class_module.mish` | Integration coverage for defining and using a class from an imported module. |
 | `tests/test_collections.mish` | Integration coverage for list/map and collection behavior. |
 | `tests/test_continue.mish` | Integration input for `CONTINUE` loop behavior. |
 | `tests/test_function_calls.mish` | Integration coverage for user-defined function calls. |
 | `tests/test_global_set.mish` | Integration coverage for updating global variables from functions. |
 | `tests/test_if_else.mish` | Integration coverage for conditional and `ELSE` branches. |
 | `tests/test_import.mish` | Integration input for importing MidShake files. |
+| `tests/test_imported_class.mish` | Integration input for importing a class and invoking its members. |
 | `tests/test_map.mish` | Integration input for basic map operations. |
 | `tests/test_map_global.mish` | Integration input for map operations involving global state. |
 | `tests/test_map_nested.mish` | Integration input for nested maps/collection values. |
@@ -146,6 +150,7 @@ These `.mish` files are runnable examples rather than compiler implementation fi
 | `tests/test_params.mish` | Integration input for function parameters. |
 | `tests/test_recursion.mish` | Integration input for recursive function calls. |
 | `tests/test_simple_call.mish` | Minimal function-call integration case. |
+| `tests/test_selfhost_classes.mish` | Self-hosted compiler regression for inheritance, constructor forwarding, and member visibility. |
 | `tests/test_startswith.mish` | Integration input for the string `startsWith` operation. |
 | `tests/test_while_simple.mish` | Integration input for a basic `WHILST` loop. |
 | `tests/test_semantic_errors.mish` | Intentionally invalid source used to exercise semantic diagnostics; the main integration runner skips it. |

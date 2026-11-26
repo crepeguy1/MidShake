@@ -30,7 +30,7 @@ from midshake_ast import (
     FileReadExpression, Public, Private, Protected,
     # Statements
     Statement, Let, Set, GlobalSet, Proclaim, Inquire,
-    If, While, ForIn, Break, Continue, Terminate,
+    If, While, TryCatch, Throw, ForIn, Break, Continue, Terminate,
     FunctionDef, Call, Return,
     MapSet, FileWriteStatement, Import,
     # Program structure
@@ -236,6 +236,10 @@ class SemanticAnalyzer:
             self._analyze_if(stmt)
         elif isinstance(stmt, While):
             self._analyze_while(stmt)
+        elif isinstance(stmt, TryCatch):
+            self._analyze_try_catch(stmt)
+        elif isinstance(stmt, Throw):
+            self._analyze_expression(stmt.value)
         elif isinstance(stmt, ForIn):
             self._analyze_for_in(stmt)
         elif isinstance(stmt, Break):
@@ -374,6 +378,18 @@ class SemanticAnalyzer:
         self.scope_stack.append(Scope("loop", self.scope_stack[-1]))
         for body_stmt in stmt.body:
             self._analyze_statement(body_stmt)
+        self.scope_stack.pop()
+
+    def _analyze_try_catch(self, stmt):
+        self.scope_stack.append(Scope("block", self.scope_stack[-1]))
+        for body_stmt in stmt.body:
+            self._analyze_statement(body_stmt)
+        self.scope_stack.pop()
+
+        self.scope_stack.append(Scope("block", self.scope_stack[-1]))
+        self.scope_stack[-1].declare(stmt.name, "Any", "catch_variable")
+        for catch_stmt in stmt.catch_body:
+            self._analyze_statement(catch_stmt)
         self.scope_stack.pop()
 
     def _analyze_for_in(self, stmt: ForIn):

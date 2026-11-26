@@ -68,6 +68,7 @@ The following words are reserved keywords and cannot be used as identifiers:
 ```
 LET, SET, GLOBAL, SET, THE, VARIABLE, BE, TO, PROCLAIM, IF, THEN, ELSE,
 END, WHILST, DO, FOR, IN, DEFINE, FUNCTION, WITH, AND, CALL, RETURN,
+TRY, CATCH, THROW,
 BREAK, CONTINUE, TERMINATE, PROGRAM, INQUIRE, USER, THE, RESPONSE,
 IMPORT, FILE, WRITE, CONTENT, OF, IS, PLUS, MINUS, TIMES, MULTIPLIED,
 DIVIDED, GREATER, LESS, EQUAL, NOT, STARTS, ENDS, DIGIT, LETTER,
@@ -96,7 +97,8 @@ program       ::= { statement }
 statement     ::= import_stmt | function_def | let_stmt | set_stmt | global_set_stmt
                 | proclaim_stmt | inquire_stmt | if_stmt | whilst_stmt | for_in_stmt
                 | call_stmt | return_stmt | map_set_stmt | file_write_stmt
-                | class_def | break_stmt | continue_stmt | terminate_stmt | comment | empty_line
+                | class_def | break_stmt | continue_stmt | terminate_stmt | try_stmt
+                | throw_stmt | comment | empty_line
 ```
 
 ### 2.2. Variable Declarations and Assignments
@@ -185,7 +187,17 @@ return_stmt   ::= 'RETURN' expression ';'
 
 **Semantics:** `DEFINE function` creates a named function with optional parameters. `RETURN` exits the function and yields a value.
 
-### 2.9. Classes
+### 2.9. Exceptions
+
+```ebnf
+try_stmt      ::= 'TRY' { statement } 'CATCH' 'the' 'variable' identifier
+                  { statement } 'END' 'TRY'
+throw_stmt    ::= 'THROW' expression ';'
+```
+
+`THROW` raises a MidShake value. The nearest enclosing `CATCH` binds that value to its declared variable; exceptions propagate through function calls. Runtime errors are not caught by this construct, and an uncaught thrown value terminates the program with a nonzero exit status.
+
+### 2.10. Classes
 
 ```ebnf
 class_def      ::= [ 'Public' | 'Private' ] 'DEFINE' 'class' identifier
@@ -199,7 +211,7 @@ new_instance   ::= 'the' 'new' identifier [ 'WITH' argument_list ]
 
 Class members default to `Private`; classes default to `Public`. `Protected` is valid only on class members. A subclass inherits a single base class. Constructor arguments use the same comma-separated expression list as function and method calls; a method named `constructor` receives them after `this`.
 
-### 2.10. Function and Method Calls
+### 2.11. Function and Method Calls
 
 ```ebnf
 call_stmt     ::= 'CALL' member_path [ 'WITH' argument_list ] ';'
@@ -208,7 +220,7 @@ argument_list ::= expression { ',' expression }
 
 **Semantics:** Invokes a function or an instance method. The return value is stored in the special `RESPONSE` variable.
 
-### 2.11. Map Operations
+### 2.12. Map Operations
 
 ```ebnf
 map_set_stmt  ::= 'SET' 'the' 'key' expression 'IN' 'the' 'map' identifier
@@ -217,7 +229,7 @@ map_set_stmt  ::= 'SET' 'the' 'key' expression 'IN' 'the' 'map' identifier
 
 **Semantics:** Sets the value associated with a key in a map.
 
-### 2.12. File I/O
+### 2.13. File I/O
 
 ```ebnf
 file_write_stmt ::= 'IN' 'the' 'file' file_path 'WRITE' expression ';'
@@ -226,7 +238,7 @@ file_path       ::= '"' path_string '"'
 
 **Semantics:** Writes the evaluated expression to the specified file.
 
-### 2.12. Imports
+### 2.14. Imports
 
 ```ebnf
 import_stmt   ::= 'IMPORT' 'the' 'file' '"' file_path '"' ';'
@@ -234,7 +246,7 @@ import_stmt   ::= 'IMPORT' 'the' 'file' '"' file_path '"' ';'
 
 **Semantics:** Loads and executes the specified MidShake file, making its functions and variables available.
 
-### 2.13. Termination
+### 2.15. Termination
 
 ```ebnf
 terminate_stmt ::= 'TERMINATE' 'the' 'program' ';'

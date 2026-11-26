@@ -147,6 +147,12 @@ namespace ms {
         }
     };
 
+    struct ThrownValue {
+        Value value;
+
+        explicit ThrownValue(const Value& thrown_value) : value(thrown_value) {}
+    };
+
     struct MSObject {
         std::string class_name;
         Map fields;

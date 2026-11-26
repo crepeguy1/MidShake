@@ -1,0 +1,15 @@
+DEFINE function failThroughCall;
+    THROW the string "caught across a function call";
+END FUNCTION;
+
+TRY
+    TRY
+        CALL failThroughCall;
+    CATCH the variable inner
+        THROW the value of inner;
+    END TRY;
+CATCH the variable caught
+    PROCLAIM the value of caught;
+END TRY;
+
+PROCLAIM the string "execution continued";

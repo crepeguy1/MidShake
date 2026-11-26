@@ -15,8 +15,17 @@ RUNTIME_DIR = ROOT / "selfhost" / "runtime"
 BUILD_DIR = ROOT / "build" / "bootstrap"
 OUTPUT_DIR = ROOT / "build" / "output"
 SOURCE = ROOT / "selfhost" / "codegen.mish"
+PARSER_SOURCE = ROOT / "selfhost" / "parser.mish"
 SMOKE_TEST = ROOT / "tests" / "test_bootstrap_scope.mish"
 CLASS_TEST = ROOT / "tests" / "test_selfhost_classes.mish"
+EXCEPTION_TEST = ROOT / "tests" / "test_exception_handling.mish"
+UNCAUGHT_EXCEPTION_TEST = ROOT / "tests" / "test_exception_uncaught.mish"
+PRIVATE_MODULE_OK_TEST = ROOT / "selfhost" / "fixtures" / "private_module_ok.mish"
+PRIVATE_MODULE_DENIED_TEST = ROOT / "selfhost" / "fixtures" / "private_module_denied.mish"
+PRIVATE_MODULE_FUNCTION_DENIED_TEST = ROOT / "selfhost" / "fixtures" / "private_module_function_denied.mish"
+PRIVATE_MODULE_CLASS_DENIED_TEST = ROOT / "selfhost" / "fixtures" / "private_module_class_denied.mish"
+PRIVATE_MODULE_WRITE_DENIED_TEST = ROOT / "selfhost" / "fixtures" / "private_module_write_denied.mish"
+PRIVATE_MODULE_GLOBAL_DENIED_TEST = ROOT / "selfhost" / "fixtures" / "private_module_global_denied.mish"
 
 sys.path.insert(0, str(PYTHON_DIR))
 
@@ -61,16 +70,18 @@ def run_checked(command, cwd, label, timeout=180):
 
 
 def compile_native(gpp, cpp_file, executable):
+    command = [
+        gpp,
+        "-std=c++17",
+        "-I" + str(RUNTIME_DIR),
+        cpp_file,
+        RUNTIME_DIR / "midshake_runtime.cpp",
+    ]
+    if os.name == "nt":
+        command.append("-Wl,--stack,8388608")
+    command.extend(["-o", executable])
     run_checked(
-        [
-            gpp,
-            "-std=c++17",
-            "-I" + str(RUNTIME_DIR),
-            cpp_file,
-            RUNTIME_DIR / "midshake_runtime.cpp",
-            "-o",
-            executable,
-        ],
+        command,
         ROOT,
         f"Compiling {cpp_file.name}",
     )
@@ -106,6 +117,37 @@ def run_self_hosted(executable, source, work_dir, timeout=180):
     staged = work_dir / "output" / "generated.cpp"
     shutil.copy2(generated, staged)
     return staged, result.stdout
+
+
+def verify_imported_private_denial(stage2_exe, source, label, expected_message):
+    work_dir = BUILD_DIR / f"{label}-run"
+    generated_cpp, _ = run_self_hosted(stage2_exe, source, work_dir)
+    generated_source = generated_cpp.read_text(encoding="utf-8")
+    if expected_message not in generated_source:
+        raise RuntimeError(f"Self-hosted generation omitted the {label} access check.")
+
+    extension = ".exe" if os.name == "nt" else ""
+    native_exe = BUILD_DIR / (label + extension)
+    compile_native(GPP, generated_cpp, native_exe)
+    native_result = subprocess.run(
+        [str(native_exe)], cwd=str(ROOT), capture_output=True, text=True, timeout=30
+    )
+    if native_result.returncode == 0 or "MidShake Access Error" not in (
+        native_result.stdout + native_result.stderr
+    ):
+        raise RuntimeError(f"Native {label} access was not denied at runtime.")
+
+    interpreted_result = subprocess.run(
+        [sys.executable, ROOT / "python" / "midshake_cli.py", "run", source],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if interpreted_result.returncode == 0 or "MidShake Access Error" not in (
+        interpreted_result.stdout + interpreted_result.stderr
+    ):
+        raise RuntimeError(f"Interpreter {label} access was not denied at runtime.")
 
 
 def phase_log(output):
@@ -160,14 +202,14 @@ def main():
     stage1_exe = BUILD_DIR / ("stage1" + extension)
     stage2_exe = BUILD_DIR / ("stage2" + extension)
 
-    print("[1/4] Building the seed compiler with the Python compiler")
+    print("[1/8] Building the seed compiler with the Python compiler")
     compile_with_python(stage0_cpp, stage0_exe)
 
-    print("[2/4] Compiling the self-hosted compiler with the seed")
+    print("[2/8] Compiling the self-hosted compiler with the seed")
     stage1_cpp, _ = run_self_hosted(stage0_exe, SOURCE, BUILD_DIR / "stage0-run")
     compile_native(GPP, stage1_cpp, stage1_exe)
 
-    print("[3/4] Recompiling and comparing the native generations")
+    print("[3/8] Recompiling and comparing the native generations")
     stage2_cpp, stage1_output = run_self_hosted(
         stage1_exe, SOURCE, BUILD_DIR / "stage1-run", timeout=180
     )
@@ -193,7 +235,22 @@ def main():
         )
     compile_native(GPP, stage2_cpp, stage2_exe)
 
-    print("[4/4] Verifying recursion, local frames, and global updates")
+    print("[4/8] Compiling parser.mish with both native generations")
+    parser_stage1_cpp, _ = run_self_hosted(
+        stage1_exe, PARSER_SOURCE, BUILD_DIR / "parser-stage1-run"
+    )
+    parser_stage2_cpp, _ = run_self_hosted(
+        stage2_exe, PARSER_SOURCE, BUILD_DIR / "parser-stage2-run"
+    )
+    if parser_stage1_cpp.read_text(encoding="utf-8") != parser_stage2_cpp.read_text(encoding="utf-8"):
+        raise RuntimeError("Native compiler generations produced different C++ for parser.mish.")
+    parser_exe = BUILD_DIR / ("parser" + extension)
+    compile_native(GPP, parser_stage2_cpp, parser_exe)
+    run_checked(
+        [parser_exe], BUILD_DIR / "parser-stage2-run", "Running compiled parser module"
+    )
+
+    print("[5/8] Verifying recursion, local frames, and global updates")
     smoke_cpp, _ = run_self_hosted(stage2_exe, SMOKE_TEST, BUILD_DIR / "smoke-run")
     smoke_exe = BUILD_DIR / ("smoke" + extension)
     compile_native(GPP, smoke_cpp, smoke_exe)
@@ -213,7 +270,7 @@ def main():
             f"expected: {expected_values}."
         )
 
-    print("[5/5] Verifying self-hosted class construction and member access")
+    print("[6/8] Verifying self-hosted class construction and member access")
     class_cpp, _ = run_self_hosted(stage2_exe, CLASS_TEST, BUILD_DIR / "class-run")
     generated_class_source = class_cpp.read_text(encoding="utf-8")
     private_method_registration = (
@@ -241,7 +298,120 @@ def main():
             f"expected: {expected_class_values}."
         )
 
-    print("Bootstrap verified: native generations match and scope/class tests passed.")
+    print("[7/8] Verifying imported module privacy")
+    private_ok_cpp, _ = run_self_hosted(
+        stage2_exe, PRIVATE_MODULE_OK_TEST, BUILD_DIR / "private-module-ok-run"
+    )
+    private_ok_exe = BUILD_DIR / ("private-module-ok" + extension)
+    compile_native(GPP, private_ok_cpp, private_ok_exe)
+    private_ok_result = run_checked(
+        [private_ok_exe],
+        ROOT,
+        "Running self-hosted imported-private module test",
+    )
+    interpreted_private_ok = run_checked(
+        [sys.executable, ROOT / "python" / "midshake_cli.py", "run", PRIVATE_MODULE_OK_TEST],
+        ROOT,
+        "Running interpreted imported-private module test",
+    )
+    expected_private_values = [42.0, 7.0, 8.0]
+    if numeric_output(private_ok_result.stdout, "Native imported-private module test") != expected_private_values:
+        raise RuntimeError("Native imported-private module returned an unexpected value.")
+    if numeric_output(interpreted_private_ok.stdout, "Interpreted imported-private module test") != expected_private_values:
+        raise RuntimeError("Interpreted imported-private module returned an unexpected value.")
+
+    private_denied_cpp, _ = run_self_hosted(
+        stage2_exe, PRIVATE_MODULE_DENIED_TEST, BUILD_DIR / "private-module-denied-run"
+    )
+    private_denied_source = private_denied_cpp.read_text(encoding="utf-8")
+    denied_symbols = (
+        "Variable 'secretValue' is Private in an imported file.",
+        "Function 'getSecretValue' is Private in an imported file.",
+        "Class 'HiddenCounter' is Private in an imported file.",
+    )
+    if any(message not in private_denied_source for message in denied_symbols):
+        raise RuntimeError("Self-hosted code generation omitted an imported-private access check.")
+    for source, label, expected_message in (
+        (
+            PRIVATE_MODULE_DENIED_TEST,
+            "private-module-variable-denied",
+            "Variable 'secretValue' is Private in an imported file.",
+        ),
+        (
+            PRIVATE_MODULE_FUNCTION_DENIED_TEST,
+            "private-module-function-denied",
+            "Function 'getSecretValue' is Private in an imported file.",
+        ),
+        (
+            PRIVATE_MODULE_CLASS_DENIED_TEST,
+            "private-module-class-denied",
+            "Class 'HiddenCounter' is Private in an imported file.",
+        ),
+        (
+            PRIVATE_MODULE_WRITE_DENIED_TEST,
+            "private-module-write-denied",
+            "Variable 'secretValue' is Private in an imported file.",
+        ),
+        (
+            PRIVATE_MODULE_GLOBAL_DENIED_TEST,
+            "private-module-global-denied",
+            "Variable 'secretValue' is Private in an imported file.",
+        ),
+    ):
+        verify_imported_private_denial(stage2_exe, source, label, expected_message)
+
+    print("[8/8] Verifying thrown-value propagation and uncaught diagnostics")
+    exception_stage1_cpp, _ = run_self_hosted(
+        stage1_exe, EXCEPTION_TEST, BUILD_DIR / "exception-stage1-run"
+    )
+    exception_stage2_cpp, _ = run_self_hosted(
+        stage2_exe, EXCEPTION_TEST, BUILD_DIR / "exception-stage2-run"
+    )
+    if exception_stage1_cpp.read_text(encoding="utf-8") != exception_stage2_cpp.read_text(encoding="utf-8"):
+        raise RuntimeError("Native compiler generations produced different C++ for exception handling.")
+
+    exception_exe = BUILD_DIR / ("exceptions" + extension)
+    compile_native(GPP, exception_stage2_cpp, exception_exe)
+    native_exception = run_checked(
+        [exception_exe], ROOT, "Running native exception test"
+    )
+    interpreted_exception = run_checked(
+        [sys.executable, ROOT / "python" / "midshake_cli.py", "run", EXCEPTION_TEST],
+        ROOT,
+        "Running interpreter exception test",
+    )
+    expected_exception_output = ["caught across a function call", "execution continued"]
+    if native_exception.stdout.splitlines() != expected_exception_output:
+        raise RuntimeError("Native exception test did not catch and continue as expected.")
+    if interpreted_exception.stdout.splitlines() != expected_exception_output:
+        raise RuntimeError("Interpreter exception test did not catch and continue as expected.")
+
+    uncaught_cpp, _ = run_self_hosted(
+        stage2_exe, UNCAUGHT_EXCEPTION_TEST, BUILD_DIR / "uncaught-exception-run"
+    )
+    uncaught_exe = BUILD_DIR / ("uncaught-exception" + extension)
+    compile_native(GPP, uncaught_cpp, uncaught_exe)
+    native_uncaught = subprocess.run(
+        [str(uncaught_exe)], cwd=str(ROOT), capture_output=True, text=True, timeout=30
+    )
+    uncaught_message = "Uncaught MidShake exception: uncaught payload"
+    if native_uncaught.returncode == 0 or uncaught_message not in (
+        native_uncaught.stdout + native_uncaught.stderr
+    ):
+        raise RuntimeError("Native uncaught throw did not produce the expected diagnostic.")
+    interpreted_uncaught = subprocess.run(
+        [sys.executable, ROOT / "python" / "midshake_cli.py", "run", UNCAUGHT_EXCEPTION_TEST],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if interpreted_uncaught.returncode == 0 or uncaught_message not in (
+        interpreted_uncaught.stdout + interpreted_uncaught.stderr
+    ):
+        raise RuntimeError("Interpreter uncaught throw did not produce the expected diagnostic.")
+
+    print("Bootstrap verified: generations, parser, scope, classes, module privacy, and exceptions passed.")
     print(f"Artifacts: {BUILD_DIR}")
 
 

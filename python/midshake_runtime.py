@@ -15,7 +15,7 @@ from midshake_ast import (
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
     StringIsDigit, StringIsLetter, StringIsWhitespace, StringIndexOf,
-    Boolean, MapSet, Break, Continue, ForIn, GlobalSet, Public
+    Boolean, MapSet, Break, Continue, ForIn, GlobalSet, Public, TryCatch, Throw
 )
 
 
@@ -23,6 +23,12 @@ class ObjectInstance:
     def __init__(self, class_name):
         self.class_name = class_name
         self.fields = {}
+
+
+class ThrownValue(Exception):
+    def __init__(self, value):
+        self.value = value
+        super().__init__(f"Uncaught MidShake exception: {value}")
 
 
 class Runtime:
@@ -556,25 +562,44 @@ class Runtime:
                 if isinstance(member, Let):
                     instance.fields[member.name] = class_runtime.eval_expr(member.value)
 
-        for class_def in reversed(chain):
-            _, constructor = self._find_class_member(class_def.name, "constructor", FunctionDef)
-            if constructor is not None and constructor.owner_class == class_def.name:
-                constructor_args = args if class_def.name == class_name else []
-                if len(constructor_args) != len(constructor.param_names):
-                    raise ValueError(
-                        f"MidShake Runtime Error: constructor for '{class_def.name}' expects "
-                        f"{len(constructor.param_names)} argument(s) but got {len(constructor_args)}."
-                    )
-                module_runtime = getattr(constructor, "_module_runtime", self)
-                module_runtime._execute_function(
-                    constructor, constructor_args, instance, class_def.name
-                )
-            elif class_def.name == class_name and args:
+        self._construct_class(chain[0], instance, args)
+        return instance
+
+    def _construct_class(self, class_def, instance, args):
+        _, constructor = self._find_class_member(class_def.name, "constructor", FunctionDef)
+        if constructor is not None and constructor.owner_class != class_def.name:
+            constructor = None
+
+        calls_base = bool(
+            constructor
+            and constructor.body
+            and isinstance(constructor.body[0], Call)
+            and constructor.body[0].name == "super.constructor"
+        )
+        if class_def.base_name and not calls_base:
+            base_class = self.classes.get(class_def.base_name)
+            if base_class is None:
                 raise ValueError(
-                    f"MidShake Runtime Error: class '{class_name}' has no constructor "
+                    f"MidShake Class Error: base class '{class_def.base_name}' is not defined."
+                )
+            base_runtime = getattr(base_class, "_module_runtime", self)
+            base_runtime._construct_class(base_class, instance, [])
+
+        if constructor is None:
+            if args:
+                raise ValueError(
+                    f"MidShake Runtime Error: class '{class_def.name}' has no constructor "
                     f"that accepts {len(args)} argument(s)."
                 )
-        return instance
+            return
+
+        if len(args) != len(constructor.param_names):
+            raise ValueError(
+                f"MidShake Runtime Error: constructor for '{class_def.name}' expects "
+                f"{len(constructor.param_names)} argument(s) but got {len(args)}."
+            )
+        module_runtime = getattr(constructor, "_module_runtime", self)
+        module_runtime._execute_function(constructor, args, instance, class_def.name)
 
     def _get_member(self, target, name, caller_class):
         if not isinstance(target, ObjectInstance):
@@ -665,6 +690,26 @@ class Runtime:
                         break
                 if should_break:
                     break
+
+        elif isinstance(stmt, TryCatch):
+            try:
+                for nested_stmt in stmt.body:
+                    result = self.exec_stmt(nested_stmt)
+                    if result in ("__break__", "__continue__"):
+                        return result
+                    if self.in_function:
+                        break
+            except ThrownValue as thrown:
+                self.vars[stmt.name] = thrown.value
+                for nested_stmt in stmt.catch_body:
+                    result = self.exec_stmt(nested_stmt)
+                    if result in ("__break__", "__continue__"):
+                        return result
+                    if self.in_function:
+                        break
+
+        elif isinstance(stmt, Throw):
+            raise ThrownValue(self.eval_expr(stmt.value))
 
         # FOR ... IN ... DO
         elif isinstance(stmt, ForIn):
@@ -766,6 +811,27 @@ class Runtime:
 
         # CALL
         elif isinstance(stmt, Call):
+            if stmt.name == "super.constructor":
+                if self.current_class is None:
+                    raise ValueError(
+                        "MidShake Class Error: 'super.constructor' can only be called from a class constructor."
+                    )
+                class_def = self.classes.get(self.current_class)
+                if class_def is None or not class_def.base_name:
+                    raise ValueError(
+                        f"MidShake Class Error: class '{self.current_class}' has no base constructor."
+                    )
+                base_class = self.classes.get(class_def.base_name)
+                if base_class is None:
+                    raise ValueError(
+                        f"MidShake Class Error: base class '{class_def.base_name}' is not defined."
+                    )
+                args = [self.eval_expr(arg_expr) for arg_expr in stmt.args]
+                base_runtime = getattr(base_class, "_module_runtime", self)
+                base_runtime._construct_class(base_class, self.vars.get("this"), args)
+                self.vars["RESPONSE"] = None
+                return None
+
             if "." in stmt.name:
                 target_name, method_name = stmt.name.rsplit(".", 1)
                 target_parts = target_name.split(".")
@@ -873,18 +939,23 @@ class Runtime:
         self.in_function = False
         self.current_class = owner_class
 
-        for stmt in func.body:
-            self.exec_stmt(stmt)
-            if self.in_function:
-                break
+        completed = False
+        try:
+            for stmt in func.body:
+                self.exec_stmt(stmt)
+                if self.in_function:
+                    break
 
-        result = self.return_value
-        self.vars = saved_locals
-        for global_name, global_value in self.globals.items():
-            self.vars[global_name] = global_value
-        self.return_value = saved_return
-        self.in_function = saved_flag
-        self.current_class = saved_class
-        self.vars["RESPONSE"] = result
-        return result
+            result = self.return_value
+            completed = True
+            return result
+        finally:
+            self.vars = saved_locals
+            for global_name, global_value in self.globals.items():
+                self.vars[global_name] = global_value
+            self.return_value = saved_return
+            self.in_function = saved_flag
+            self.current_class = saved_class
+            if completed:
+                self.vars["RESPONSE"] = result
 

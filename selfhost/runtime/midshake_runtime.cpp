@@ -18,6 +18,7 @@ namespace {
     struct ClassMethodInfo {
         AccessLevel access;
         size_t arity;
+        bool calls_base_constructor;
         ClassMethodFunction function;
     };
 
@@ -88,7 +89,8 @@ namespace {
 
     void invoke_constructor(Environment& env, const std::shared_ptr<MSObject>& object,
                              const std::string& owner, const std::vector<Value>& args) {
-        const auto& methods = class_registry().at(owner).methods;
+        const auto& class_info = class_registry().at(owner);
+        const auto& methods = class_info.methods;
         auto constructor = methods.find("constructor");
         if (constructor == methods.end()) {
             if (!args.empty()) {
@@ -96,7 +98,13 @@ namespace {
                     "Class '" + owner + "' has no constructor that accepts arguments."
                 );
             }
+            if (!class_info.base_name.empty()) {
+                invoke_constructor(env, object, class_info.base_name, {});
+            }
             return;
+        }
+        if (!constructor->second.calls_base_constructor && !class_info.base_name.empty()) {
+            invoke_constructor(env, object, class_info.base_name, {});
         }
         if (args.size() != constructor->second.arity) {
             throw std::runtime_error(
@@ -121,8 +129,11 @@ void register_class_field(const std::string& class_name, const std::string& fiel
 }
 
 void register_class_method(const std::string& class_name, const std::string& method_name,
-                           AccessLevel access, size_t arity, ClassMethodFunction method) {
-    class_registry()[class_name].methods[method_name] = {access, arity, method};
+                           AccessLevel access, size_t arity, bool calls_base_constructor,
+                           ClassMethodFunction method) {
+    class_registry()[class_name].methods[method_name] = {
+        access, arity, calls_base_constructor, method
+    };
 }
 
 Value create_object(Environment& env, const std::string& class_name,
@@ -136,11 +147,24 @@ Value create_object(Environment& env, const std::string& class_name,
             object->fields[field.first] = field.second.initializer(env);
         }
     }
-    for (auto class_it = chain.rbegin(); class_it != chain.rend(); ++class_it) {
-        const std::vector<Value> no_args;
-        invoke_constructor(env, object, *class_it, *class_it == class_name ? args : no_args);
-    }
+    invoke_constructor(env, object, class_name, args);
     return Value::from_object(object);
+}
+
+void call_base_constructor(Environment& env, const Value& object,
+                           const std::string& class_name, const std::vector<Value>& args) {
+    if (object.kind != ValueKind::Object || !object.object) {
+        throw std::runtime_error("Base constructor call requires a class instance.");
+    }
+    auto class_info = class_registry().find(class_name);
+    if (class_info == class_registry().end() || class_info->second.base_name.empty()) {
+        throw std::runtime_error("Class has no base constructor: " + class_name);
+    }
+    invoke_constructor(env, object.object, class_info->second.base_name, args);
+}
+
+Value deny_private_access(const std::string& message) {
+    throw std::runtime_error(message);
 }
 
 Value object_get_member(const Value& object, const std::string& member_name,

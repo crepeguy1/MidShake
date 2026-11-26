@@ -21,20 +21,21 @@ Maintain a tokenizer, parser, and compiler in MidShake (`.mish` files), so nativ
 - **Recursion support**: Functions use parent-linked local environment frames and can call themselves
 - **Line-based tokenizer**: `tokenizer.mish` reads source code and classifies each line by keyword type
 - **Character-level lexer**: `lexer.mish` walks source code character by character and produces tokens
-- **Recursive AST-building parser**: `parser.mish` reads source code and builds a full AST with nested maps. Recursively parses body lines into child AST nodes for all block statements (IF, WHILST, DEFINE, FOR).
+- **Recursive AST-building parser**: `parser.mish` reads source code and builds a full AST with nested maps. Recursively parses body lines into child AST nodes for block statements, including IF, WHILST, DEFINE, FOR, and TRY/CATCH.
 - **AST interpreter**: `interpreter.mish` walks the AST produced by `parser.mish` and executes it. Supports LET, SET, PROCLAIM, IF, WHILST, DEFINE, CALL, RETURN, FileWrite, FOR, BREAK, CONTINUE, TERMINATE, and IMPORT.
-- **C++ code generator**: `codegen.mish` converts the AST produced by `parser.mish` into C++ source code, including recursive imports, local function frames, and global updates.
+- **C++ code generator**: `codegen.mish` converts the AST produced by `parser.mish` into C++ source code, including recursive imports, module-level visibility, class access control, base-constructor forwarding, local function frames, global updates, and exception handling.
 - **Semantic analyzer**: `semantic.mish` (277 lines) — self-hosted semantic analysis with symbol table, type inference, and error detection. Python version (`python/midshake_semantic.py`, 721 lines) provides full two-pass analysis with scope resolution.
 - **Formal grammar**: BNF/EBNF grammar specification in `docs/grammar.md`
-- **Test suite**: 177 total (151 unit + 16 integration + 10 skipped)
+- **Exceptions**: Python and native backends support `TRY`/`CATCH`, `THROW`, and propagation through function calls.
+- **Test suite**: 206 total (174 unit + 22 integration + 10 skipped)
 
 ### Bootstrap Verification
 
-`python tools/bootstrap.py` builds the Python seed, compiles the self-hosted compiler, rebuilds it natively, compares both native generations, and compiles/runs a recursive scope smoke test. Build artifacts are written under the ignored `build/` directory.
+`python tools/bootstrap.py` builds the Python seed, compiles the self-hosted compiler, rebuilds it natively, and compares both native generations. It also compiles `parser.mish` with each native generation, checks that their generated C++ matches, builds and runs the result, and verifies scope, classes, base-constructor forwarding, imported-module privacy, and exception propagation. Build artifacts are written under the ignored `build/` directory.
 
 ### Runtime Requirement
 
-Native output currently links against `selfhost/runtime/` and requires a C++17 compiler. The bootstrap verifies the compiler generations and core recursion/scope behavior; it does not yet replace the shared runtime with MidShake code.
+Native output currently links against `selfhost/runtime/` and requires a C++17 compiler. The bootstrap verifies the compiler generations, parser compilation, and exception behavior, but does not yet replace the shared runtime with MidShake code.
 
 ## Folder Structure
 
@@ -48,6 +49,7 @@ selfhost/
 ├── interpreter.mish       ← AST interpreter written in MidShake
 ├── semantic.mish          ← Semantic analyzer written in MidShake (277 lines)
 ├── codegen.mish           ← C++ code generator written in MidShake
+├── fixtures/              ← Imported-module visibility regression programs
 ├── minicodegen.mish       ← Minimal self-compiling demo (~300 lines, compiles itself)
 ├── examples/
 │   ├── fileio.mish        ← File read/write example

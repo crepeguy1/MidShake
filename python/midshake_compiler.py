@@ -3,7 +3,7 @@ from dataclasses import fields, is_dataclass
 from midshake_ast import (
     Program, Section,
     Let, Set, MemberSet, Proclaim, Inquire,
-    If, While, Terminate,
+    If, While, TryCatch, Throw, Terminate,
     Number, String, Variable, MemberAccess, NewInstance, Binary, Response,
     FunctionDef, ClassDef, Call, Return, Import,
     FileReadExpression, FileWriteNode, FileWriteStatement,
@@ -51,6 +51,22 @@ class CppCompiler:
         if isinstance(visibility, Protected):
             return "AccessLevel::Protected"
         return "AccessLevel::Public"
+
+    @staticmethod
+    def _constructor_calls_base(class_def):
+        constructor = next(
+            (
+                member for member in class_def.members
+                if isinstance(member, FunctionDef) and member.name == "constructor"
+            ),
+            None,
+        )
+        return bool(
+            constructor
+            and constructor.body
+            and isinstance(constructor.body[0], Call)
+            and constructor.body[0].name == "super.constructor"
+        )
 
     # ------------------------------------------------------------
     # TOP LEVEL
@@ -102,6 +118,8 @@ class CppCompiler:
         # main() with command-line argument support
         self.emit("int main(int argc, char* argv[]) {")
         self.indent += 1
+        self.emit("try {")
+        self.indent += 1
         self.emit("Environment env(argc, argv);")
 
         for class_def in self._classes:
@@ -118,6 +136,7 @@ class CppCompiler:
                     self.emit(
                         f'register_class_method("{class_def.name}", "{member.name}", '
                         f'{self._access_level(member.visibility)}, {len(member.param_names)}, '
+                        f'{"true" if member.name == "constructor" and self._constructor_calls_base(class_def) else "false"}, '
                         f'&{self._function_symbol(member)});'
                     )
 
@@ -125,6 +144,13 @@ class CppCompiler:
             self.compile_stmt(stmt)
 
         self.emit("return 0;")
+        self.indent -= 1
+        self.emit("} catch (const ThrownValue& thrown) {")
+        self.indent += 1
+        self.emit('std::cerr << "Uncaught MidShake exception: " << thrown.value.to_string() << std::endl;')
+        self.emit("return 1;")
+        self.indent -= 1
+        self.emit("}")
         self.indent -= 1
         self.emit("}")
 
@@ -500,6 +526,24 @@ class CppCompiler:
             self.indent -= 1
             self.emit("}")
 
+        elif isinstance(stmt, TryCatch):
+            self.emit("try {")
+            self.indent += 1
+            for nested_stmt in stmt.body:
+                self.compile_stmt(nested_stmt)
+            self.indent -= 1
+            self.emit("} catch (const ThrownValue& thrown) {")
+            self.indent += 1
+            self.emit(f'env.set("{stmt.name}", thrown.value);')
+            for nested_stmt in stmt.catch_body:
+                self.compile_stmt(nested_stmt)
+            self.indent -= 1
+            self.emit("}")
+
+        elif isinstance(stmt, Throw):
+            value = self.compile_expr(stmt.value)
+            self.emit(f"throw ThrownValue({value});")
+
         # CALL
         elif isinstance(stmt, Call):
             self.emit("{")
@@ -507,7 +551,22 @@ class CppCompiler:
             self.emit("std::vector<Value> args;")
             for arg in stmt.args:
                 self.emit(f"args.push_back({self.compile_expr(arg)});")
-            if "." in stmt.name:
+            if stmt.name == "super.constructor":
+                if self._current_class is None:
+                    raise ValueError("'super.constructor' can only be called from a class constructor.")
+                class_def = next(
+                    (item for item in self._classes if item.name == self._current_class),
+                    None,
+                )
+                if class_def is None or not class_def.base_name:
+                    raise ValueError(
+                        f"Class '{self._current_class}' has no base constructor."
+                    )
+                self.emit(
+                    f'call_base_constructor(env, env.get("this"), "{self._current_class}", args);'
+                )
+                self.emit('env.set("RESPONSE", Value::from_double(0));')
+            elif "." in stmt.name:
                 target_name, method_name = stmt.name.rsplit(".", 1)
                 target = self.compile_expr(self._member_target_expression(target_name))
                 caller_class = self._current_class or ""

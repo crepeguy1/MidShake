@@ -148,7 +148,7 @@ Compilation complete!
 
 ## Step 5: Native Bootstrap Verification
 
-Run the bootstrap verifier to build the Python seed, compile two native generations, compare their generated C++ source, and run a recursion/local-scope/global-update smoke program:
+Run the bootstrap verifier to build the Python seed, compile two native generations, compare their generated C++ source, compile `selfhost/parser.mish` with both native generations and compare the results, then test scope, classes, base-constructor forwarding, imported-module privacy, and exceptions:
 
 ```bash
 python tools/bootstrap.py
@@ -158,7 +158,7 @@ The verifier stores binaries and intermediate generated source under `build/boot
 
 ## Step 6: Test Suite
 
-MidShake currently has 177 test cases: 151 unit tests, 16 integration programs, and 10 skipped cases.
+MidShake currently has 206 test cases: 174 unit checks, 22 integration programs, and 10 skipped cases.
 
 ```bash
 python tests/run_tests.py
@@ -167,32 +167,16 @@ python tests/run_tests.py
 **Expected output:**
 ```
 === Running Unit Tests ===
-  Unit tests: 151 passed, 0 failed
+  Unit tests: 174 passed, 0 failed
 
 === MidShake Test Suite ===
-Found 16 test files
-
-Testing: test_bootstrap_scope.mish... COMPILED | PASSED
-Testing: test_collections.mish... COMPILED | PASSED
-Testing: test_continue.mish... COMPILED | PASSED
-Testing: test_function_calls.mish... COMPILED | PASSED
-Testing: test_global_set.mish... PASSED
-Testing: test_if_else.mish... PASSED
-Testing: test_import.mish... PASSED
-Testing: test_map.mish... PASSED
-Testing: test_map_global.mish... PASSED
-Testing: test_map_nested.mish... PASSED
-Testing: test_new_features.mish... PASSED
-Testing: test_params.mish... PASSED
-Testing: test_recursion.mish... PASSED
-Testing: test_simple_call.mish... PASSED
-Testing: test_startswith.mish... PASSED
-Testing: test_while_simple.mish... PASSED
+Found 22 test files
 
 === Results ===
-Unit tests: 151 passed, 0 failed
-Integration tests: 16 passed, 0 failed
-Total: 177 (167 ok, 0 failed, 10 skipped)
+Unit tests: 174 passed, 0 failed
+Integration tests: 22 passed, 0 failed
+Skipped: 10
+Total: 206 (196 ok, 0 failed, 10 skipped)
 ```
 
 **Test breakdown:**
@@ -201,8 +185,8 @@ Total: 177 (167 ok, 0 failed, 10 skipped)
 | Lexer unit tests | 52 | All token types |
 | Parser unit tests | 63 | All AST node types |
 | Codegen unit tests | 36 | C++ output correctness |
-| Integration tests | 16 | End-to-end compilation |
-| Semantic error detection | 5 | Error categories |
+| Visibility and exception unit tests | 23 | Encapsulation and exception semantics |
+| Integration tests | 22 | End-to-end compilation |
 
 ## Architecture
 
@@ -245,6 +229,7 @@ The compiler supports all of the following language constructs:
 - **Literals**: Numbers, strings, lists, maps
 - **Expressions**: Binary ops (`plus`, `minus`), string functions, math functions
 - **Control flow**: `IF/THEN/ELSE`, `WHILST/DO`, `FOR/IN/DO`, `BREAK`, `CONTINUE`
+- **Exceptions**: `TRY`/`CATCH` and `THROW`, with propagation through function calls
 - **Functions**: `DEFINE function`, `CALL`, `RETURN`
 - **I/O**: `PROCLAIM`, `INQUIRE`, file read/write
 - **Modules**: `IMPORT`
@@ -252,7 +237,7 @@ The compiler supports all of the following language constructs:
 
 ## Step 7: Self-Compilation Status
 
-`python tools/bootstrap.py` verifies the complete native bootstrap: the Python compiler builds stage 0, stage 0 builds stage 1, stage 1 rebuilds stage 2, and both native generations produce identical C++ source. The verifier then compiles and runs a recursive scope/global-update program using stage 2.
+`python tools/bootstrap.py` verifies the complete native bootstrap: the Python compiler builds stage 0, stage 0 builds stage 1, stage 1 rebuilds stage 2, and both native generations produce identical C++ source. The verifier then runs scope, class/base-constructor, imported-module privacy, and exception regressions against the native compiler and Python interpreter.
 
 The generated native compiler still links against `selfhost/runtime/` and requires a C++17 compiler to turn generated C++ into an executable. The Python interpreter and semantic analyzer also remain more complete than their self-hosted counterparts.
 
@@ -266,7 +251,7 @@ MidShake demonstrates a working self-hosting compiler pipeline:
 4. ✅ Semantic analysis with type inference (Python)
 5. ✅ C++ code generation (Python + self-hosted)
 6. ✅ Native compiler bootstrap: two generations match byte-for-byte
-7. ✅ Test suite: 177 total (167 passing, 10 skipped)
+7. ✅ Test suite: 206 total (196 passing, 10 skipped)
 8. ✅ Standard library with utility functions
 9. ✅ Documentation: grammar, types, language reference, design
 

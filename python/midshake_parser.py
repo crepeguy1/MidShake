@@ -6,7 +6,7 @@ from midshake_ast import (
     Variable, Binary, Inquire, Response,
     Call, FunctionDef, Return, FileWriteStatement, Import,
     Break, Continue, ForIn, MapSet, GlobalSet, Public, Private, Protected,
-    ClassDef, MemberAccess, MemberSet
+    ClassDef, MemberAccess, MemberSet, TryCatch, Throw
 )
 
 
@@ -162,6 +162,10 @@ class Parser:
             expr = tok.value
             return self.parse_while(expr, tok.line_no)
 
+        # TRY / CATCH
+        if tok.type == "TRY":
+            return self.parse_try_catch(tok.line_no)
+
         # INQUIRE
         if tok.type == "INQUIRE":
             expected_type, question = tok.value
@@ -200,6 +204,12 @@ class Parser:
             expr = tok.value
             self.advance()
             return Return(expr)
+
+        # THROW
+        if tok.type == "THROW":
+            expr = tok.value
+            self.advance()
+            return Throw(expr)
 
         # TERMINATE
         if tok.type == "TERMINATE":
@@ -286,6 +296,38 @@ class Parser:
 
         self.advance()  # consume END_WHILST
         return While(expr, body)
+
+    def parse_try_catch(self, line_no):
+        body = []
+        catch_body = []
+        self.advance()  # move past TRY
+
+        while self.current() and self.current().type not in ("CATCH", "END_TRY"):
+            stmt = self.parse_statement()
+            if stmt is not None:
+                body.append(stmt)
+
+        if not self.current() or self.current().type != "CATCH":
+            raise ValueError(
+                f"MidShake Syntax Error (around line {line_no}):\n"
+                f"  TRY block requires a CATCH clause."
+            )
+        catch_name = self.current().value
+        self.advance()  # consume CATCH
+
+        while self.current() and self.current().type != "END_TRY":
+            stmt = self.parse_statement()
+            if stmt is not None:
+                catch_body.append(stmt)
+
+        if not self.current() or self.current().type != "END_TRY":
+            raise ValueError(
+                f"MidShake Syntax Error (around line {line_no}):\n"
+                f"  TRY block was never closed with 'END TRY'."
+            )
+
+        self.advance()  # consume END_TRY
+        return TryCatch(body, catch_name, catch_body)
 
     # -----------------------------
     # FOR ... IN ... DO / END FOR

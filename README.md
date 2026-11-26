@@ -4,7 +4,7 @@ MidShake is a self-hosting programming language with a compiler written in MidSh
 
 ## Overview
 
-MidShake programs are plain text files with the `.mish` extension. The language supports variables, conditionals, loops, functions, collections (lists and maps), file I/O, and a standard library. The compiler performs five phases: tokenization, parsing, semantic analysis, code generation, and native compilation.
+MidShake programs are plain text files with the `.mish` extension. The language supports variables, conditionals, loops, functions, classes, module visibility, collections (lists and maps), file I/O, and a standard library. The compiler performs five phases: tokenization, parsing, semantic analysis, code generation, and native compilation.
 
 ## Example
 
@@ -136,26 +136,31 @@ python tools/bootstrap.py
 ```
 
 The bootstrap builds a Python-seeded compiler, recompiles it twice natively,
-compares both generated compiler sources, and runs a recursion/scope smoke test.
+compares both generated compiler sources, compiles `selfhost/parser.mish` with
+both native generations and checks their output matches, then runs the scope,
+class, module-visibility, and exception-handling regressions.
 All generated artifacts are isolated under the ignored `build/` directory.
 
 ### Running Tests
 
 ```bash
-# Run all unit and integration tests (177 total, including skipped cases)
+# Run all unit and integration tests (196 active, 10 skipped)
 python tests/run_tests.py
 
 # Run specific test categories
 python tests/test_lexer.py      # 52 lexer unit tests
 python tests/test_parser.py     # 63 parser unit tests
-python tests/test_codegen.py    # Codegen unit tests
+python tests/test_codegen.py    # 36 codegen unit tests
 ```
 
 ## Language Features
 
 - **Variables** — LET, SET, GLOBAL SET with dynamic typing
 - **Control flow** — IF/THEN/ELSE, WHILST loops, FOR IN loops, BREAK, CONTINUE
+- **Exceptions** — `TRY`/`CATCH` and `THROW`, with propagation through function calls
 - **Functions** — DEFINE with parameters, CALL with arguments, RETURN
+- **Classes** — Single inheritance, constructors, and Public/Private/Protected members
+- **Modules** — Public/Private declarations with enforced imported-symbol access
 - **Collections** — Lists and maps with literals and operations
 - **String operations** — length, substring, split, join, replace, trim, startsWith, and more
 - **Math functions** — min, max, abs, round
@@ -202,12 +207,12 @@ MidShake/
         stdlib.mish            # Built-in utility functions
     examples/          # Example MidShake programs
     docs/              # Documentation
-    tests/             # Test suite (167 active + 10 skipped)
+    tests/             # Test suite (196 active + 10 skipped)
         run_tests.py           # Test runner
         test_lexer.py          # Lexer unit tests (52)
         test_parser.py         # Parser unit tests (63)
-        test_codegen.py        # Codegen unit tests (31)
-        *.mish                 # Integration test files (16)
+        test_codegen.py        # Codegen unit tests (36)
+        *.mish                 # Integration test files (22)
     ide/               # IDE syntax highlighting (VS Code, IntelliJ, Vim, Sublime)
     bindings/          # pybind11 bindings
     tools/             # Developer utilities

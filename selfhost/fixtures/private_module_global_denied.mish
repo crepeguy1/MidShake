@@ -1,0 +1,3 @@
+IMPORT the file "selfhost/fixtures/private_module.mish";
+
+GLOBAL SET the variable secretValue TO the number 9;

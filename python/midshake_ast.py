@@ -290,6 +290,18 @@ class While(Statement):
 
 
 @dataclass
+class TryCatch(Statement):
+    body: List[Statement]
+    name: str
+    catch_body: List[Statement]
+
+
+@dataclass
+class Throw(Statement):
+    value: Expression
+
+
+@dataclass
 class ForIn(Statement):
     var_name: str
     list_expr: Expression

@@ -129,6 +129,10 @@ Classes are public by default. Class fields and methods are private by default; 
 Public DEFINE class Counter;
     Private LET the variable value BE the number 0;
 
+    Public DEFINE function constructor WITH the variable initialValue;
+        SET the variable this.value TO the value of initialValue;
+    END FUNCTION;
+
     Protected DEFINE function increase WITH the variable amount;
         SET the variable this.value TO the value of this.value plus the value of amount;
     END FUNCTION;
@@ -155,9 +159,17 @@ PROCLAIM the RESPONSE;
 
 ```midshake
 LET the variable counter BE the new Counter WITH the number 10;
+
+Public DEFINE class SpecialCounter EXTENDS Counter;
+    Public DEFINE function constructor WITH the variable initialValue;
+        CALL super.constructor WITH the value of initialValue;
+    END FUNCTION;
+END CLASS;
+
+LET the variable special BE the new SpecialCounter WITH the number 10;
 ```
 
-The Python interpreter, Python-to-C++ compiler, and self-hosted compiler support class fields, methods, single inheritance, parameterized constructors, and `Public`/`Private`/`Protected` member access. Base-class constructors run before derived-class constructors and currently must take no arguments; explicit base-constructor argument forwarding is not yet available. The self-hosted compiler does not yet enforce class-declaration visibility or module-level visibility across flattened imports.
+The Python interpreter, Python-to-C++ compiler, and self-hosted compiler support class fields, methods, single inheritance, parameterized constructors, and `Public`/`Private`/`Protected` member access. A derived constructor can forward arguments with `CALL super.constructor WITH ...`; without an explicit call, its base constructor runs with no arguments. The self-hosted compiler also enforces class-declaration and module-level `Public`/`Private` access across imports.
 
 ---
 
@@ -330,7 +342,25 @@ ELSE
 END IF;
 ```
 
-### 6.4. While Loop (`WHILST ... DO ... END WHILST`)
+### 6.4. Exceptions (`TRY`, `CATCH`, `THROW`)
+
+Throw any expression value and catch it in the nearest enclosing `CATCH`. A thrown value propagates through function calls; runtime errors are not intercepted by `CATCH`. If no handler catches a value, execution reports an uncaught MidShake exception and exits unsuccessfully.
+
+```midshake
+DEFINE function fail;
+    THROW the string "operation failed";
+END FUNCTION;
+
+TRY
+    CALL fail;
+CATCH the variable problem
+    PROCLAIM the value of problem;
+END TRY;
+```
+
+`TRY`, `CATCH`, and `END TRY` are block delimiters; `THROW` is a semicolon-terminated statement.
+
+### 6.5. While Loop (`WHILST ... DO ... END WHILST`)
 
 ```midshake
 WHILST <condition> DO
@@ -347,7 +377,7 @@ WHILST the value of i IS less than the number 10 DO
 END WHILST;
 ```
 
-### 6.5. For-In Loop (`FOR ... IN ... DO ... END FOR`)
+### 6.6. For-In Loop (`FOR ... IN ... DO ... END FOR`)
 
 Iterates over each element of a list.
 
@@ -365,14 +395,14 @@ FOR the variable fruit IN the value of fruits DO
 END FOR;
 ```
 
-### 6.6. Loop Control
+### 6.7. Loop Control
 
 ```midshake
 BREAK;       ^ Exits the innermost loop
 CONTINUE;    ^ Skips to the next iteration
 ```
 
-### 6.7. Map Assignment
+### 6.8. Map Assignment
 
 ```midshake
 SET the key <key_expr> IN the map <map_name> TO <value_expr>;
@@ -384,7 +414,7 @@ LET the variable config BE {theme: "dark"};
 SET the key "language" IN the map config TO the string "en";
 ```
 
-### 6.8. File Write
+### 6.9. File Write
 
 ```midshake
 IN the file "<path>" WRITE <expression>;
@@ -395,7 +425,7 @@ IN the file "<path>" WRITE <expression>;
 IN the file "output.txt" WRITE the string "Hello, file!";
 ```
 
-### 6.9. File Read (Expression)
+### 6.10. File Read (Expression)
 
 ```midshake
 the content of the file "path/to/file.txt"
@@ -404,7 +434,7 @@ the content of the file the value of filePath
 
 Returns the file contents as a String.
 
-### 6.10. Import
+### 6.11. Import
 
 ```midshake
 IMPORT the file "path/to/file.mish";
@@ -412,7 +442,7 @@ IMPORT the file "path/to/file.mish";
 
 Loads and executes the specified MidShake file.
 
-### 6.11. Termination
+### 6.12. Termination
 
 ```midshake
 TERMINATE the program;

@@ -1,0 +1,18 @@
+Private LET the variable secretValue BE the number 41;
+Public LET the variable publicValue BE the number 7;
+
+Private DEFINE function getSecretValue;
+    RETURN the value of secretValue;
+END FUNCTION;
+
+Public DEFINE function readSecret;
+    SET the variable secretValue TO the value of secretValue plus the number 1;
+    CALL getSecretValue;
+    RETURN the RESPONSE;
+END FUNCTION;
+
+Private DEFINE class HiddenCounter;
+    Public DEFINE function read;
+        RETURN the number 1;
+    END FUNCTION;
+END CLASS;

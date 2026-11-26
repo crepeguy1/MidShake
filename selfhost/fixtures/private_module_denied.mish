@@ -1,0 +1,5 @@
+IMPORT the file "selfhost/fixtures/private_module.mish";
+
+PROCLAIM the value of secretValue;
+CALL getSecretValue;
+LET the variable hidden BE the new HiddenCounter;

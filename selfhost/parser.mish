@@ -12,6 +12,8 @@ IMPORT the file "stdlib/stdlib.mish";
 LET the variable g_lines BE [];
 LET the variable g_pos BE the number 0;
 LET the variable g_lineCount BE the number 0;
+LET the variable g_lineModuleIds BE [];
+LET the variable g_moduleId BE the string "module_0";
 LET the variable g_ast BE [];
 ^ g_result holds the return value of parseStatement, shared via GLOBAL SET
 LET the variable g_result BE {};
@@ -37,6 +39,7 @@ LET the variable g_params BE [];
 DEFINE function createNode WITH the variable nodeType;
     LET the variable node BE {};
     SET the key "type" IN the map node TO the value of nodeType;
+    SET the key "moduleId" IN the map node TO the value of g_moduleId;
     SET the key "body" IN the map node TO [];
     SET the key "children" IN the map node TO [];
     RETURN the value of node;
@@ -383,6 +386,10 @@ DEFINE function parseStatement WITH the variable dummy;
     ^ Skip empty lines and comments
     CALL getItem WITH the value of g_pos, the value of g_lines;
     LET the variable line BE the RESPONSE;
+    IF the value of g_pos IS less than the size of g_lineModuleIds THEN
+        CALL getItem WITH the value of g_pos, the value of g_lineModuleIds;
+        GLOBAL SET the variable g_moduleId TO the RESPONSE;
+    END IF;
     CALL trim WITH the value of line;
     LET the variable trimmed BE the RESPONSE;
 
@@ -556,6 +563,80 @@ DEFINE function parseStatement WITH the variable dummy;
         END IF;
     END IF;
     
+    ^ --- TRY / CATCH statement (recursive body parsing) ---
+    IF the value of consumed IS equal to the number 0 THEN
+        CALL startsWith WITH the value of trimmed, the string "TRY";
+        LET the variable isTry BE the RESPONSE;
+        IF the value of isTry IS equal to the number 1 THEN
+            CALL createNode WITH "TryCatch";
+            LET the variable tryNode BE the RESPONSE;
+            LET the variable body BE [];
+            LET the variable catchBody BE [];
+            LET the variable catchLine BE the string "";
+            GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+
+            WHILST the value of g_pos IS less than the value of g_lineCount DO
+                CALL getItem WITH the value of g_pos, the value of g_lines;
+                LET the variable bodyLine BE the RESPONSE;
+                CALL trim WITH the value of bodyLine;
+                CALL replace WITH the value of RESPONSE, the string ";", the string "";
+                LET the variable bodyCandidate BE the RESPONSE;
+                CALL trim WITH the value of bodyCandidate;
+                CALL startsWith WITH the value of bodyCandidate, the string "CATCH the variable";
+                IF the RESPONSE IS equal to the number 1 THEN
+                    SET the variable catchLine TO the value of bodyCandidate;
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+                    BREAK;
+                END IF;
+
+                CALL parseStatement WITH the number 0;
+                LET the variable childNode BE the value of g_result;
+                CALL mapGet WITH "type", the value of childNode;
+                IF the RESPONSE IS not equal to the string "Empty" THEN
+                    IF the RESPONSE IS not equal to the string "Comment" THEN
+                        CALL append WITH the value of childNode, the value of body;
+                        SET the variable body TO the RESPONSE;
+                    END IF;
+                END IF;
+            END WHILST;
+
+            CALL extractAfterKeyword WITH the value of catchLine, the string "variable";
+            CALL replace WITH the value of RESPONSE, the string ";", the string "";
+            CALL trim WITH the value of RESPONSE;
+            LET the variable catchName BE the RESPONSE;
+
+            WHILST the value of g_pos IS less than the value of g_lineCount DO
+                CALL getItem WITH the value of g_pos, the value of g_lines;
+                LET the variable catchLineText BE the RESPONSE;
+                CALL trim WITH the value of catchLineText;
+                CALL replace WITH the value of RESPONSE, the string ";", the string "";
+                LET the variable catchCandidate BE the RESPONSE;
+                CALL trim WITH the value of catchCandidate;
+                CALL startsWith WITH the value of catchCandidate, the string "END TRY";
+                IF the RESPONSE IS equal to the number 1 THEN
+                    GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+                    BREAK;
+                END IF;
+
+                CALL parseStatement WITH the number 0;
+                LET the variable catchChild BE the value of g_result;
+                CALL mapGet WITH "type", the value of catchChild;
+                IF the RESPONSE IS not equal to the string "Empty" THEN
+                    IF the RESPONSE IS not equal to the string "Comment" THEN
+                        CALL append WITH the value of catchChild, the value of catchBody;
+                        SET the variable catchBody TO the RESPONSE;
+                    END IF;
+                END IF;
+            END WHILST;
+
+            SET the key "name" IN the map tryNode TO the value of catchName;
+            SET the key "body" IN the map tryNode TO the value of body;
+            SET the key "catchBody" IN the map tryNode TO the value of catchBody;
+            SET the variable node TO the value of tryNode;
+            SET the variable consumed TO the number 1;
+        END IF;
+    END IF;
+
     ^ --- IF statement (recursive body parsing) ---
     IF the value of consumed IS equal to the number 0 THEN
         CALL startsWith WITH the value of trimmed, the string "IF";
@@ -911,6 +992,20 @@ DEFINE function parseStatement WITH the variable dummy;
         END IF;
     END IF;
     
+    ^ --- THROW statement ---
+    IF the value of consumed IS equal to the number 0 THEN
+        CALL startsWith WITH the value of trimmed, the string "THROW";
+        LET the variable isThrow BE the RESPONSE;
+        IF the value of isThrow IS equal to the number 1 THEN
+            CALL createNode WITH "Throw";
+            LET the variable throwNode BE the RESPONSE;
+            CALL extractAfterKeyword WITH the value of trimmed, the string "THROW";
+            SET the key "value" IN the map throwNode TO the RESPONSE;
+            SET the variable node TO the value of throwNode;
+            SET the variable consumed TO the number 1;
+        END IF;
+    END IF;
+
     ^ --- RETURN statement ---
     IF the value of consumed IS equal to the number 0 THEN
         CALL startsWith WITH the value of trimmed, the string "RETURN";
@@ -993,7 +1088,9 @@ DEFINE function parseStatement WITH the variable dummy;
             IF the value of nodeType IS not equal to the string "FunctionDef" THEN
                 IF the value of nodeType IS not equal to the string "ForIn" THEN
                 IF the value of nodeType IS not equal to the string "ClassDef" THEN
+                IF the value of nodeType IS not equal to the string "TryCatch" THEN
                     GLOBAL SET the variable g_pos TO the value of g_pos plus the number 1;
+                END IF;
                 END IF;
             END IF;
             END IF;

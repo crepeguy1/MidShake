@@ -65,9 +65,13 @@ namespace ms {
     void register_class_field(const std::string& class_name, const std::string& field_name,
                               AccessLevel access, ClassFieldInitializer initializer);
     void register_class_method(const std::string& class_name, const std::string& method_name,
-                               AccessLevel access, size_t arity, ClassMethodFunction method);
+                               AccessLevel access, size_t arity, bool calls_base_constructor,
+                               ClassMethodFunction method);
     Value create_object(Environment& env, const std::string& class_name,
                         const std::vector<Value>& args = std::vector<Value>{});
+    void call_base_constructor(Environment& env, const Value& object,
+                               const std::string& class_name, const std::vector<Value>& args);
+    Value deny_private_access(const std::string& message);
     Value object_get_member(const Value& object, const std::string& member_name,
                             const std::string& caller_class);
     void object_set_member(const Value& object, const std::string& member_name,
