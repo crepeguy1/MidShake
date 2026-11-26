@@ -21,13 +21,13 @@ Usage:
 
 from midshake_ast import (
     # Expressions
-    Expression, Number, String, Variable, Binary, Response, Boolean,
+    Expression, Number, String, Variable, MemberAccess, NewInstance, Binary, Response, Boolean,
     ListLiteral, MapLiteral, ListGet, MapGet, ListAppend, ListLength,
     StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
     StringReplace, StringToUpper, StringToLower,
     StringStartsWith, StringEndsWith, StringIsDigit, StringIsLetter, StringIsWhitespace,
     MathMin, MathMax, MathAbs, MathRound,
-    FileReadExpression, Public, Secret,
+    FileReadExpression, Public, Private, Protected,
     # Statements
     Statement, Let, Set, GlobalSet, Proclaim, Inquire,
     If, While, ForIn, Break, Continue, Terminate,
@@ -438,6 +438,11 @@ class SemanticAnalyzer:
 
     def _analyze_call(self, stmt: Call):
         """Analyze CALL statement: function must be defined."""
+        if "." in stmt.name:
+            for arg in stmt.args:
+                self._analyze_expression(arg)
+            return
+
         # Check if function is defined
         symbol = self.scope_stack[-1].lookup_function(stmt.name)
         if symbol is None:
@@ -516,6 +521,10 @@ class SemanticAnalyzer:
             pass  # Literal, always valid
         elif isinstance(expr, Variable):
             self._analyze_variable(expr)
+        elif isinstance(expr, MemberAccess):
+            self._analyze_expression(expr.target)
+        elif isinstance(expr, NewInstance):
+            pass
         elif isinstance(expr, Response):
             pass  # Built-in special variable
         elif isinstance(expr, Binary):

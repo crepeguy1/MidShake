@@ -121,7 +121,11 @@ def command_compile(path, output_name=None):
 
     # 3. Compile to C++ source
     compiler = CppCompiler()
-    cpp_source = compiler.compile_program(program)
+    try:
+        cpp_source = compiler.compile_program(program)
+    except ValueError as exc:
+        print(str(exc))
+        return 1
 
     # 3. Determine output directory and names
     out_dir = os.path.join(PROJECT_ROOT, "build", "output")

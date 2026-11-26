@@ -103,6 +103,62 @@ CALL incrementCounter;
 PROCLAIM the value of counter;  ^ Outputs: 1
 ```
 
+### 3.4. Module Visibility (`PUBLIC` and `PRIVATE`)
+
+Module-level variables and functions are public by default. Add `Public` or `Private` before a declaration to choose its visibility:
+
+```midshake
+Private LET the variable balance BE the number 0;
+
+Private DEFINE function updateBalance;
+    GLOBAL SET the variable balance TO the value of balance plus the number 1;
+END FUNCTION;
+
+Public DEFINE function getBalance;
+    RETURN the value of balance;
+END FUNCTION;
+```
+
+`Private` declarations are accessible only within the file that defines them. Importers must use public functions rather than reading or changing private variables or calling private functions directly. Public functions retain access to private declarations in their own file. `Protected` is reserved for class members.
+
+### 3.5. Classes and Member Visibility
+
+Classes are public by default. Class fields and methods are private by default; `Public`, `Private`, and `Protected` can be specified explicitly. `Private` members are accessible only from methods declared by that class. `Protected` members are accessible from that class and its subclasses. Inheritance is single-base.
+
+```midshake
+Public DEFINE class Counter;
+    Private LET the variable value BE the number 0;
+
+    Protected DEFINE function increase WITH the variable amount;
+        SET the variable this.value TO the value of this.value plus the value of amount;
+    END FUNCTION;
+
+    Public DEFINE function read;
+        RETURN the value of this.value;
+    END FUNCTION;
+END CLASS;
+
+Public DEFINE class FastCounter EXTENDS Counter;
+    Public DEFINE function increment;
+        CALL this.increase WITH the number 1;
+        RETURN the RESPONSE;
+    END FUNCTION;
+END CLASS;
+
+LET the variable counter BE the new FastCounter;
+CALL counter.increment;
+CALL counter.read;
+PROCLAIM the RESPONSE;
+```
+
+`this.member` accesses a field or method on the current instance; methods are called with `CALL instance.method`. A method named `constructor` runs automatically when an instance is created. Constructor arguments follow `WITH` and are evaluated left to right:
+
+```midshake
+LET the variable counter BE the new Counter WITH the number 10;
+```
+
+The Python interpreter, Python-to-C++ compiler, and self-hosted compiler support class fields, methods, single inheritance, parameterized constructors, and `Public`/`Private`/`Protected` member access. Base-class constructors run before derived-class constructors and currently must take no arguments; explicit base-constructor argument forwarding is not yet available. The self-hosted compiler does not yet enforce class-declaration visibility or module-level visibility across flattened imports.
+
 ---
 
 ## 4. Literals

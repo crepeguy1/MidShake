@@ -1,0 +1,5 @@
+IMPORT the file "tests/test_class_module.mish";
+
+LET the variable counter BE the new Counter;
+CALL counter.read;
+PROCLAIM the RESPONSE;

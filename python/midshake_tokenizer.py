@@ -2,18 +2,21 @@
 
 import re
 
-from midshake_ast import Number, String, Variable, Binary, Response, Public, Secret, Import
+from midshake_ast import (
+    Number, String, Variable, Binary, Response,
+    Public, Private, Protected, Import, MemberAccess, NewInstance
+)
 
 
 class Token:
-    def __init__(self, type_, value=None, line_no=None, public=None):
+    def __init__(self, type_, value=None, line_no=None, visibility=None):
         self.type = type_
         self.value = value
         self.line_no = line_no
-        self.public = public
+        self.visibility = visibility
 
     def __repr__(self):
-        return f"Token({self.type}, {self.value}, line={self.line_no}, {self.public})"
+        return f"Token({self.type}, {self.value}, line={self.line_no}, {self.visibility})"
 
 
 class Tokenizer:
@@ -52,6 +55,7 @@ class Tokenizer:
             "END IF",
             "END WHILST",
             "END FUNCTION",
+            "END CLASS",
             "END FOR",
             "TERMINATE the program",
             "BREAK",
@@ -108,8 +112,12 @@ class Tokenizer:
                         i += 1
                         continue
 
-                    # treat DEFINE function as standalone (including with Public/Secret)
-                    if possible.startswith(("DEFINE function", "Public DEFINE function", "Secret DEFINE function")):
+                    # Treat block headers as standalone statements.
+                    if possible.startswith((
+                        "DEFINE function", "Public DEFINE function", "Private DEFINE function",
+                        "Protected DEFINE function", "DEFINE class", "Public DEFINE class",
+                        "Private DEFINE class", "Protected DEFINE class",
+                    )):
                         statements.append((possible, start_line))
                         current = []
                         start_line = line_no
@@ -136,7 +144,7 @@ class Tokenizer:
                     # Check if the accumulated text starts a new statement type
                     # that should be separated from the previous line
                     stmt_keywords = [
-                        "Public", "Secret",  
+                        "Public", "Private", "Protected",
                         "PROCLAIM", "LET the variable", "SET the variable", "GLOBAL SET the variable",
                         "CALL", "IF the value of", "WHILST the value of",
                         "INQUIRE", "RETURN", "DEFINE function",
@@ -211,18 +219,19 @@ class Tokenizer:
         if line.startswith("^"):
             return None
 
-        # 1. Strip Public / Secret prefix if present
+        # 1. Strip an access modifier prefix if present.
         visibility = None
-        if line.startswith("Public "):
-            visibility = Public()
-            line = line[len("Public "):].strip()
-        elif line.startswith("Secret "):
-            visibility = Secret()
-            line = line[len("Secret "):].strip()
+        for modifier, visibility_type in (
+            ("Public", Public), ("Private", Private), ("Protected", Protected)
+        ):
+            if line.startswith(modifier + " "):
+                visibility = visibility_type()
+                line = line[len(modifier):].strip()
+                break
 
         # 2. Helper so you don't have to touch all your existing return statements!
         def make_token(type_, value=None):
-            return Token(type_, value, line_no, public=visibility)
+            return Token(type_, value, line_no, visibility=visibility)
 
         # LET
         if line.startswith("LET the variable"):
@@ -332,6 +341,27 @@ class Tokenizer:
                 return Token("MAP_SET", (map_name, key_expr, value_expr), line_no)
 
         # ------------------------------------------------------------
+        # CLASS DEFINITIONS
+        # ------------------------------------------------------------
+        if line.startswith("DEFINE class"):
+            declaration = line[len("DEFINE class"):].strip().rstrip(";")
+            if "EXTENDS" in declaration:
+                name, base_name = declaration.split("EXTENDS", 1)
+                name = name.strip()
+                base_name = base_name.strip()
+            else:
+                name, base_name = declaration, None
+            if not name or (base_name is not None and not base_name):
+                raise ValueError(
+                    f"MidShake Syntax Error (line {line_no}):\n"
+                    f"  A class declaration requires a class name and optional base class."
+                )
+            return make_token("CLASS_DEF", (name, base_name))
+
+        if line.strip() == "END CLASS":
+            return Token("END_CLASS", None, line_no)
+
+        # ------------------------------------------------------------
         # FUNCTION DEFINITIONS
         # ------------------------------------------------------------
         if line.startswith("DEFINE function"):
@@ -364,7 +394,7 @@ class Tokenizer:
             else:
                 func_name = rest.strip().rstrip(";")
 
-            return Token("FUNC_DEF", (func_name, param_names), line_no)
+            return make_token("FUNC_DEF", (func_name, param_names))
 
         if line.strip() == "END FUNCTION":
             return Token("END_FUNC", None, line_no)
@@ -644,6 +674,31 @@ class ExpressionParser:
         if self.text[self.pos:].startswith("the answer"):
             self.pos += len("the answer")
             return Response()
+
+        if self.text[self.pos:].startswith("the new "):
+            self.pos += len("the new ")
+            start = self.pos
+            while not self.is_at_end() and (self.current_char().isalnum() or self.current_char() == "_"):
+                self.pos += 1
+            class_name = self.text[start:self.pos]
+            if not class_name:
+                raise ValueError(
+                    f"MidShake Syntax Error (line {self.line_no}):\n"
+                    f"  Expected a class name after 'the new'."
+                )
+            self.skip_whitespace()
+            args = []
+            if self.text[self.pos:].startswith("WITH"):
+                self.pos += len("WITH")
+                self.skip_whitespace()
+                while True:
+                    args.append(self.parse_comparison())
+                    self.skip_whitespace()
+                    if self.current_char() != ",":
+                        break
+                    self.pos += 1
+                    self.skip_whitespace()
+            return NewInstance(class_name, args)
 
 
         # FILE READ: the content of the file "path" or the content of the file the value of VAR
@@ -1249,7 +1304,7 @@ class ExpressionParser:
                 f"MidShake Syntax Error (line {self.line_no}):\n"
                 f"  Expected a variable name."
             )
-        return Variable(name)
+        return self.parse_member_expression(name)
 
     def parse_variable_phrase(self):
         if self.text[self.pos:].startswith("the value of"):
@@ -1282,7 +1337,17 @@ class ExpressionParser:
                 f"MidShake Syntax Error (line {self.line_no}):\n"
                 f"  Expected a variable name."
             )
-        return Variable(name)
+        return self.parse_member_expression(name)
+
+    @staticmethod
+    def parse_member_expression(name):
+        parts = [part.strip() for part in name.split(".")]
+        if any(not part for part in parts):
+            raise ValueError(f"Invalid member reference '{name}'.")
+        expression = Variable(parts[0])
+        for part in parts[1:]:
+            expression = MemberAccess(expression, part)
+        return expression
 
     def parse_number_literal(self):
         start = self.pos

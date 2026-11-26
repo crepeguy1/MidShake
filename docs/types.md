@@ -238,9 +238,9 @@ Types are associated with values, not variables. A variable can hold any type of
 
 MidShake has no type annotation syntax. The type of a variable is inferred from the value assigned to it.
 
-### 7.3. No User-Defined Types
+### 7.3. User-Defined Classes
 
-MidShake does not support classes, structs, enums, or other user-defined type constructs. Data structures are built using Maps and Lists.
+The Python interpreter and Python-to-C++ compiler support classes with single inheritance and `Public`, `Private`, and `Protected` members. Values remain dynamically typed; the self-hosted frontend does not yet support class declarations. Structs, enums, and generic types are not supported.
 
 ### 7.4. No Generics
 

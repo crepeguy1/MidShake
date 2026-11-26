@@ -1,7 +1,7 @@
-Secret LET the variable pin BE the number 1234;
+Private LET the variable pin BE the number 1234;
 Public LET the variable bank_name BE the string "MidShake Bank";
 
-Secret DEFINE function verify_pin WITH the variable input;
+Private DEFINE function verify_pin WITH the variable input;
     RETURN the value of input IS equal to the value of pin;
 END FUNCTION;
 

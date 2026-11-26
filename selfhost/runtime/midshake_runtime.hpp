@@ -57,6 +57,23 @@ namespace ms {
     // Function pointer type
     // -------------------------
     using MSFunc = void(*)(Environment&, const std::vector<Value>&);
+    enum class AccessLevel { Public, Private, Protected };
+    using ClassMethodFunction = Value(*)(Environment&, const std::vector<Value>&);
+    using ClassFieldInitializer = Value(*)(Environment&);
+
+    void register_class(const std::string& name, const std::string& base_name);
+    void register_class_field(const std::string& class_name, const std::string& field_name,
+                              AccessLevel access, ClassFieldInitializer initializer);
+    void register_class_method(const std::string& class_name, const std::string& method_name,
+                               AccessLevel access, size_t arity, ClassMethodFunction method);
+    Value create_object(Environment& env, const std::string& class_name,
+                        const std::vector<Value>& args = std::vector<Value>{});
+    Value object_get_member(const Value& object, const std::string& member_name,
+                            const std::string& caller_class);
+    void object_set_member(const Value& object, const std::string& member_name,
+                           const Value& value, const std::string& caller_class);
+    Value call_object_method(Environment& env, const Value& object, const std::string& method_name,
+                             const std::vector<Value>& args, const std::string& caller_class);
 
     // -------------------------
     // Standard library

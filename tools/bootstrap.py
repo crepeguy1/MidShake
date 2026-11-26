@@ -16,6 +16,7 @@ BUILD_DIR = ROOT / "build" / "bootstrap"
 OUTPUT_DIR = ROOT / "build" / "output"
 SOURCE = ROOT / "selfhost" / "codegen.mish"
 SMOKE_TEST = ROOT / "tests" / "test_bootstrap_scope.mish"
+CLASS_TEST = ROOT / "tests" / "test_selfhost_classes.mish"
 
 sys.path.insert(0, str(PYTHON_DIR))
 
@@ -212,7 +213,35 @@ def main():
             f"expected: {expected_values}."
         )
 
-    print("Bootstrap verified: two native generations match and the smoke test passed.")
+    print("[5/5] Verifying self-hosted class construction and member access")
+    class_cpp, _ = run_self_hosted(stage2_exe, CLASS_TEST, BUILD_DIR / "class-run")
+    generated_class_source = class_cpp.read_text(encoding="utf-8")
+    private_method_registration = (
+        'register_class_method("SpecialCounter", "internalTally", AccessLevel::Private,'
+    )
+    if private_method_registration not in generated_class_source:
+        raise RuntimeError("An unmodified class method was not emitted as Private.")
+    class_exe = BUILD_DIR / ("classes" + extension)
+    compile_native(GPP, class_cpp, class_exe)
+    class_result = run_checked(
+        [class_exe], BUILD_DIR / "class-run", "Running self-hosted class test"
+    )
+    native_class_values = numeric_output(class_result.stdout, "Native class test")
+    interpreted_class = run_checked(
+        [sys.executable, ROOT / "python" / "midshake_cli.py", "run", CLASS_TEST],
+        ROOT,
+        "Running interpreter class test",
+    )
+    interpreted_class_values = numeric_output(interpreted_class.stdout, "Interpreter class test")
+    expected_class_values = [7.0, 3.0]
+    if native_class_values != expected_class_values or interpreted_class_values != expected_class_values:
+        raise RuntimeError(
+            "Class test output mismatch. "
+            f"Native: {native_class_values}; interpreter: {interpreted_class_values}; "
+            f"expected: {expected_class_values}."
+        )
+
+    print("Bootstrap verified: native generations match and scope/class tests passed.")
     print(f"Artifacts: {BUILD_DIR}")
 
 

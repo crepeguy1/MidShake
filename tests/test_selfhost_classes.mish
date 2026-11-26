@@ -1,0 +1,38 @@
+Public DEFINE class Counter;
+Private LET the variable value BE the number 0;
+Protected LET the variable tally BE the number 0;
+Protected DEFINE function increase WITH the variable amount;
+    SET the variable this.value TO the value of this.value plus the value of amount;
+    RETURN the value of this.value;
+END FUNCTION;
+Public DEFINE function read;
+    RETURN the value of this.value;
+END FUNCTION;
+END CLASS;
+
+Public DEFINE class SpecialCounter EXTENDS Counter;
+Private LET the variable start BE the number 0;
+Public DEFINE function constructor WITH the variable initialValue, the variable initialTally;
+    SET the variable this.start TO the value of initialValue;
+    SET the variable this.tally TO the value of initialTally;
+    CALL this.increase WITH the value of initialValue;
+END FUNCTION;
+Public DEFINE function boost WITH the variable amount;
+    CALL this.increase WITH the value of amount;
+    CALL this.read;
+    RETURN the RESPONSE;
+END FUNCTION;
+DEFINE function internalTally;
+    RETURN the value of this.tally;
+END FUNCTION;
+Public DEFINE function tallyValue;
+    CALL this.internalTally;
+    RETURN the RESPONSE;
+END FUNCTION;
+END CLASS;
+
+LET the variable counter BE the new SpecialCounter WITH the number 5, the number 3;
+CALL counter.boost WITH the number 2;
+PROCLAIM the RESPONSE;
+CALL counter.tallyValue;
+PROCLAIM the RESPONSE;

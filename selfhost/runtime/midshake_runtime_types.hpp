@@ -4,13 +4,14 @@
 #include <unordered_map>
 #include <vector>
 #include <variant>
+#include <memory>
 
 namespace ms {
 
     // -------------------------
     // ValueKind
     // -------------------------
-    enum class ValueKind { Number, String, List, Map };
+    enum class ValueKind { Number, String, List, Map, Object };
 
     // -------------------------
     // Number
@@ -55,6 +56,7 @@ namespace ms {
     // Forward declaration for Value
     // -------------------------
     class Value;
+    struct MSObject;
 
     // -------------------------
     // List (vector of Values)
@@ -76,17 +78,20 @@ namespace ms {
         String str;
         List lst;
         Map mp;
+        std::shared_ptr<MSObject> object;
 
         Value() : kind(ValueKind::Number), num(0) {}
         Value(const Number& n) : kind(ValueKind::Number), num(n) {}
         Value(const String& s) : kind(ValueKind::String), str(s) {}
         Value(const List& l) : kind(ValueKind::List), lst(l) {}
         Value(const Map& m) : kind(ValueKind::Map), mp(m) {}
+        Value(const std::shared_ptr<MSObject>& o) : kind(ValueKind::Object), object(o) {}
 
         static Value from_double(double d) { return Value(Number(d)); }
         static Value from_string(const std::string& s) { return Value(String(s)); }
         static Value from_list(const List& l) { return Value(l); }
         static Value from_map(const Map& m) { return Value(m); }
+        static Value from_object(const std::shared_ptr<MSObject>& o) { return Value(o); }
 
         // Helper: add two values (string concat or numeric add)
         Value operator+(const Value& other) const {
@@ -135,9 +140,16 @@ namespace ms {
                     result += "}";
                     return result;
                 }
+                case ValueKind::Object:
+                    return "<object>";
             }
             return "";
         }
+    };
+
+    struct MSObject {
+        std::string class_name;
+        Map fields;
     };
 
 }

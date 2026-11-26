@@ -1,0 +1,9 @@
+Public DEFINE class Counter;
+Private LET the variable value BE the number 5;
+Public DEFINE function read;
+    RETURN the value of this.value;
+END FUNCTION;
+END CLASS;
+
+Private DEFINE class HiddenCounter;
+END CLASS;

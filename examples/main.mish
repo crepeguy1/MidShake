@@ -1,9 +1,9 @@
 ^ main.mish
 
-Secret LET the variable pin BE the number 1234;
+Private LET the variable pin BE the number 1234;
 Public LET the variable bank_name BE the string "MidShake Bank";
 
-Secret DEFINE function verify_pin WITH the variable input;
+Private DEFINE function verify_pin WITH the variable input;
     RETURN the value of input IS equal to the value of pin;
 END FUNCTION;
 
@@ -20,6 +20,6 @@ END FUNCTION;
 PROCLAIM the value of bank_name;
 CALL withdraw WITH the number 1234;
 
-^ Uncomment either line below to verify Secret blocks access:
+^ Uncomment either line below to verify Private blocks access:
 ^ PROCLAIM the value of pin;
 ^ CALL verify_pin WITH the number 1234;

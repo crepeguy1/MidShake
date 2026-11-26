@@ -12,9 +12,11 @@ LET the variable g_indent BE the number 0;
 LET the variable g_idx BE the number 0;
 LET the variable g_i BE the number 0;
 LET the variable g_bIdx BE the number 0;
+LET the variable g_currentClass BE the string "";
 LET the variable g_node BE {};
 LET the variable g_compiled BE the string "";
 LET the variable g_functions BE [];
+LET the variable g_classes BE [];
 LET the variable g_mainStmts BE [];
 LET the variable g_myAst BE [];
 LET the variable g_importedFiles BE [];
@@ -81,6 +83,34 @@ END FUNCTION;
 DEFINE function buildEnvGet WITH the variable name;
     LET the variable result BE the string "env.get(" plus the value of QUOTE plus the value of name plus the value of QUOTE plus the string ")";
     RETURN the value of result;
+END FUNCTION;
+
+DEFINE function compileMemberPath WITH the variable path;
+    CALL split WITH the value of path, the string ".";
+    LET the variable pathParts BE the RESPONSE;
+    CALL getItem WITH the number 0, the value of pathParts;
+    LET the variable rootName BE the RESPONSE;
+    CALL buildEnvGet WITH the value of rootName;
+    LET the variable result BE the RESPONSE;
+    LET the variable pathIndex BE the number 1;
+    LET the variable pathCount BE the size of pathParts;
+    WHILST the value of pathIndex IS less than the value of pathCount DO
+        CALL getItem WITH the value of pathIndex, the value of pathParts;
+        LET the variable memberName BE the RESPONSE;
+        SET the variable result TO the string "object_get_member(" plus the value of result plus the string ", " plus the value of QUOTE plus the value of memberName plus the value of QUOTE plus the string ", " plus the value of QUOTE plus the value of g_currentClass plus the value of QUOTE plus the string ")";
+        SET the variable pathIndex TO the value of pathIndex plus the number 1;
+    END WHILST;
+    RETURN the value of result;
+END FUNCTION;
+
+DEFINE function accessLevel WITH the variable visibility;
+    IF the value of visibility IS equal to the string "Public" THEN
+        RETURN the string "AccessLevel::Public";
+    END IF;
+    IF the value of visibility IS equal to the string "Protected" THEN
+        RETURN the string "AccessLevel::Protected";
+    END IF;
+    RETURN the string "AccessLevel::Private";
 END FUNCTION;
 
 ^ ====== Helper: Build Value::from_string("...") ======
@@ -365,8 +395,15 @@ DEFINE function compileExpr WITH the variable expr;
         LET the variable varName BE the RESPONSE;
         CALL trim WITH the value of varName;
         LET the variable trimmedVar BE the RESPONSE;
-        CALL buildEnvGet WITH the value of trimmedVar;
-        LET the variable result BE the RESPONSE;
+        CALL split WITH the value of trimmedVar, the string ".";
+        LET the variable varParts BE the RESPONSE;
+        IF the size of varParts IS greater than the number 1 THEN
+            CALL compileMemberPath WITH the value of trimmedVar;
+            LET the variable result BE the RESPONSE;
+        ELSE
+            CALL buildEnvGet WITH the value of trimmedVar;
+            LET the variable result BE the RESPONSE;
+        END IF;
         GLOBAL SET the variable g_compiled TO the value of result;
         RETURN the value of result;
     END IF;
@@ -377,6 +414,49 @@ DEFINE function compileExpr WITH the variable expr;
     IF the value of isResponse IS equal to the number 1 THEN
         CALL buildEnvGet WITH "RESPONSE";
         LET the variable result BE the RESPONSE;
+        GLOBAL SET the variable g_compiled TO the value of result;
+        RETURN the value of result;
+    END IF;
+
+    ^ "the new Class [WITH arguments]"
+    CALL startsWith WITH the value of normalized, the string "the new ";
+    LET the variable isNewInstance BE the RESPONSE;
+    IF the value of isNewInstance IS equal to the number 1 THEN
+        CALL substring WITH the value of normalized, the number 8, the length of normalized;
+        LET the variable newDeclaration BE the RESPONSE;
+        CALL findOperatorOutsideString WITH the value of newDeclaration, the string " WITH ";
+        LET the variable constructorArgsIndex BE the RESPONSE;
+        LET the variable className BE the value of newDeclaration;
+        LET the variable constructorArgs BE the string "";
+        IF the value of constructorArgsIndex IS greater than the number -1 THEN
+            CALL substring WITH the value of newDeclaration, the number 0, the value of constructorArgsIndex;
+            SET the variable className TO the RESPONSE;
+            CALL substring WITH the value of newDeclaration, the value of constructorArgsIndex plus the number 6, the length of newDeclaration;
+            SET the variable constructorArgs TO the RESPONSE;
+        END IF;
+        CALL trim WITH the value of className;
+        SET the variable className TO the RESPONSE;
+        LET the variable compiledArgs BE the string "";
+        IF the length of constructorArgs IS greater than the number 0 THEN
+            CALL splitCallArgs WITH the value of constructorArgs;
+            LET the variable constructorArgParts BE the RESPONSE;
+            LET the variable constructorArgCount BE the size of constructorArgParts;
+            LET the variable constructorArgIndex BE the number 0;
+            WHILST the value of constructorArgIndex IS less than the value of constructorArgCount DO
+                CALL getItem WITH the value of constructorArgIndex, the value of constructorArgParts;
+                LET the variable constructorArg BE the RESPONSE;
+                CALL trim WITH the value of constructorArg;
+                LET the variable trimmedConstructorArg BE the RESPONSE;
+                CALL compileExpr WITH the value of trimmedConstructorArg;
+                LET the variable compiledConstructorArg BE the value of g_compiled;
+                IF the value of constructorArgIndex IS greater than the number 0 THEN
+                    SET the variable compiledArgs TO the value of compiledArgs plus the string ", ";
+                END IF;
+                SET the variable compiledArgs TO the value of compiledArgs plus the value of compiledConstructorArg;
+                SET the variable constructorArgIndex TO the value of constructorArgIndex plus the number 1;
+            END WHILST;
+        END IF;
+        LET the variable result BE the string "create_object(env, " plus the value of QUOTE plus the value of className plus the value of QUOTE plus the string ", std::vector<Value>{" plus the value of compiledArgs plus the string "})";
         GLOBAL SET the variable g_compiled TO the value of result;
         RETURN the value of result;
     END IF;
@@ -742,9 +822,31 @@ DEFINE function compileNode WITH the variable node;
             GLOBAL SET the variable g_compiled TO the string "";
         END IF;
         LET the variable compiled BE the value of g_compiled;
-        CALL buildEnvSet WITH the value of varName, the value of compiled;
-        LET the variable setLine BE the RESPONSE;
-        CALL emit WITH the value of setLine;
+        CALL split WITH the value of varName, the string ".";
+        LET the variable setPathParts BE the RESPONSE;
+        LET the variable setPathCount BE the size of setPathParts;
+        IF the value of setPathCount IS greater than the number 1 THEN
+            CALL getItem WITH the value of setPathCount minus the number 1, the value of setPathParts;
+            LET the variable setMemberName BE the RESPONSE;
+            LET the variable setTargetName BE the string "";
+            LET the variable setPathIndex BE the number 0;
+            WHILST the value of setPathIndex IS less than the value of setPathCount minus the number 1 DO
+                CALL getItem WITH the value of setPathIndex, the value of setPathParts;
+                LET the variable setTargetPart BE the RESPONSE;
+                IF the value of setPathIndex IS greater than the number 0 THEN
+                    SET the variable setTargetName TO the value of setTargetName plus the string ".";
+                END IF;
+                SET the variable setTargetName TO the value of setTargetName plus the value of setTargetPart;
+                SET the variable setPathIndex TO the value of setPathIndex plus the number 1;
+            END WHILST;
+            CALL compileMemberPath WITH the value of setTargetName;
+            LET the variable compiledSetTarget BE the RESPONSE;
+            CALL emit WITH the string "object_set_member(" plus the value of compiledSetTarget plus the string ", " plus the value of QUOTE plus the value of setMemberName plus the value of QUOTE plus the string ", " plus the value of compiled plus the string ", " plus the value of QUOTE plus the value of g_currentClass plus the value of QUOTE plus the string ");";
+        ELSE
+            CALL buildEnvSet WITH the value of varName, the value of compiled;
+            LET the variable setLine BE the RESPONSE;
+            CALL emit WITH the value of setLine;
+        END IF;
         RETURN the number 0;
     END IF;
 
@@ -892,9 +994,31 @@ DEFINE function compileNode WITH the variable node;
                 SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
             END WHILST;
         END IF;
-        CALL resolveCallName WITH the value of callName;
-        LET the variable emittedCallName BE the RESPONSE;
-        CALL emit WITH the string "env.set(" plus the value of QUOTE plus the string "RESPONSE" plus the value of QUOTE plus the string ", " plus the value of emittedCallName plus the string "(env, args));";
+        CALL split WITH the value of callName, the string ".";
+        LET the variable callPathParts BE the RESPONSE;
+        LET the variable callPathCount BE the size of callPathParts;
+        IF the value of callPathCount IS greater than the number 1 THEN
+            CALL getItem WITH the value of callPathCount minus the number 1, the value of callPathParts;
+            LET the variable methodName BE the RESPONSE;
+            LET the variable methodTargetName BE the string "";
+            LET the variable methodPathIndex BE the number 0;
+            WHILST the value of methodPathIndex IS less than the value of callPathCount minus the number 1 DO
+                CALL getItem WITH the value of methodPathIndex, the value of callPathParts;
+                LET the variable methodTargetPart BE the RESPONSE;
+                IF the value of methodPathIndex IS greater than the number 0 THEN
+                    SET the variable methodTargetName TO the value of methodTargetName plus the string ".";
+                END IF;
+                SET the variable methodTargetName TO the value of methodTargetName plus the value of methodTargetPart;
+                SET the variable methodPathIndex TO the value of methodPathIndex plus the number 1;
+            END WHILST;
+            CALL compileMemberPath WITH the value of methodTargetName;
+            LET the variable compiledMethodTarget BE the RESPONSE;
+            CALL emit WITH the string "env.set(" plus the value of QUOTE plus the string "RESPONSE" plus the value of QUOTE plus the string ", call_object_method(env, " plus the value of compiledMethodTarget plus the string ", " plus the value of QUOTE plus the value of methodName plus the value of QUOTE plus the string ", args, " plus the value of QUOTE plus the value of g_currentClass plus the value of QUOTE plus the string "));";
+        ELSE
+            CALL resolveCallName WITH the value of callName;
+            LET the variable emittedCallName BE the RESPONSE;
+            CALL emit WITH the string "env.set(" plus the value of QUOTE plus the string "RESPONSE" plus the value of QUOTE plus the string ", " plus the value of emittedCallName plus the string "(env, args));";
+        END IF;
         CALL dedent WITH the number 0;
         CALL emit WITH "}";
         RETURN the number 0;
@@ -1038,10 +1162,24 @@ DEFINE function compileFunctionDef WITH the variable funcNode;
     LET the variable funcName BE the value of name in g_node;
     LET the variable params BE the value of params in g_node;
     LET the variable body BE the value of body in g_node;
-    
-    CALL emit WITH the string "Value " plus the value of funcName plus the string "(Environment& parent_env, const std::vector<Value>& args) {";
+    LET the variable ownerClass BE the value of ownerClass in g_node;
+    LET the variable symbol BE the value of funcName;
+    IF the length of ownerClass IS greater than the number 0 THEN
+        GLOBAL SET the variable g_currentClass TO the value of ownerClass;
+        SET the variable symbol TO the string "ms_class_" plus the value of ownerClass plus the string "_" plus the value of funcName;
+    ELSE
+        GLOBAL SET the variable g_currentClass TO the string "";
+    END IF;
+
+    CALL emit WITH the string "Value " plus the value of symbol plus the string "(Environment& parent_env, const std::vector<Value>& args) {";
     CALL indent WITH the number 0;
     CALL emit WITH "Environment env(parent_env);";
+
+    LET the variable argOffset BE the number 0;
+    IF the length of ownerClass IS greater than the number 0 THEN
+        CALL emit WITH the string "env.set(" plus the value of QUOTE plus the string "this" plus the value of QUOTE plus the string ", args.at(0));";
+        SET the variable argOffset TO the number 1;
+    END IF;
     
     IF the value of params IS not equal to the string "" THEN
         LET the variable paramSize BE the size of params;
@@ -1051,7 +1189,8 @@ DEFINE function compileFunctionDef WITH the variable funcNode;
             LET the variable paramName BE the RESPONSE;
             CALL trim WITH the value of paramName;
             LET the variable trimmedParam BE the RESPONSE;
-            CALL buildEnvSet WITH the value of trimmedParam, the string "args[static_cast<int>(" plus the value of g_bIdx plus the string ")]";
+            LET the variable argumentIndex BE the value of g_bIdx plus the value of argOffset;
+            CALL buildEnvSet WITH the value of trimmedParam, the string "args.at(static_cast<size_t>(" plus the value of argumentIndex plus the string "))";
             LET the variable paramLine BE the RESPONSE;
             CALL emit WITH the value of paramLine;
             SET the variable g_bIdx TO the value of g_bIdx plus the number 1;
@@ -1068,6 +1207,25 @@ DEFINE function compileFunctionDef WITH the variable funcNode;
     END WHILST;
     
     CALL emit WITH "return Value::from_double(0);";
+    CALL dedent WITH the number 0;
+    CALL emit WITH "}";
+    CALL emit WITH "";
+    GLOBAL SET the variable g_currentClass TO the string "";
+    RETURN the number 0;
+END FUNCTION;
+
+DEFINE function compileFieldInitializer WITH the variable className, the variable fieldNode;
+    CALL mapGet WITH "name", the value of fieldNode;
+    LET the variable fieldName BE the RESPONSE;
+    CALL mapGet WITH "value", the value of fieldNode;
+    LET the variable fieldValue BE the RESPONSE;
+    LET the variable symbol BE the string "ms_field_" plus the value of className plus the string "_" plus the value of fieldName;
+    GLOBAL SET the variable g_currentClass TO the string "";
+    CALL emit WITH the string "Value " plus the value of symbol plus the string "(Environment& env) {";
+    CALL indent WITH the number 0;
+    CALL compileExpr WITH the value of fieldValue;
+    LET the variable compiledValue BE the value of g_compiled;
+    CALL emit WITH the string "return " plus the value of compiledValue plus the string ";";
     CALL dedent WITH the number 0;
     CALL emit WITH "}";
     CALL emit WITH "";
@@ -1176,6 +1334,7 @@ END WHILST;
 SET the variable g_output TO [];
 SET the variable g_indent TO the number 0;
 SET the variable g_functions TO [];
+SET the variable g_classes TO [];
 SET the variable g_mainStmts TO [];
 
 LET the variable astSize BE the size of g_myAst;
@@ -1190,11 +1349,41 @@ WHILST the value of g_idx IS less than the value of astSize DO
         LET the variable newFuncs2 BE the RESPONSE;
         GLOBAL SET the variable g_functions TO the value of newFuncs2;
     ELSE
-        CALL append WITH the value of node, the value of g_mainStmts;
-        LET the variable newMain2 BE the RESPONSE;
-        GLOBAL SET the variable g_mainStmts TO the value of newMain2;
+        IF the value of nodeType IS equal to the string "ClassDef" THEN
+            CALL append WITH the value of node, the value of g_classes;
+            LET the variable newClasses BE the RESPONSE;
+            GLOBAL SET the variable g_classes TO the value of newClasses;
+        ELSE
+            CALL append WITH the value of node, the value of g_mainStmts;
+            LET the variable newMain2 BE the RESPONSE;
+            GLOBAL SET the variable g_mainStmts TO the value of newMain2;
+        END IF;
     END IF;
     GLOBAL SET the variable g_idx TO the value of g_idx plus the number 1;
+END WHILST;
+
+^ Collect class methods with top-level functions for definition generation.
+LET the variable classIndex BE the number 0;
+LET the variable classCount BE the size of g_classes;
+WHILST the value of classIndex IS less than the value of classCount DO
+    CALL getItem WITH the value of classIndex, the value of g_classes;
+    LET the variable classNode BE the RESPONSE;
+    CALL mapGet WITH "members", the value of classNode;
+    LET the variable classMembers BE the RESPONSE;
+    LET the variable memberIndex BE the number 0;
+    LET the variable memberCount BE the size of classMembers;
+    WHILST the value of memberIndex IS less than the value of memberCount DO
+        CALL getItem WITH the value of memberIndex, the value of classMembers;
+        LET the variable memberNode BE the RESPONSE;
+        CALL mapGet WITH "type", the value of memberNode;
+        LET the variable classMemberType BE the RESPONSE;
+        IF the value of classMemberType IS equal to the string "FunctionDef" THEN
+            CALL append WITH the value of memberNode, the value of g_functions;
+            GLOBAL SET the variable g_functions TO the RESPONSE;
+        END IF;
+        SET the variable memberIndex TO the value of memberIndex plus the number 1;
+    END WHILST;
+    SET the variable classIndex TO the value of classIndex plus the number 1;
 END WHILST;
 
 SET the variable g_functionNames TO {};
@@ -1205,7 +1394,11 @@ WHILST the value of functionNameIndex IS less than the value of functionNameCoun
     LET the variable functionNode BE the RESPONSE;
     CALL mapGet WITH "name", the value of functionNode;
     LET the variable functionName BE the RESPONSE;
-    SET the key functionName IN the map g_functionNames TO the number 1;
+    CALL mapGet WITH "ownerClass", the value of functionNode;
+    LET the variable functionOwnerClass BE the RESPONSE;
+    IF the length of functionOwnerClass IS equal to the number 0 THEN
+        SET the key functionName IN the map g_functionNames TO the number 1;
+    END IF;
     SET the variable functionNameIndex TO the value of functionNameIndex plus the number 1;
 END WHILST;
 
@@ -1227,6 +1420,30 @@ CALL emit WITH "using namespace ms;";
 CALL emit WITH "";
 
 ^ Generate function definitions
+LET the variable fieldClassIndex BE the number 0;
+LET the variable fieldClassCount BE the size of g_classes;
+WHILST the value of fieldClassIndex IS less than the value of fieldClassCount DO
+    CALL getItem WITH the value of fieldClassIndex, the value of g_classes;
+    LET the variable fieldClassNode BE the RESPONSE;
+    CALL mapGet WITH "name", the value of fieldClassNode;
+    LET the variable fieldClassName BE the RESPONSE;
+    CALL mapGet WITH "members", the value of fieldClassNode;
+    LET the variable fieldMembers BE the RESPONSE;
+    LET the variable fieldMemberIndex BE the number 0;
+    LET the variable fieldMemberCount BE the size of fieldMembers;
+    WHILST the value of fieldMemberIndex IS less than the value of fieldMemberCount DO
+        CALL getItem WITH the value of fieldMemberIndex, the value of fieldMembers;
+        LET the variable fieldNode BE the RESPONSE;
+        CALL mapGet WITH "type", the value of fieldNode;
+        LET the variable fieldNodeType BE the RESPONSE;
+        IF the value of fieldNodeType IS equal to the string "Let" THEN
+            CALL compileFieldInitializer WITH the value of fieldClassName, the value of fieldNode;
+        END IF;
+        SET the variable fieldMemberIndex TO the value of fieldMemberIndex plus the number 1;
+    END WHILST;
+    SET the variable fieldClassIndex TO the value of fieldClassIndex plus the number 1;
+END WHILST;
+
 LET the variable funcCount BE the size of g_functions;
 GLOBAL SET the variable g_idx TO the number 0;
 WHILST the value of g_idx IS less than the value of funcCount DO
@@ -1240,6 +1457,58 @@ END WHILST;
 CALL emit WITH "int main(int argc, char* argv[]) {";
 CALL indent WITH the number 0;
 CALL emit WITH "Environment env(argc, argv);";
+
+^ Register class inheritance before any instances can be created.
+LET the variable registerClassIndex BE the number 0;
+LET the variable registerClassCount BE the size of g_classes;
+WHILST the value of registerClassIndex IS less than the value of registerClassCount DO
+    CALL getItem WITH the value of registerClassIndex, the value of g_classes;
+    LET the variable registerClassNode BE the RESPONSE;
+    CALL mapGet WITH "name", the value of registerClassNode;
+    LET the variable registerClassName BE the RESPONSE;
+    CALL mapGet WITH "baseName", the value of registerClassNode;
+    LET the variable registerBaseName BE the RESPONSE;
+    CALL emit WITH the string "register_class(" plus the value of QUOTE plus the value of registerClassName plus the value of QUOTE plus the string ", " plus the value of QUOTE plus the value of registerBaseName plus the value of QUOTE plus the string ");";
+    SET the variable registerClassIndex TO the value of registerClassIndex plus the number 1;
+END WHILST;
+
+LET the variable registerMemberClassIndex BE the number 0;
+WHILST the value of registerMemberClassIndex IS less than the value of registerClassCount DO
+    CALL getItem WITH the value of registerMemberClassIndex, the value of g_classes;
+    LET the variable registerMemberClass BE the RESPONSE;
+    CALL mapGet WITH "name", the value of registerMemberClass;
+    LET the variable registerMemberClassName BE the RESPONSE;
+    CALL mapGet WITH "members", the value of registerMemberClass;
+    LET the variable registerMembers BE the RESPONSE;
+    LET the variable registerMemberIndex BE the number 0;
+    LET the variable registerMemberCount BE the size of registerMembers;
+    WHILST the value of registerMemberIndex IS less than the value of registerMemberCount DO
+        CALL getItem WITH the value of registerMemberIndex, the value of registerMembers;
+        LET the variable registerMember BE the RESPONSE;
+        CALL mapGet WITH "type", the value of registerMember;
+        LET the variable registerMemberType BE the RESPONSE;
+        CALL mapGet WITH "name", the value of registerMember;
+        LET the variable registerMemberName BE the RESPONSE;
+        CALL mapGet WITH "visibility", the value of registerMember;
+        LET the variable registerVisibility BE the RESPONSE;
+        CALL accessLevel WITH the value of registerVisibility;
+        LET the variable registerAccess BE the RESPONSE;
+        IF the value of registerMemberType IS equal to the string "Let" THEN
+            LET the variable fieldSymbol BE the string "ms_field_" plus the value of registerMemberClassName plus the string "_" plus the value of registerMemberName;
+            CALL emit WITH the string "register_class_field(" plus the value of QUOTE plus the value of registerMemberClassName plus the value of QUOTE plus the string ", " plus the value of QUOTE plus the value of registerMemberName plus the value of QUOTE plus the string ", " plus the value of registerAccess plus the string ", &" plus the value of fieldSymbol plus the string ");";
+        ELSE
+            IF the value of registerMemberType IS equal to the string "FunctionDef" THEN
+                CALL mapGet WITH "params", the value of registerMember;
+                LET the variable registerMethodParams BE the RESPONSE;
+                LET the variable methodArity BE the size of registerMethodParams;
+                LET the variable methodSymbol BE the string "ms_class_" plus the value of registerMemberClassName plus the string "_" plus the value of registerMemberName;
+                CALL emit WITH the string "register_class_method(" plus the value of QUOTE plus the value of registerMemberClassName plus the value of QUOTE plus the string ", " plus the value of QUOTE plus the value of registerMemberName plus the value of QUOTE plus the string ", " plus the value of registerAccess plus the string ", " plus the value of methodArity plus the string ", &" plus the value of methodSymbol plus the string ");";
+            END IF;
+        END IF;
+        SET the variable registerMemberIndex TO the value of registerMemberIndex plus the number 1;
+    END WHILST;
+    SET the variable registerMemberClassIndex TO the value of registerMemberClassIndex plus the number 1;
+END WHILST;
 
 LET the variable mainCount BE the size of g_mainStmts;
 GLOBAL SET the variable g_idx TO the number 0;

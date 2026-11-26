@@ -5,7 +5,8 @@ from midshake_ast import (
     Let, Set, Proclaim, If, While, Terminate,
     Variable, Binary, Inquire, Response,
     Call, FunctionDef, Return, FileWriteStatement, Import,
-    Break, Continue, ForIn, MapSet, GlobalSet, Public, Secret
+    Break, Continue, ForIn, MapSet, GlobalSet, Public, Private, Protected,
+    ClassDef, MemberAccess, MemberSet
 )
 
 
@@ -13,6 +14,7 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
+        self.class_stack = []
 
     # -----------------------------
     # BASIC TOKEN HELPERS
@@ -42,7 +44,7 @@ class Parser:
     # -----------------------------
     # FUNCTION PARSER
     # -----------------------------
-    def parse_function(self, func_name, param_names, line_no, visibility=None):
+    def parse_function(self, func_name, param_names, line_no, visibility=None, owner_class=None):
         body = []
         self.advance()  # move past FUNC_DEF
 
@@ -58,8 +60,43 @@ class Parser:
             )
 
         self.advance()  # consume END_FUNC
+        vis = visibility if visibility is not None else (Private() if owner_class else Public())
+        return FunctionDef(func_name, param_names, body, visibility=vis, owner_class=owner_class)
+
+    def parse_class(self, name, base_name, line_no, visibility=None):
+        members = []
+        self.class_stack.append(name)
+        self.advance()  # move past CLASS_DEF
+
+        while self.current() and self.current().type != "END_CLASS":
+            tok = self.current()
+            if tok.type == "FUNC_DEF":
+                func_name, param_names = tok.value
+                members.append(self.parse_function(
+                    func_name, param_names, tok.line_no, tok.visibility, owner_class=name
+                ))
+                continue
+            if tok.type == "LET":
+                member = self.parse_statement()
+                if member.visibility is None:
+                    member.visibility = Private()
+                members.append(member)
+                continue
+            raise ValueError(
+                f"MidShake Syntax Error (line {tok.line_no}):\n"
+                f"  Classes may contain only field declarations and function definitions."
+            )
+
+        if not self.current():
+            raise ValueError(
+                f"MidShake Syntax Error (line {line_no}):\n"
+                f"  Missing 'END CLASS' for class '{name}'."
+            )
+
+        self.advance()  # consume END_CLASS
+        self.class_stack.pop()
         vis = visibility if visibility is not None else Public()
-        return FunctionDef(func_name, param_names, body, visibility=vis)
+        return ClassDef(name, base_name, members, visibility=vis)
 
     # -----------------------------
     # STATEMENTS
@@ -69,18 +106,25 @@ class Parser:
         if tok is None:
             return None
 
-        # Guard against using Public/Secret on statements that can't be encapsulated
-        if tok.public is not None and tok.type not in ("LET", "FUNC_DEF"):
-            modifier = "Public" if isinstance(tok.public, Public) else "Secret"
+        # Access modifiers apply only to declarations.
+        if tok.visibility is not None and tok.type not in ("LET", "FUNC_DEF", "CLASS_DEF"):
+            modifier = type(tok.visibility).__name__
             raise ValueError(
                 f"MidShake Syntax Error (line {tok.line_no}):\n"
                 f"  '{modifier}' cannot be used before '{tok.type}'."
+            )
+        if isinstance(tok.visibility, Protected) and not self.class_stack:
+            raise ValueError(
+                f"MidShake Syntax Error (line {tok.line_no}):\n"
+                f"  'Protected' can only be used for class members."
             )
 
         # LET
         if tok.type == "LET":
             name, expr = tok.value
-            vis = tok.public if tok.public is not None else Public()
+            vis = tok.visibility if tok.visibility is not None else (
+                Private() if self.class_stack else Public()
+            )
             self.advance()
             return Let(name, expr, visibility=vis)
 
@@ -88,6 +132,13 @@ class Parser:
         if tok.type == "SET":
             name, expr = tok.value
             self.advance()
+            if "." in name:
+                target_name, member_name = name.rsplit(".", 1)
+                target_parts = target_name.split(".")
+                target = Variable(target_parts[0])
+                for part in target_parts[1:]:
+                    target = MemberAccess(target, part)
+                return MemberSet(target, member_name, expr)
             return Set(name, expr)
 
         # GLOBAL SET
@@ -120,7 +171,12 @@ class Parser:
         # FUNCTION DEF
         if tok.type == "FUNC_DEF":
             func_name, param_names = tok.value
-            return self.parse_function(func_name, param_names, tok.line_no, tok.public)
+            return self.parse_function(func_name, param_names, tok.line_no, tok.visibility)
+
+        # CLASS DEF
+        if tok.type == "CLASS_DEF":
+            name, base_name = tok.value
+            return self.parse_class(name, base_name, tok.line_no, tok.visibility)
 
         # CALL
         if tok.type == "CALL":
@@ -169,7 +225,6 @@ class Parser:
         if tok.type == "MAP_SET":
             map_name, key_expr, value_expr = tok.value
             self.advance()
-            from midshake_ast import Variable
             return MapSet(Variable(map_name), key_expr, value_expr)
 
         raise ValueError(

@@ -1,9 +1,11 @@
+from dataclasses import fields, is_dataclass
+
 from midshake_ast import (
     Program, Section,
-    Let, Set, Proclaim, Inquire,
+    Let, Set, MemberSet, Proclaim, Inquire,
     If, While, Terminate,
-    Number, String, Variable, Binary, Response,
-    FunctionDef, Call, Return, Import,
+    Number, String, Variable, MemberAccess, NewInstance, Binary, Response,
+    FunctionDef, ClassDef, Call, Return, Import,
     FileReadExpression, FileWriteNode, FileWriteStatement,
     ListLiteral, MapLiteral, ListGet, MapGet,
     StringLength, Substring, CharAt, StringSplit, StringTrim, StringJoin,
@@ -11,7 +13,7 @@ from midshake_ast import (
     MathMin, MathMax, MathAbs, MathRound,
     StringToUpper, StringToLower, StringStartsWith, StringEndsWith,
     StringIsDigit, StringIsLetter, StringIsWhitespace, StringReplace, StringIndexOf,
-    Boolean, MapSet, Break, Continue, ForIn, GlobalSet, Secret, Public
+    Boolean, MapSet, Break, Continue, ForIn, GlobalSet, Private, Protected, Public
 )
 
 STDLIB_RUNTIME_FUNCTIONS = {
@@ -27,37 +29,73 @@ class CppCompiler:
         self.lines = []
         self.indent = 0
         self._param_names = set()
+        self._current_class = None
 
     def emit(self, line: str = ""):
         self.lines.append("    " * self.indent + line)
+
+    @staticmethod
+    def _function_symbol(func):
+        if func.owner_class:
+            return f"ms_class_{func.owner_class}_{func.name}"
+        return func.name
+
+    @staticmethod
+    def _field_initializer_symbol(class_def, field):
+        return f"ms_field_{class_def.name}_{field.name}"
+
+    @staticmethod
+    def _access_level(visibility):
+        if isinstance(visibility, Private):
+            return "AccessLevel::Private"
+        if isinstance(visibility, Protected):
+            return "AccessLevel::Protected"
+        return "AccessLevel::Public"
 
     # ------------------------------------------------------------
     # TOP LEVEL
     # ------------------------------------------------------------
     def compile_program(self, program: Program) -> str:
+        self._validate_import_visibility(program)
+        self._imported_function_files = set()
+        self._imported_main_files = set()
+
         # includes and namespace
         self.emit('#include "midshake_runtime.hpp"')
         self.emit("using namespace ms;")
         self.emit("")
 
-        # Pre-pass: collect all function definitions, resolving imports
-        if not hasattr(self, "_imported_files"):
-            self._imported_files = set()
-
+        # Pre-pass: collect declarations, resolving imports.
         all_funcs = self._collect_functions(program)
+        self._classes = self._collect_classes(program)
         main_stmts = self._collect_main_stmts(program)
 
         # Deduplicate functions by name (later definitions override earlier ones)
         seen_names = set()
         unique_funcs = []
         for func in reversed(all_funcs):
-            if func.name not in seen_names:
-                seen_names.add(func.name)
+            symbol = self._function_symbol(func)
+            if symbol not in seen_names:
+                seen_names.add(symbol)
                 unique_funcs.append(func)
         unique_funcs.reverse()
-        self._defined_function_names = {func.name for func in unique_funcs}
+        self._defined_function_names = {self._function_symbol(func) for func in unique_funcs if not func.owner_class}
 
-        # emit function definitions
+        for func in unique_funcs:
+            symbol = self._function_symbol(func)
+            self.emit(f"Value {symbol}(Environment&, const std::vector<Value>&);")
+        for class_def in self._classes:
+            for member in class_def.members:
+                if isinstance(member, Let):
+                    symbol = self._field_initializer_symbol(class_def, member)
+                    self.emit(f"Value {symbol}(Environment&);")
+        self.emit("")
+
+        # Emit field initializers and function definitions.
+        for class_def in self._classes:
+            for member in class_def.members:
+                if isinstance(member, Let):
+                    self.compile_field_initializer(class_def, member)
         for func in unique_funcs:
             self.compile_function_def(func)
 
@@ -65,6 +103,23 @@ class CppCompiler:
         self.emit("int main(int argc, char* argv[]) {")
         self.indent += 1
         self.emit("Environment env(argc, argv);")
+
+        for class_def in self._classes:
+            base_name = class_def.base_name or ""
+            self.emit(f'register_class("{class_def.name}", "{base_name}");')
+        for class_def in self._classes:
+            for member in class_def.members:
+                if isinstance(member, Let):
+                    self.emit(
+                        f'register_class_field("{class_def.name}", "{member.name}", '
+                        f'{self._access_level(member.visibility)}, &{self._field_initializer_symbol(class_def, member)});'
+                    )
+                elif isinstance(member, FunctionDef):
+                    self.emit(
+                        f'register_class_method("{class_def.name}", "{member.name}", '
+                        f'{self._access_level(member.visibility)}, {len(member.param_names)}, '
+                        f'&{self._function_symbol(member)});'
+                    )
 
         for stmt in main_stmts:
             self.compile_stmt(stmt)
@@ -75,6 +130,161 @@ class CppCompiler:
 
         return "\n".join(self.lines)
 
+    def _parse_visibility_import(self, stmt):
+        import os
+        from midshake_tokenizer import Tokenizer
+        from midshake_parser import Parser
+
+        path = str(stmt.path).strip().strip('"').strip("'")
+        normalized_path = path.replace("\\", "/")
+        if os.path.basename(normalized_path) == "stdlib.mish":
+            return None
+
+        candidates = [
+            os.path.abspath(path),
+            os.path.join(os.getcwd(), path),
+            os.path.join(os.getcwd(), "stdlib", os.path.basename(path)),
+        ]
+        resolved = next((candidate for candidate in candidates if os.path.isfile(candidate)), None)
+        if resolved is None:
+            return None
+
+        with open(resolved, "r", encoding="utf-8") as source_file:
+            source = source_file.read()
+        return Parser(Tokenizer(source).tokenize()).parse(), os.path.realpath(resolved)
+
+    def _validate_import_visibility(self, program):
+        private_vars = set()
+        private_functions = set()
+        private_classes = set()
+
+        imported_files = set()
+
+        def collect_import_visibility(stmt):
+            imported_result = self._parse_visibility_import(stmt)
+            if imported_result is None:
+                return
+            imported_program, real_path = imported_result
+            if real_path in imported_files:
+                return
+            imported_files.add(real_path)
+
+            for imported_section in imported_program.sections:
+                for imported_stmt in imported_section.body:
+                    if isinstance(imported_stmt, Let) and isinstance(imported_stmt.visibility, Private):
+                        private_vars.add(imported_stmt.name)
+                    elif isinstance(imported_stmt, FunctionDef) and isinstance(imported_stmt.visibility, Private):
+                        private_functions.add(imported_stmt.name)
+                    elif isinstance(imported_stmt, ClassDef) and isinstance(imported_stmt.visibility, Private):
+                        private_classes.add(imported_stmt.name)
+                    elif isinstance(imported_stmt, Import):
+                        collect_import_visibility(imported_stmt)
+
+        for section in program.sections:
+            for stmt in section.body:
+                if isinstance(stmt, Import):
+                    collect_import_visibility(stmt)
+
+        local_vars = {
+            stmt.name
+            for section in program.sections
+            for stmt in section.body
+            if isinstance(stmt, Let)
+        }
+        local_functions = {
+            stmt.name
+            for section in program.sections
+            for stmt in section.body
+            if isinstance(stmt, FunctionDef)
+        }
+
+        def declared_local_vars(statements):
+            names = set()
+            for stmt in statements:
+                if isinstance(stmt, Let):
+                    names.add(stmt.name)
+                elif isinstance(stmt, FunctionDef):
+                    continue
+                elif is_dataclass(stmt):
+                    for descriptor in fields(stmt):
+                        value = getattr(stmt, descriptor.name)
+                        if isinstance(value, list):
+                            names.update(declared_local_vars(value))
+            return names
+
+        def check_access(node, visible_vars, visible_functions):
+            if isinstance(node, Variable):
+                if node.name in private_vars and node.name not in visible_vars:
+                    raise ValueError(
+                        f"MidShake Access Error:\n"
+                        f"  Variable '{node.name}' is Private in an imported file and cannot be accessed directly."
+                    )
+                return
+
+            if isinstance(node, Call):
+                if "." not in node.name and node.name in private_functions and node.name not in visible_functions:
+                    raise ValueError(
+                        f"MidShake Access Error:\n"
+                        f"  Function '{node.name}' is Private in an imported file and cannot be called directly."
+                    )
+                for argument in node.args:
+                    check_access(argument, visible_vars, visible_functions)
+                return
+
+            if isinstance(node, NewInstance):
+                if node.class_name in private_classes:
+                    raise ValueError(
+                        f"MidShake Access Error:\n"
+                        f"  Class '{node.class_name}' is Private in an imported file and cannot be instantiated directly."
+                    )
+                return
+
+            if isinstance(node, (Set, GlobalSet)):
+                if node.name in private_vars and node.name not in visible_vars:
+                    raise ValueError(
+                        f"MidShake Access Error:\n"
+                        f"  Variable '{node.name}' is Private in an imported file and cannot be modified directly."
+                    )
+                check_access(node.value, visible_vars, visible_functions)
+                return
+
+            if isinstance(node, FunctionDef):
+                function_vars = set(visible_vars)
+                function_vars.update(node.param_names)
+                function_vars.update(declared_local_vars(node.body))
+                for body_stmt in node.body:
+                    check_access(body_stmt, function_vars, visible_functions)
+                return
+
+            if isinstance(node, MapLiteral):
+                for key, value in zip(node.keys, node.values):
+                    if not isinstance(key, Variable):
+                        check_access(key, visible_vars, visible_functions)
+                    check_access(value, visible_vars, visible_functions)
+                return
+
+            if isinstance(node, MapGet):
+                check_access(node.map_expr, visible_vars, visible_functions)
+                if not isinstance(node.key_expr, Variable):
+                    check_access(node.key_expr, visible_vars, visible_functions)
+                return
+
+            if isinstance(node, Import):
+                return
+
+            if isinstance(node, (list, tuple)):
+                for child in node:
+                    check_access(child, visible_vars, visible_functions)
+                return
+
+            if is_dataclass(node):
+                for descriptor in fields(node):
+                    check_access(getattr(node, descriptor.name), visible_vars, visible_functions)
+
+        for section in program.sections:
+            for stmt in section.body:
+                check_access(stmt, local_vars, local_functions)
+
     def _collect_functions(self, program):
         """Walk the program (resolving imports) and collect all FunctionDef nodes."""
         funcs = []
@@ -82,18 +292,42 @@ class CppCompiler:
             for stmt in section.body:
                 if isinstance(stmt, FunctionDef):
                     funcs.append(stmt)
+                elif isinstance(stmt, ClassDef):
+                    funcs.extend(member for member in stmt.members if isinstance(member, FunctionDef))
                 elif isinstance(stmt, Import):
                     imported_funcs = self._import_program(stmt)
                     if imported_funcs:
                         funcs.extend(imported_funcs)
         return funcs
 
+    def _collect_classes(self, program):
+        classes = []
+        seen_files = set()
+
+        def collect(current_program):
+            for section in current_program.sections:
+                for stmt in section.body:
+                    if isinstance(stmt, ClassDef):
+                        classes.append(stmt)
+                    elif isinstance(stmt, Import):
+                        imported = self._parse_visibility_import(stmt)
+                        if imported is None:
+                            continue
+                        imported_program, real_path = imported
+                        if real_path in seen_files:
+                            continue
+                        seen_files.add(real_path)
+                        collect(imported_program)
+
+        collect(program)
+        return classes
+
     def _collect_main_stmts(self, program):
         """Walk the program (resolving imports) and collect non-function statements."""
         stmts = []
         for section in program.sections:
             for stmt in section.body:
-                if isinstance(stmt, FunctionDef):
+                if isinstance(stmt, (FunctionDef, ClassDef)):
                     continue
                 elif isinstance(stmt, Import):
                     imported_stmts = self._import_main_stmts(stmt)
@@ -134,9 +368,9 @@ class CppCompiler:
             return []
 
         real_path = os.path.realpath(resolved)
-        if real_path in self._imported_files:
+        if real_path in self._imported_function_files:
             return []
-        self._imported_files.add(real_path)
+        self._imported_function_files.add(real_path)
 
         with open(resolved, "r", encoding="utf-8") as f:
             source = f.read()
@@ -151,6 +385,8 @@ class CppCompiler:
             for s in section.body:
                 if isinstance(s, FunctionDef):
                     funcs.append(s)
+                elif isinstance(s, ClassDef):
+                    funcs.extend(member for member in s.members if isinstance(member, FunctionDef))
                 elif isinstance(s, Import):
                     imported_funcs = self._import_program(s)
                     if imported_funcs:
@@ -181,9 +417,9 @@ class CppCompiler:
             return []
 
         real_path = os.path.realpath(resolved)
-        if real_path in self._imported_files:
+        if real_path in self._imported_main_files:
             return []
-        self._imported_files.add(real_path)
+        self._imported_main_files.add(real_path)
 
         with open(resolved, "r", encoding="utf-8") as f:
             source = f.read()
@@ -271,8 +507,17 @@ class CppCompiler:
             self.emit("std::vector<Value> args;")
             for arg in stmt.args:
                 self.emit(f"args.push_back({self.compile_expr(arg)});")
-            call_name = self._resolve_call_name(stmt.name)
-            self.emit(f'env.set("RESPONSE", {call_name}(env, args));')
+            if "." in stmt.name:
+                target_name, method_name = stmt.name.rsplit(".", 1)
+                target = self.compile_expr(self._member_target_expression(target_name))
+                caller_class = self._current_class or ""
+                self.emit(
+                    f'env.set("RESPONSE", call_object_method(env, {target}, "{method_name}", '
+                    f'args, "{caller_class}"));'
+                )
+            else:
+                call_name = self._resolve_call_name(stmt.name)
+                self.emit(f'env.set("RESPONSE", {call_name}(env, args));')
             self.indent -= 1
             self.emit("}")
 
@@ -315,6 +560,17 @@ class CppCompiler:
             else:
                 self.emit(f'map_set({mapping}, {key}, {value});')
 
+        elif isinstance(stmt, MemberSet):
+            target = self.compile_expr(stmt.target)
+            value = self.compile_expr(stmt.value)
+            caller_class = self._current_class or ""
+            self.emit(
+                f'object_set_member({target}, "{stmt.name}", {value}, "{caller_class}");'
+            )
+
+        elif isinstance(stmt, ClassDef):
+            return
+
         # GLOBAL SET: modify a global variable from within a function
         elif isinstance(stmt, GlobalSet):
             value = self.compile_expr(stmt.value)
@@ -346,6 +602,18 @@ class CppCompiler:
 
         if isinstance(expr, Variable):
             return f'env.get("{expr.name}")'
+
+        if isinstance(expr, MemberAccess):
+            target = self.compile_expr(expr.target)
+            caller_class = self._current_class or ""
+            return f'object_get_member({target}, "{expr.name}", "{caller_class}")'
+
+        if isinstance(expr, NewInstance):
+            args = ", ".join(self.compile_expr(arg) for arg in expr.args)
+            return (
+                f'create_object(env, "{expr.class_name}", '
+                f'std::vector<Value>{{{args}}})'
+            )
 
         if isinstance(expr, Response):
             return 'env.get("RESPONSE")'
@@ -554,16 +822,24 @@ class CppCompiler:
     # ------------------------------------------------------------
     def compile_function_def(self, func: FunctionDef):
         self._param_names = set(func.param_names)
+        self._current_class = func.owner_class
+        function_symbol = self._function_symbol(func)
         self.emit(
-            f"Value {func.name}(Environment& parent_env, "
+            f"Value {function_symbol}(Environment& parent_env, "
             f"const std::vector<Value>& args) {{"
         )
         self.indent += 1
         self.emit("Environment env(parent_env);")
 
+        # Bind the implicit instance before method parameters.
+        arg_offset = 0
+        if func.owner_class:
+            self.emit('env.set("this", args.at(0));')
+            arg_offset = 1
+
         # bind parameters
         for i, name in enumerate(func.param_names):
-            self.emit(f'env.set("{name}", args[{i}]);')
+            self.emit(f'env.set("{name}", args.at({i + arg_offset}));')
 
         # body
         for stmt in func.body:
@@ -576,4 +852,22 @@ class CppCompiler:
         self.emit("}")
         self.emit("")
         self._param_names = set()
+        self._current_class = None
+
+    def compile_field_initializer(self, class_def, field):
+        self._current_class = None
+        self.emit(f"Value {self._field_initializer_symbol(class_def, field)}(Environment& env) {{")
+        self.indent += 1
+        self.emit(f"return {self.compile_expr(field.value)};")
+        self.indent -= 1
+        self.emit("}")
+        self.emit("")
+
+    @staticmethod
+    def _member_target_expression(target_name):
+        parts = [part.strip() for part in target_name.split(".")]
+        target = Variable(parts[0])
+        for part in parts[1:]:
+            target = MemberAccess(target, part)
+        return target
 

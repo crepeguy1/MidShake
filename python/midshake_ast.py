@@ -1,18 +1,23 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
-Public = None
-Secret = None
-Visibility = Union[Public, Secret]
-
-
-@dataclass
-class Secret:
-    pass
-
 @dataclass
 class Public:
     pass
+
+
+@dataclass
+class Private:
+    pass
+
+
+@dataclass
+class Protected:
+    pass
+
+
+Visibility = Union[Public, Private, Protected]
+
 
 # -----------------------------
 # EXPRESSIONS
@@ -36,6 +41,18 @@ class String(Expression):
 @dataclass
 class Variable(Expression):
     name: str
+
+
+@dataclass
+class MemberAccess(Expression):
+    target: Expression
+    name: str
+
+
+@dataclass
+class NewInstance(Expression):
+    class_name: str
+    args: List[Expression] = field(default_factory=list)
 
 
 @dataclass
@@ -240,7 +257,13 @@ class Let(Statement):
 class Set(Statement):
     name: str
     value: Expression
-    visibility: Visibility = field(default_factory=Public)  
+
+
+@dataclass
+class MemberSet(Statement):
+    target: Expression
+    name: str
+    value: Expression
 
 @dataclass
 class Proclaim(Statement):
@@ -339,6 +362,15 @@ class FunctionDef(Statement):
     name: str
     param_names: List[str]
     body: List[Statement]
+    visibility: Visibility = field(default_factory=Public)
+    owner_class: Optional[str] = field(default=None, repr=False)
+
+
+@dataclass
+class ClassDef(Statement):
+    name: str
+    base_name: Optional[str]
+    members: List[Statement]
     visibility: Visibility = field(default_factory=Public)
 
 

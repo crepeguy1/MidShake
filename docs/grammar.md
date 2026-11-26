@@ -74,7 +74,7 @@ DIVIDED, GREATER, LESS, EQUAL, NOT, STARTS, ENDS, DIGIT, LETTER,
 WHITESPACE, MINIMUM, MAXIMUM, ABSOLUTE, VALUE, ROUNDED, UPPERCASE,
 LOWERCASE, CHECK, LENGTH, SUBSTRING, CHARACTER, AT, POSITION, SPLIT,
 BY, JOIN, TRIMMED, REPLACE, OLD, NEW, APPEND, ITEM, SIZE, KEY, MAP,
-TRUE, FALSE
+TRUE, FALSE, PUBLIC, PRIVATE, PROTECTED, CLASS, EXTENDS
 ```
 
 ### 1.7. Operators and Punctuation
@@ -96,15 +96,17 @@ program       ::= { statement }
 statement     ::= import_stmt | function_def | let_stmt | set_stmt | global_set_stmt
                 | proclaim_stmt | inquire_stmt | if_stmt | whilst_stmt | for_in_stmt
                 | call_stmt | return_stmt | map_set_stmt | file_write_stmt
-                | break_stmt | continue_stmt | terminate_stmt | comment | empty_line
+                | class_def | break_stmt | continue_stmt | terminate_stmt | comment | empty_line
 ```
 
 ### 2.2. Variable Declarations and Assignments
 
 ```ebnf
-let_stmt      ::= 'LET' 'the' 'variable' identifier 'BE' expression ';'
-set_stmt      ::= 'SET' 'the' 'variable' identifier 'TO' expression ';'
+let_stmt      ::= [ visibility ] 'LET' 'the' 'variable' identifier 'BE' expression ';'
+set_stmt      ::= 'SET' 'the' 'variable' member_path 'TO' expression ';'
 global_set_stmt ::= 'GLOBAL' 'SET' 'the' 'variable' identifier 'TO' expression ';'
+visibility    ::= 'Public' | 'Private' | 'Protected'
+member_path   ::= identifier { '.' identifier }
 ```
 
 **Semantics:** `LET` declares a new variable. `SET` reassigns an existing variable. `GLOBAL SET` modifies a variable in the global scope from within a function.
@@ -171,7 +173,7 @@ continue_stmt ::= 'CONTINUE' ';'
 ### 2.8. Functions
 
 ```ebnf
-function_def  ::= 'DEFINE' 'function' identifier [ 'WITH' parameter_list ] ';'
+function_def  ::= [ visibility ] 'DEFINE' 'function' identifier [ 'WITH' parameter_list ] ';'
                   { statement }
                   'END' 'FUNCTION'
 
@@ -183,16 +185,30 @@ return_stmt   ::= 'RETURN' expression ';'
 
 **Semantics:** `DEFINE function` creates a named function with optional parameters. `RETURN` exits the function and yields a value.
 
-### 2.9. Function Calls
+### 2.9. Classes
 
 ```ebnf
-call_stmt     ::= 'CALL' identifier [ 'WITH' argument_list ] ';'
+class_def      ::= [ 'Public' | 'Private' ] 'DEFINE' 'class' identifier
+                   [ 'EXTENDS' identifier ] ';'
+                   { class_member }
+                   'END' 'CLASS'
+class_member   ::= field_decl | function_def
+field_decl     ::= [ visibility ] 'LET' 'the' 'variable' identifier 'BE' expression ';'
+new_instance   ::= 'the' 'new' identifier [ 'WITH' argument_list ]
+```
+
+Class members default to `Private`; classes default to `Public`. `Protected` is valid only on class members. A subclass inherits a single base class. Constructor arguments use the same comma-separated expression list as function and method calls; a method named `constructor` receives them after `this`.
+
+### 2.10. Function and Method Calls
+
+```ebnf
+call_stmt     ::= 'CALL' member_path [ 'WITH' argument_list ] ';'
 argument_list ::= expression { ',' expression }
 ```
 
-**Semantics:** Invokes the named function with the given arguments. The return value is stored in the special `RESPONSE` variable.
+**Semantics:** Invokes a function or an instance method. The return value is stored in the special `RESPONSE` variable.
 
-### 2.10. Map Operations
+### 2.11. Map Operations
 
 ```ebnf
 map_set_stmt  ::= 'SET' 'the' 'key' expression 'IN' 'the' 'map' identifier
@@ -201,7 +217,7 @@ map_set_stmt  ::= 'SET' 'the' 'key' expression 'IN' 'the' 'map' identifier
 
 **Semantics:** Sets the value associated with a key in a map.
 
-### 2.11. File I/O
+### 2.12. File I/O
 
 ```ebnf
 file_write_stmt ::= 'IN' 'the' 'file' file_path 'WRITE' expression ';'
@@ -256,6 +272,7 @@ factor        ::= primary
 primary       ::= parenthesized
                 | list_literal
                 | map_literal
+                | new_instance
                 | function_call_expr
                 | literal
                 | variable_ref
@@ -266,12 +283,13 @@ parenthesized ::= '(' expression ')'
 literal       ::= number_literal | string_literal
 boolean_literal ::= 'true' | 'false'
 
-variable_ref  ::= 'the' 'value' 'of' identifier
-                | 'the' 'string' identifier
-                | 'the' 'number' identifier
-                | 'the' 'list' identifier
-                | 'the' 'map' identifier
-                | identifier
+variable_ref  ::= 'the' 'value' 'of' member_path
+                | 'the' 'string' member_path
+                | 'the' 'number' member_path
+                | 'the' 'list' member_path
+                | 'the' 'map' member_path
+                | member_path
+                | 'the' 'new' identifier
 
 response_ref  ::= 'RESPONSE'
                 | 'the' 'RESPONSE'
