@@ -517,30 +517,6 @@ Value call_object_method(Environment& env, const Value& object, const std::strin
         outfile << value.to_string();
     }
 
-    Value ms_std_println(Environment&, const std::vector<Value>& args) {
-        print(args.at(0));
-        return Value::from_double(0);
-    }
-
-    Value ms_std_greet(Environment&, const std::vector<Value>& args) {
-        print(Value::from_string("Hello, "));
-        print(args.at(0));
-        return Value::from_double(0);
-    }
-
-    Value ms_std_add_and_print(Environment&, const std::vector<Value>& args) {
-        print(Value::from_double(args.at(0).num.value + args.at(1).num.value));
-        return Value::from_double(0);
-    }
-
-    Value ms_std_repeat(Environment&, const std::vector<Value>& args) {
-        const int count = std::max(0, static_cast<int>(args.at(0).num.value));
-        for (int i = 0; i < count; ++i) {
-            print(args.at(1));
-        }
-        return Value::from_double(0);
-    }
-
     Value ms_std_min(Environment&, const std::vector<Value>& args) {
         return math_min(args.at(0), args.at(1));
     }
@@ -598,7 +574,7 @@ Value call_object_method(Environment& env, const Value& object, const std::strin
     }
 
     Value ms_std_substring(Environment&, const std::vector<Value>& args) {
-        return ms::substring(args.at(0), args.at(1), args.at(2));
+        return substring(args.at(0), args.at(1), args.at(2));
     }
 
     Value ms_std_split(Environment&, const std::vector<Value>& args) {

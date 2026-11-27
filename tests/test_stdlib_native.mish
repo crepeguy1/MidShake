@@ -1,0 +1,11 @@
+CALL greet WITH the string "MidShake";
+CALL println WITH the string "native stdlib";
+CALL repeat WITH the number 2, the string "repeat";
+CALL min WITH the number 3, the number 7;
+PROCLAIM the RESPONSE;
+CALL length WITH the string "runtime";
+PROCLAIM the RESPONSE;
+LET the variable values BE {};
+SET the key "answer" IN the map values TO the number 42;
+CALL mapGet WITH the string "answer", the value of values;
+PROCLAIM the RESPONSE;

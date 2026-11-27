@@ -131,17 +131,19 @@ END FUNCTION;"""
         print("[CALL Compilation]")
         cpp = self.compile('CALL greet WITH the string "Alice";')
         self.check("Contains function call", 'greet(' in cpp)
-        self.check("Stores call result in RESPONSE", 'env.set("RESPONSE", ms_std_greet(env, args));' in cpp)
+        self.check("Compiles standard library function", 'Value greet(Environment& parent_env' in cpp)
+        self.check("Calls standard library function directly", 'env.set("RESPONSE", greet(env, args));' in cpp)
+        self.check("Does not depend on standard library runtime adapters", "ms_std_" not in cpp)
 
     def test_user_function_overrides_standard(self):
         print("[User Function Override]")
         code = """DEFINE function greet WITH the variable name;
     RETURN the value of name;
-END FUNCTION;
+        END FUNCTION;
 CALL greet WITH the string \"Ada\";"""
         cpp = self.compile(code)
         self.check("Calls the user-defined function", 'env.set("RESPONSE", greet(env, args));' in cpp)
-        self.check("Does not call the runtime fallback", 'env.set("RESPONSE", ms_std_greet(env, args));' not in cpp)
+        self.check("Does not depend on standard library runtime adapters", "ms_std_" not in cpp)
 
     def test_return_compilation(self):
         print("[RETURN Compilation]")

@@ -70,8 +70,8 @@ The main Python toolchain in `python/` tokenizes `.mish` source, parses it into 
 | File | Purpose |
 | --- | --- |
 | `selfhost/runtime/midshake_runtime_types.hpp` | Defines C++ runtime values and their number, string, list, and map representations, plus basic conversions/operators. |
-| `selfhost/runtime/midshake_runtime.hpp` | Declares the C++ runtime API and `Environment`, including variable lookup, parent-linked function frames, global assignment, standard-library entry points, and I/O helpers. |
-| `selfhost/runtime/midshake_runtime.cpp` | Implements runtime printing, input, file operations, value/collection/string/math helpers, and C++ bindings for standard-library calls. |
+| `selfhost/runtime/midshake_runtime.hpp` | Declares the C++ runtime API and `Environment`, including variable lookup, parent-linked function frames, global assignment, remaining standard-library adapters, and I/O helpers. |
+| `selfhost/runtime/midshake_runtime.cpp` | Implements runtime printing, input, file operations, value/collection/string/math helpers, and adapters for standard-library functions not yet emitted by the self-hosted compiler. |
 | `selfhost/runtime/stdlib.hpp` | Contains older hand-written C++ implementations of a few standard-library functions; current generated-code support is primarily declared/implemented through the shared runtime. |
 
 ## Standard library (`stdlib/`)
@@ -79,6 +79,7 @@ The main Python toolchain in `python/` tokenizes `.mish` source, parses it into 
 | File | Purpose |
 | --- | --- |
 | `stdlib/stdlib.mish` | MidShake-level library functions for printing, greetings, math, strings, lists, maps, and file reading. The interpreter and native compiler may provide corresponding built-ins through their respective runtimes. |
+| `stdlib/native_core.mish` | Small subset of standard-library functions compiled directly by the self-hosted backend; kept deliberately simple to preserve bootstrap speed while more expression lowering is migrated. |
 
 ## Command-line tools (`tools/`)
 
@@ -132,6 +133,7 @@ These `.mish` files are runnable examples rather than compiler implementation fi
 | `tests/test_lexer.py` | Unit tests for Python tokenization. |
 | `tests/test_parser.py` | Unit tests for Python parsing and AST construction. |
 | `tests/test_codegen.py` | Unit tests for Python-to-C++ generation. |
+| `tests/test_semantic.py` | Checks that standard-library names used by the native stdlib regression are recognized by semantic analysis. |
 | `tests/test_file_write.py` | Python unit test for parsing and executing file-write statements. |
 | `tests/test_bootstrap_scope.mish` | Smoke program covering recursive calls, local scope, and global updates in the native bootstrap. |
 | `tests/test_class_encapsulation.mish` | Integration coverage for public, private, and protected class-member access. |
@@ -152,6 +154,7 @@ These `.mish` files are runnable examples rather than compiler implementation fi
 | `tests/test_simple_call.mish` | Minimal function-call integration case. |
 | `tests/test_selfhost_classes.mish` | Self-hosted compiler regression for inheritance, constructor forwarding, and member visibility. |
 | `tests/test_startswith.mish` | Integration input for the string `startsWith` operation. |
+| `tests/test_stdlib_native.mish` | Integration regression for native stdlib behavior across direct MidShake functions and retained C++ adapters. |
 | `tests/test_while_simple.mish` | Integration input for a basic `WHILST` loop. |
 | `tests/test_semantic_errors.mish` | Intentionally invalid source used to exercise semantic diagnostics; the main integration runner skips it. |
 | `tests/test_parse_20_30.mish` | Legacy parser/debug fixture; currently skipped by the main integration runner. |

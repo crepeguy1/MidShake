@@ -16,14 +16,6 @@ from midshake_ast import (
     Boolean, MapSet, Break, Continue, ForIn, GlobalSet, Private, Protected, Public
 )
 
-STDLIB_RUNTIME_FUNCTIONS = {
-    "println", "greet", "add_and_print", "repeat", "min", "max", "abs", "round",
-    "toupper", "tolower", "startsWith", "endsWith", "isDigit", "isLetter",
-    "isWhitespace", "readFile", "length", "charAt", "substring", "split", "join",
-    "trim", "replace", "size", "append", "getItem", "mapSet", "mapGet", "indexOf",
-}
-
-
 class CppCompiler:
     def __init__(self):
         self.lines = []
@@ -313,7 +305,24 @@ class CppCompiler:
 
     def _collect_functions(self, program):
         """Walk the program (resolving imports) and collect all FunctionDef nodes."""
-        funcs = []
+        import os
+        from midshake_tokenizer import Tokenizer
+        from midshake_parser import Parser
+
+        stdlib_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "stdlib",
+            "stdlib.mish",
+        )
+        with open(stdlib_path, "r", encoding="utf-8") as source_file:
+            stdlib_program = Parser(Tokenizer(source_file.read()).tokenize()).parse()
+
+        funcs = [
+            stmt
+            for section in stdlib_program.sections
+            for stmt in section.body
+            if isinstance(stmt, FunctionDef)
+        ]
         for section in program.sections:
             for stmt in section.body:
                 if isinstance(stmt, FunctionDef):
@@ -366,8 +375,6 @@ class CppCompiler:
     def _resolve_call_name(self, name):
         if name in self._defined_function_names:
             return name
-        if name in STDLIB_RUNTIME_FUNCTIONS:
-            return f"ms_std_{name}"
         return name
 
     def _import_program(self, stmt: Import):

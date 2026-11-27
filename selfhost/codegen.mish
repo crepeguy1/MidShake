@@ -28,6 +28,7 @@ LET the variable g_privateStorage BE {};
 LET the variable g_privateSymbols BE [];
 LET the variable g_functionNames BE {};
 LET the variable g_standardFunctionNames BE {};
+LET the variable g_nativeFunctionNames BE {};
 ^ Double quote character — extracted from a known string containing one
 LET the variable quoteSource BE the string "a\"b";
 LET the variable QUOTE BE the character at the number 1 in the value of quoteSource;
@@ -681,7 +682,7 @@ DEFINE function compileExpr WITH the variable expr;
         GLOBAL SET the variable g_compiled TO "Value::from_double(0)";
         RETURN "Value::from_double(0)";
     END IF;
-    
+
     ^ Binary: "X plus Y" — split on " plus " to handle nested expressions
     CALL split WITH the value of normalized, the string " plus ";
     LET the variable plusParts BE the RESPONSE;
@@ -884,9 +885,12 @@ DEFINE function resolveCallName WITH the variable callName;
     IF the value of isUserFunction IS equal to the number 1 THEN
         RETURN the value of callName;
     END IF;
+    CALL mapGet WITH the value of callName, the value of g_nativeFunctionNames;
+    IF the RESPONSE IS equal to the number 1 THEN
+        RETURN the string "__midshake_std_" plus the value of callName;
+    END IF;
     CALL mapGet WITH the value of callName, the value of g_standardFunctionNames;
-    LET the variable isStandardFunction BE the RESPONSE;
-    IF the value of isStandardFunction IS equal to the number 1 THEN
+    IF the RESPONSE IS equal to the number 1 THEN
         RETURN the string "ms_std_" plus the value of callName;
     END IF;
     RETURN the value of callName;
@@ -1486,9 +1490,7 @@ DEFINE function expandImports WITH the variable sourceText;
             END WHILST;
 
             IF the value of alreadyImported IS equal to the number 0 THEN
-                CALL startsWith WITH the value of importPath, the string "stdlib/";
-                LET the variable isStandardLibrary BE the RESPONSE;
-                IF the value of isStandardLibrary IS equal to the number 0 THEN
+                IF the value of importPath IS not equal to the string "stdlib/stdlib.mish" THEN
                     CALL append WITH the value of importPath, the value of g_importedFiles;
                     GLOBAL SET the variable g_importedFiles TO the RESPONSE;
                     CALL readFile WITH the value of importPath;
@@ -1528,6 +1530,8 @@ LET the variable source BE the content of the file the value of filePath;
 GLOBAL SET the variable g_importedFiles TO [];
 GLOBAL SET the variable g_expandedModuleIds TO [];
 GLOBAL SET the variable g_moduleCounter TO the number 0;
+LET the variable standardImport BE the string "IMPORT the file " plus the value of QUOTE plus the string "stdlib/native_core.mish" plus the value of QUOTE plus the string ";\n";
+SET the variable source TO the value of standardImport plus the value of source;
 CALL expandImports WITH the value of source;
 SET the variable source TO the RESPONSE;
 CALL split WITH the value of source, the string "\n";
@@ -1672,6 +1676,18 @@ WHILST the value of standardFunctionIndex IS less than the value of standardFunc
     LET the variable standardFunctionName BE the RESPONSE;
     SET the key standardFunctionName IN the map g_standardFunctionNames TO the number 1;
     SET the variable standardFunctionIndex TO the value of standardFunctionIndex plus the number 1;
+END WHILST;
+
+CALL split WITH the string "println,greet,add_and_print,repeat", the string ",";
+LET the variable nativeFunctionNames BE the RESPONSE;
+SET the variable g_nativeFunctionNames TO {};
+LET the variable nativeFunctionIndex BE the number 0;
+LET the variable nativeFunctionCount BE the size of nativeFunctionNames;
+WHILST the value of nativeFunctionIndex IS less than the value of nativeFunctionCount DO
+    CALL getItem WITH the value of nativeFunctionIndex, the value of nativeFunctionNames;
+    LET the variable nativeFunctionName BE the RESPONSE;
+    SET the key nativeFunctionName IN the map g_nativeFunctionNames TO the number 1;
+    SET the variable nativeFunctionIndex TO the value of nativeFunctionIndex plus the number 1;
 END WHILST;
 
 ^ Generate C++ header

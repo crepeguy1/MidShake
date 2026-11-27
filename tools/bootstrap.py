@@ -17,6 +17,8 @@ OUTPUT_DIR = ROOT / "build" / "output"
 SOURCE = ROOT / "selfhost" / "codegen.mish"
 PARSER_SOURCE = ROOT / "selfhost" / "parser.mish"
 SMOKE_TEST = ROOT / "tests" / "test_bootstrap_scope.mish"
+STDLIB_TEST = ROOT / "tests" / "test_stdlib_native.mish"
+MIGRATED_STDLIB = ("println", "greet", "add_and_print", "repeat")
 CLASS_TEST = ROOT / "tests" / "test_selfhost_classes.mish"
 EXCEPTION_TEST = ROOT / "tests" / "test_exception_handling.mish"
 UNCAUGHT_EXCEPTION_TEST = ROOT / "tests" / "test_exception_uncaught.mish"
@@ -202,14 +204,19 @@ def main():
     stage1_exe = BUILD_DIR / ("stage1" + extension)
     stage2_exe = BUILD_DIR / ("stage2" + extension)
 
-    print("[1/8] Building the seed compiler with the Python compiler")
+    print("[1/9] Building the seed compiler with the Python compiler")
     compile_with_python(stage0_cpp, stage0_exe)
 
-    print("[2/8] Compiling the self-hosted compiler with the seed")
+    print("[2/9] Compiling the self-hosted compiler with the seed")
     stage1_cpp, _ = run_self_hosted(stage0_exe, SOURCE, BUILD_DIR / "stage0-run")
+    stage1_source = stage1_cpp.read_text(encoding="utf-8")
+    if any(f"ms_std_{name}" in stage1_source for name in MIGRATED_STDLIB):
+        raise RuntimeError("The seed still emitted adapters for migrated MidShake functions.")
+    if "Value __midshake_std_greet(Environment& parent_env" not in stage1_source:
+        raise RuntimeError("The seed did not emit MidShake standard-library functions directly.")
     compile_native(GPP, stage1_cpp, stage1_exe)
 
-    print("[3/8] Recompiling and comparing the native generations")
+    print("[3/9] Recompiling and comparing the native generations")
     stage2_cpp, stage1_output = run_self_hosted(
         stage1_exe, SOURCE, BUILD_DIR / "stage1-run", timeout=180
     )
@@ -235,7 +242,7 @@ def main():
         )
     compile_native(GPP, stage2_cpp, stage2_exe)
 
-    print("[4/8] Compiling parser.mish with both native generations")
+    print("[4/9] Compiling parser.mish with both native generations")
     parser_stage1_cpp, _ = run_self_hosted(
         stage1_exe, PARSER_SOURCE, BUILD_DIR / "parser-stage1-run"
     )
@@ -250,8 +257,11 @@ def main():
         [parser_exe], BUILD_DIR / "parser-stage2-run", "Running compiled parser module"
     )
 
-    print("[5/8] Verifying recursion, local frames, and global updates")
+    print("[5/9] Verifying recursion, local frames, and global updates")
     smoke_cpp, _ = run_self_hosted(stage2_exe, SMOKE_TEST, BUILD_DIR / "smoke-run")
+    smoke_source = smoke_cpp.read_text(encoding="utf-8")
+    if any(f"ms_std_{name}" in smoke_source for name in MIGRATED_STDLIB):
+        raise RuntimeError("The native compiler emitted an adapter for a migrated function.")
     smoke_exe = BUILD_DIR / ("smoke" + extension)
     compile_native(GPP, smoke_cpp, smoke_exe)
     result = run_checked([smoke_exe], BUILD_DIR / "smoke-run", "Running bootstrap smoke test")
@@ -270,7 +280,36 @@ def main():
             f"expected: {expected_values}."
         )
 
-    print("[6/8] Verifying self-hosted class construction and member access")
+    print("[6/9] Verifying standard-library functions compile from MidShake")
+    stdlib_cpp, _ = run_self_hosted(stage2_exe, STDLIB_TEST, BUILD_DIR / "stdlib-run")
+    stdlib_source = stdlib_cpp.read_text(encoding="utf-8")
+    if any(f"ms_std_{name}" in stdlib_source for name in MIGRATED_STDLIB):
+        raise RuntimeError("The native compiler emitted an adapter for a migrated function.")
+    if "Value __midshake_std_greet(Environment& parent_env" not in stdlib_source:
+        raise RuntimeError("The native compiler did not emit MidShake standard-library functions.")
+    stdlib_exe = BUILD_DIR / ("stdlib" + extension)
+    compile_native(GPP, stdlib_cpp, stdlib_exe)
+    native_stdlib = run_checked(
+        [stdlib_exe], BUILD_DIR / "stdlib-run", "Running native standard-library test"
+    )
+    interpreted_stdlib = run_checked(
+        [sys.executable, ROOT / "python" / "midshake_cli.py", "run", STDLIB_TEST],
+        ROOT,
+        "Running interpreted standard-library test",
+    )
+    expected_stdlib_output = (
+        "Hello, \nMidShake\nnative stdlib\nrepeat\nrepeat\n"
+        "3\n7\n42\n"
+    )
+    native_stdlib_output = native_stdlib.stdout.replace(".000000", "")
+    if native_stdlib_output != expected_stdlib_output or interpreted_stdlib.stdout != expected_stdlib_output:
+        raise RuntimeError(
+            "Standard-library output mismatch. "
+            f"Native: {native_stdlib.stdout!r}; interpreter: {interpreted_stdlib.stdout!r}; "
+            f"expected: {expected_stdlib_output!r}."
+        )
+
+    print("[7/9] Verifying self-hosted class construction and member access")
     class_cpp, _ = run_self_hosted(stage2_exe, CLASS_TEST, BUILD_DIR / "class-run")
     generated_class_source = class_cpp.read_text(encoding="utf-8")
     private_method_registration = (
@@ -298,7 +337,7 @@ def main():
             f"expected: {expected_class_values}."
         )
 
-    print("[7/8] Verifying imported module privacy")
+    print("[8/9] Verifying imported module privacy")
     private_ok_cpp, _ = run_self_hosted(
         stage2_exe, PRIVATE_MODULE_OK_TEST, BUILD_DIR / "private-module-ok-run"
     )
@@ -360,7 +399,7 @@ def main():
     ):
         verify_imported_private_denial(stage2_exe, source, label, expected_message)
 
-    print("[8/8] Verifying thrown-value propagation and uncaught diagnostics")
+    print("[9/9] Verifying thrown-value propagation and uncaught diagnostics")
     exception_stage1_cpp, _ = run_self_hosted(
         stage1_exe, EXCEPTION_TEST, BUILD_DIR / "exception-stage1-run"
     )
@@ -411,7 +450,7 @@ def main():
     ):
         raise RuntimeError("Interpreter uncaught throw did not produce the expected diagnostic.")
 
-    print("Bootstrap verified: generations, parser, scope, classes, module privacy, and exceptions passed.")
+    print("Bootstrap verified: generations, parser, scope, stdlib, classes, module privacy, and exceptions passed.")
     print(f"Artifacts: {BUILD_DIR}")
 
 

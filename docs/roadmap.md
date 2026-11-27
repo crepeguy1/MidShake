@@ -73,7 +73,7 @@ Make the self-hosted compiler produce correct, runnable output when compiling it
 - [x] **Map literal keys** — Bare identifiers treated as string literals in map literals
 - [x] **map_get safety** — C++ runtime returns empty string for missing keys instead of throwing
 - [x] **Semantic analyzer import resolution** — Added self-host globals and stdlib functions to builtins
-- [x] **Native bootstrap verification** — The Python seed builds the self-hosted compiler; two native generations match byte-for-byte and pass recursion/scope, class-construction, module-privacy, and exception regressions.
+- [x] **Native bootstrap verification** — The Python seed builds the self-hosted compiler; two native generations match byte-for-byte and pass recursion/scope, class-construction, module-privacy, exception, and MidShake standard-library regressions.
 - [x] **Self-compiling demo** — `minicodegen.mish` (~300 lines) compiles itself end-to-end, generating 51 lines of C++
 - [x] **Native parser compilation** — Stage 1 and stage 2 compile `selfhost/parser.mish` to identical C++ that builds and runs natively.
 
@@ -86,7 +86,7 @@ Make the self-hosted compiler produce correct, runnable output when compiling it
 - codegen.mish passes semantic analysis with 0 errors
 
 **Remaining limitations:**
-- Native programs still require the shared C++ runtime and a C++17 compiler.
+- Native programs still require the shared C++ runtime and a C++17 compiler. The self-hosted compiler emits four basic standard-library functions from `stdlib/native_core.mish`; other standard-library calls still use C++ adapters.
 - The self-hosted interpreter and semantic analyzer do not yet match every Python implementation feature.
 
 **Estimated effort:** 3–5 days (core items complete)
@@ -98,7 +98,7 @@ Make the self-hosted compiler produce correct, runnable output when compiling it
 Create systematic tests for each compiler phase.
 
 - [x] **Test runner** — `tests/run_tests.py` runs unit + integration tests, reports combined results
-- [x] **Integration tests** — 22 test files covering all language constructs, all passing
+- [x] **Integration tests** — 23 test files covering language constructs and the standard-library boundary, all passing
 - [x] **Semantic analysis tests** — `test_semantic_errors.mish` validates error detection
 - [x] **Lexer unit tests** — `tests/test_lexer.py` (52 tests covering all token types)
 - [x] **Parser unit tests** — `tests/test_parser.py` (63 tests covering all AST node types)
@@ -187,6 +187,6 @@ Final documentation for presentation and evaluation.
 
 The following items remain for future development:
 
-1. **Shared runtime independence** — Replace external C++ runtime dependencies with runtime implementations in MidShake.
+1. **Shared runtime independence** — Move more runtime helpers into MidShake in small, bootstrap-safe groups, retaining value representation, native class dispatch, and platform interfaces in C++ until their replacements are validated.
 2. **Semantic import analysis** — Resolve imported declarations during semantic analysis.
 3. **Interpreter parity** — Expand self-hosted interpreter coverage and test it against the Python implementation.

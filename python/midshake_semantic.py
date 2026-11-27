@@ -464,10 +464,13 @@ class SemanticAnalyzer:
         if symbol is None:
             # Check if it's a known stdlib function (including self-hosted compiler helpers)
             stdlib_funcs = {
+                "println", "greet", "add_and_print", "repeat",
+                "min", "max", "abs", "round", "toupper", "tolower",
                 "trim", "uppercase", "lowercase", "length", "substring",
                 "split", "join", "replace", "append", "minimum", "maximum",
                 "absolute", "rounded", "starts_with", "ends_with",
                 "is_digit", "is_letter", "is_whitespace",
+                "readFile", "charAt", "size", "getItem", "mapSet", "mapGet", "indexOf",
                 "read_file", "write_file",
                 # Self-hosted compiler helpers (from stdlib.mish)
                 "startsWith", "endsWith", "isDigit", "isLetter", "isWhitespace",

@@ -69,7 +69,9 @@ Key design decisions:
 The C++ runtime provides:
 - **Value type**: Unified type for strings, numbers, booleans, lists, and maps
 - **Environment**: Variable storage, function dispatch, and I/O
-- **Built-in functions**: String operations (length, substring, split, join, trim, etc.), math functions (min, max, abs, round), list operations (get, append, size), map operations (get, set)
+- **Primitive operations**: String, math, collection, class, and file operations that depend on native value storage or platform APIs
+
+The self-hosted compiler currently emits `println`, `greet`, `add_and_print`, and `repeat` from `stdlib/native_core.mish` as ordinary MidShake functions. Other standard-library calls still use C++ adapters while their expression forms are brought into the self-hosted code generator; the Python compiler compiles the full `stdlib/stdlib.mish` source.
 
 ## Lexical Environment Frames
 
@@ -111,8 +113,8 @@ This design makes MidShake accessible to beginners while maintaining the express
 
 The test suite covers all compiler phases:
 
-- **Unit tests** (151 tests): Verify each phase independently — tokenizer produces correct tokens, parser builds correct AST, codegen produces correct C++
-- **Integration tests** (16 tests): End-to-end compilation and execution of MidShake programs covering all language constructs
+- **Unit tests** (177 checks): Verify each phase independently — tokenizer produces correct tokens, parser builds correct AST, semantic analysis reports issues, and codegen produces correct C++
+- **Integration tests** (23 tests): End-to-end compilation and execution of MidShake programs covering language constructs and the standard-library boundary
 - **Semantic error tests** (5 errors): Verify the semantic analyzer catches common mistakes
 
 ## Known Limitations

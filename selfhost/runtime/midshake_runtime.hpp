@@ -85,10 +85,6 @@ namespace ms {
     void print(const Value& v);
     Value cpp_unescape_string(Environment& env, const std::vector<Value>& args);
     Value cpp_escape_string(Environment& env, const std::vector<Value>& args);
-    Value ms_std_println(Environment& env, const std::vector<Value>& args);
-    Value ms_std_greet(Environment& env, const std::vector<Value>& args);
-    Value ms_std_add_and_print(Environment& env, const std::vector<Value>& args);
-    Value ms_std_repeat(Environment& env, const std::vector<Value>& args);
     Value ms_std_min(Environment& env, const std::vector<Value>& args);
     Value ms_std_max(Environment& env, const std::vector<Value>& args);
     Value ms_std_abs(Environment& env, const std::vector<Value>& args);

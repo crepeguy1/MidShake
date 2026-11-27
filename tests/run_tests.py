@@ -23,6 +23,7 @@ sys.path.insert(0, PYTHON_DIR)
 # Expected output fragments for integration tests
 EXPECTED_OUTPUTS = {
     "test_exception_handling.mish": "caught across a function call\nexecution continued",
+    "test_stdlib_native.mish": "Hello, \nMidShake\nnative stdlib\nrepeat\nrepeat\n3.000000\n7.000000\n42.000000",
     "test_class_encapsulation.mish": "1.000000",
     "test_imported_class.mish": "5.000000",
     "test_selfhost_classes.mish": "7.000000\n3.000000",
@@ -117,7 +118,7 @@ def run_unit_tests():
     print()
     total_passed = 0
     total_failed = 0
-    unit_test_files = ["test_lexer.py", "test_parser.py", "test_codegen.py", "test_visibility.py", "test_exceptions.py"]
+    unit_test_files = ["test_lexer.py", "test_parser.py", "test_codegen.py", "test_semantic.py", "test_visibility.py", "test_exceptions.py"]
     
     for test_file in unit_test_files:
         test_path = os.path.join(TESTS_DIR, test_file)
